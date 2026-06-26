@@ -536,7 +536,14 @@ export async function planungAutomatisch(kapazitaet = 12) {
 
   await bulkInsert("zuteilungen", ["pruefung_id", "pruefling_id", "slot", "reihenfolge"], zRows);
   await bulkInsert("pruefer_zuteilungen", ["pruefung_id", "pruefer_id", "rolle", "status"], pzRows);
-  return { termine: summeTermine, zuteilungen: zRows.length, prueferZuteilungen: pzRows.length };
+  // Ohne Fachrichtung lässt sich kein:e Prüfling einplanen — Zahl zurückgeben,
+  // damit die Oberfläche es transparent meldet (kein stilles Übergehen).
+  const uebersprungen = (await _pg.query(
+    `SELECT count(*)::int AS n FROM prueflinge
+      WHERE (beruf IS NULL OR btrim(beruf) = '')
+        AND lower(coalesce(status,'')) <> 'zurückgezogen'`
+  )).rows[0].n;
+  return { termine: summeTermine, zuteilungen: zRows.length, prueferZuteilungen: pzRows.length, uebersprungen };
 }
 
 /** Planungs-/Zusageliste: je Termin Eckdaten, Prüflingszahl und Prüfer mit Status. */
@@ -1030,6 +1037,15 @@ export async function hinweise() {
   const aKonf = (await prueferAbwesenheitsKonflikte()).length;
   if (aKonf) items.push({ key: "abwesenheit", n: aKonf, route: "#/planung", art: "fehler",
     text: `${aKonf} Ausschuss-Zuteilung(en) an einem Abwesenheitstag der Prüfer:in` });
+
+  // Datenqualität: ohne Fachrichtung lässt sich kein:e Prüfling einplanen.
+  const ohneFach = (await _pg.query(
+    `SELECT count(*)::int AS n FROM prueflinge
+      WHERE (beruf IS NULL OR btrim(beruf) = '')
+        AND lower(coalesce(status,'')) <> 'zurückgezogen'`
+  )).rows[0].n;
+  if (ohneFach) items.push({ key: "ohne_fach", n: ohneFach, route: "#/prueflinge", art: "fehler",
+    text: `${ohneFach} Prüfling(e) ohne Fachrichtung — werden nicht automatisch eingeplant` });
 
   const z = await zusageZaehler();
   const offen = (z.offen || 0) + (z.angefragt || 0);
