@@ -1127,6 +1127,16 @@ export async function hinweise() {
   if (ohneFach) items.push({ key: "ohne_fach", n: ohneFach, route: "#/prueflinge", art: "fehler",
     text: `${ohneFach} Prüfling(e) ohne Fachrichtung — werden nicht automatisch eingeplant` });
 
+  // Datenqualität: ohne Prüfungsjahr fehlen sie in allen jahr-gefilterten
+  // Auswertungen (Notenspiegel, Bereichs-Durchschnitte, Quoten).
+  const ohneJahr = (await _pg.query(
+    `SELECT count(*)::int AS n FROM prueflinge
+      WHERE pruefungsjahr IS NULL
+        AND lower(coalesce(status,'')) <> 'zurückgezogen'`
+  )).rows[0].n;
+  if (ohneJahr) items.push({ key: "ohne_jahr", n: ohneJahr, route: "#/prueflinge?jahr=__ohne__", art: "hinweis",
+    text: `${ohneJahr} Prüfling(e) ohne Prüfungsjahr — fehlen in jahr-gefilterten Auswertungen` });
+
   // Überfällig: Prüfungstage in der Vergangenheit mit noch unbewerteten Prüflingen.
   const ueberfaellig = (await _pg.query(
     `SELECT count(*)::int AS n FROM pruefungen pr
