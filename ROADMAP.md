@@ -108,5 +108,16 @@ Filter, Stichtagsauswertung.
 WCAG-AA-Audit, Tastatur-/Screenreader-Durchgang, Leer-/Fehlerzustände,
 Hilfetexte, Tastenkürzel, Dark-Mode-Prüfung der Tokens.
 
+### Single-File (Doppelklick, ohne Server) ✅
+PGlite läuft ohne Server unter `file://`: WASM/Daten eingebettet (Provisioning),
+Extensions als `data:`-URL, Persistenz in IndexedDB. `tools/build_standalone.mjs`
+erzeugt die doppelklickbare **`download/Ausbildungsberatung-Suite.html`**
+(offline, ~23 MB). Unter Chromium `file://` verifiziert (Boot, DB, Fuzzy-Suche,
+Persistenz nach Reload).
+
+### Single-File — offen
+DB-Datei-Export/-Import (`dumpDataDir`/`loadDataDir`) für „DB-Datei daneben";
+Single-File in der CI bauen; Größe optimieren.
+
 ### Laufend
 Datensicherung (DB-Export/-Import als Datei), Robustheit, Tests, Performance.
