@@ -361,6 +361,12 @@ async function renderPlanung() {
         </div>
         <button class="bw-btn bw-btn--gelb" type="button" id="zuteilen-btn"${offen.length ? "" : " disabled"}>Zuteilen</button>
       </div>
+      <p style="margin-top:var(--bw-space-2)">
+        <button class="bw-btn bw-btn--sekundaer" type="button" id="auto-zuteilen-btn"${termin.beruf ? "" : " disabled title=\"Termin ohne Fachrichtung\""}>
+          Alle passenden Prüflinge automatisch zuteilen${termin.beruf ? ` (${esc(termin.beruf)})` : ""}
+        </button>
+        <span class="bw-klein bw-leise"> — in alphabetischer Reihenfolge; Uhrzeiten manuell vergeben.</span>
+      </p>
 
       <h2 style="margin-top:var(--bw-space-4)">Ausschuss / Prüfer:innen (${zahl(prueferZug.length)})</h2>
       <table class="bw-table">
@@ -415,6 +421,17 @@ async function renderPlanung() {
         meldung("Prüfling zugeteilt.");
         planZeichnen();
       } catch (e) { console.error(e); meldung("Zuteilen fehlgeschlagen: " + e.message, "fehler"); }
+    });
+
+    document.getElementById("auto-zuteilen-btn")?.addEventListener("click", async () => {
+      if (!termin.beruf) return;
+      if (!confirm(`Alle noch nicht zugeteilten Prüflinge der Fachrichtung „${termin.beruf}" diesem Termin zuteilen?`)) return;
+      meldung("Prüflinge werden zugeteilt…");
+      try {
+        const r = await store.autoZuteilenNachFachrichtung(id);
+        meldung(r.zugeteilt ? `${zahl(r.zugeteilt)} Prüflinge automatisch zugeteilt.` : "Keine passenden, noch offenen Prüflinge gefunden.");
+        planZeichnen();
+      } catch (e) { console.error(e); meldung("Auto-Zuteilung fehlgeschlagen: " + e.message, "fehler"); }
     });
 
     document.querySelector("#plan tbody")?.addEventListener("click", async (ev) => {
