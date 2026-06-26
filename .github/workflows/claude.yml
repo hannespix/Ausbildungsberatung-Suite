@@ -1,0 +1,51 @@
+name: Claude
+
+# Reagiert auf @claude in Issues und Pull Requests und arbeitet Aufgaben
+# als Branch + Pull Request ab. Prozess: AGENTS.md. Regeln: CLAUDE.md.
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  issues:
+    types: [opened, assigned, labeled]
+  pull_request_review:
+    types: [submitted]
+
+jobs:
+  claude:
+    # Nur laufen, wenn @claude erwähnt wird oder ein Issue mit Label "claude"
+    if: |
+      contains(github.event.comment.body, '@claude') ||
+      contains(github.event.review.body, '@claude') ||
+      contains(github.event.issue.body, '@claude') ||
+      contains(join(github.event.issue.labels.*.name, ','), 'claude')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      id-token: write        # für OIDC (Standard-App / Federation)
+      actions: read          # erlaubt "@claude warum schlägt CI fehl?"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          # Pro/Max: Token lokal mit `claude setup-token` erzeugen und als
+          # Repository-Secret CLAUDE_CODE_OAUTH_TOKEN hinterlegen.
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # Alternativ mit API-Key statt OAuth (eine Zeile drüber entfernen):
+          # anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+
+          # Optionale Feinsteuerung
+          claude_args: |
+            --max-turns 25
+            --model claude-sonnet-4-6
+
+          # Zugriff auf Workflow-Logs (CI-Debugging)
+          additional_permissions: |
+            actions: read

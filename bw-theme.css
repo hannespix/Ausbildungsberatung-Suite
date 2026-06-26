@@ -1,0 +1,289 @@
+/* =====================================================================
+   bw-theme.css — Landes-CI Baden-Württemberg für Browsertools (RP Freiburg)
+   Single Source of Truth. CI-Quelle: https://design.landbw.de
+
+   Schriften: BaWue Sans/Serif (Luzi Type). Lizenzpflichtig — siehe
+   assets/fonts/LIZENZ.md. Nur in lizenzierten/internen (privaten) Repos
+   ausliefern. Fallbacks greifen, falls die Fonts fehlen.
+
+   FARBWERTE: entsprechen den im RPF verwendeten Tokens + CI-Beschreibung.
+   Exakte offizielle Digital-Tokens im Design-Portal gegenchecken und nur
+   HIER anpassen — Änderung schlägt auf alle Tools durch.
+   ===================================================================== */
+
+/* ===================== Schriften =================================== */
+@font-face{ font-family:"BaWue Serif"; font-weight:400; font-style:normal; font-display:swap;
+  src:url("assets/fonts/BaWueSerifWeb-Regular.woff2") format("woff2"),
+      url("assets/fonts/BaWueSerifWeb-Regular.woff")  format("woff"); }
+@font-face{ font-family:"BaWue Serif"; font-weight:700; font-style:normal; font-display:swap;
+  src:url("assets/fonts/BaWueSerifWeb-Bold.woff2") format("woff2"),
+      url("assets/fonts/BaWueSerifWeb-Bold.woff")  format("woff"); }
+
+@font-face{ font-family:"BaWue Sans"; font-weight:400; font-style:normal; font-display:swap;
+  src:url("assets/fonts/BaWueSansWeb-Regular.woff2") format("woff2"),
+      url("assets/fonts/BaWueSansWeb-Regular.woff")  format("woff"); }
+@font-face{ font-family:"BaWue Sans"; font-weight:400; font-style:italic; font-display:swap;
+  src:url("assets/fonts/BaWueSansWeb-RegularItalic.woff2") format("woff2"),
+      url("assets/fonts/BaWueSansWeb-RegularItalic.woff")  format("woff"); }
+@font-face{ font-family:"BaWue Sans"; font-weight:600; font-style:normal; font-display:swap;
+  src:url("assets/fonts/BaWueSansWeb-SemiBold.woff2") format("woff2"),
+      url("assets/fonts/BaWueSansWeb-SemiBold.woff")  format("woff"); }
+@font-face{ font-family:"BaWue Sans"; font-weight:600; font-style:italic; font-display:swap;
+  src:url("assets/fonts/BaWueSansWeb-SemiBoldItalic.woff2") format("woff2"),
+      url("assets/fonts/BaWueSansWeb-SemiBoldItalic.woff")  format("woff"); }
+@font-face{ font-family:"BaWue Sans"; font-weight:700; font-style:normal; font-display:swap;
+  src:url("assets/fonts/BaWueSansWeb-Bold.woff2") format("woff2"),
+      url("assets/fonts/BaWueSansWeb-Bold.woff")  format("woff"); }
+@font-face{ font-family:"BaWue Sans"; font-weight:700; font-style:italic; font-display:swap;
+  src:url("assets/fonts/BaWueSansWeb-BoldItalic.woff2") format("woff2"),
+      url("assets/fonts/BaWueSansWeb-BoldItalic.woff")  format("woff"); }
+
+:root {
+  /* --- Hauptfarben ------------------------------------------------- */
+  --bw-gelb:        #FFFC00;   /* nur Fläche/Hervorhebung, nie Textfarbe auf Weiß */
+  --bw-schwarz:     #2A2623;   /* leicht warmes Schwarz — Standard-Textfarbe */
+  --bw-weiss:       #FFFFFF;
+
+  /* --- Funktionale Grautöne --------------------------------------- */
+  --bw-grau-50:     #F7F6F5;
+  --bw-grau-100:    #F2F0EF;
+  --bw-grau-200:    #E4E1DE;
+  --bw-grau-300:    #C9C5C1;
+  --bw-grau-500:    #8A847E;
+  --bw-grau-700:    #56524E;
+
+  /* --- Status / Akzente (sparsam) --------------------------------- */
+  --bw-erfolg:      #4E8B3A;
+  --bw-fehler:      #9A1A1A;
+
+  /* Semantik */
+  --bw-bg:          var(--bw-grau-50);
+  --bw-flaeche:     var(--bw-weiss);
+  --bw-text:        var(--bw-schwarz);
+  --bw-text-leise:  var(--bw-grau-700);
+  --bw-linie:       var(--bw-grau-200);
+  --bw-fokus:       var(--bw-schwarz);
+
+  /* --- Typografie -------------------------------------------------- */
+  --bw-font-serif: "BaWue Serif", "Iowan Old Style", Georgia, "Times New Roman", serif;
+  --bw-font-sans:  "BaWue Sans", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  --bw-fs-titel:   clamp(1.75rem, 1.2rem + 2vw, 2.75rem);
+  --bw-fs-h2:      clamp(1.35rem, 1.05rem + 1vw, 1.75rem);
+  --bw-fs-h3:      1.2rem;
+  --bw-fs-body:    1rem;
+  --bw-fs-klein:   0.875rem;
+  --bw-fs-mini:    0.75rem;
+
+  --bw-lh-titel:   1.1;
+  --bw-lh-body:    1.55;
+
+  /* --- Raster / Abstände (8px-Basisraster; Rand = 2x Grundeinheit) -- */
+  --bw-unit:   0.5rem;
+  --bw-space-1: var(--bw-unit);
+  --bw-space-2: calc(var(--bw-unit) * 2);
+  --bw-space-3: calc(var(--bw-unit) * 3);
+  --bw-space-4: calc(var(--bw-unit) * 4);
+  --bw-space-6: calc(var(--bw-unit) * 6);
+  --bw-space-8: calc(var(--bw-unit) * 8);
+
+  --bw-rand:    var(--bw-space-4);
+  --bw-gap:     var(--bw-space-3);
+  --bw-maxw:    72rem;
+
+  /* --- Form (Flächen eckig; Radius nur für Interaktion; Störer rund) */
+  --bw-radius:    4px;
+  --bw-radius-rund: 999px;
+  --bw-border:    1px solid var(--bw-linie);
+  /* KEINE Schatten, KEINE Verläufe im CI. */
+}
+
+/* ===================== Reset / Grundlagen ============================ */
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bw-bg);
+  color: var(--bw-text);
+  font-family: var(--bw-font-sans);
+  font-size: var(--bw-fs-body);
+  line-height: var(--bw-lh-body);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ===================== Typografie =================================== */
+h1, .bw-titel { font-family: var(--bw-font-serif); font-size: var(--bw-fs-titel); line-height: var(--bw-lh-titel); font-weight: 700; margin: 0 0 var(--bw-space-2); }
+h2 { font-family: var(--bw-font-serif); font-size: var(--bw-fs-h2); line-height: 1.2; margin: var(--bw-space-4) 0 var(--bw-space-2); }
+h3 { font-family: var(--bw-font-sans);  font-size: var(--bw-fs-h3); font-weight: 700; margin: var(--bw-space-3) 0 var(--bw-space-1); }
+p { margin: 0 0 var(--bw-space-2); max-width: 70ch; }
+a { color: var(--bw-schwarz); text-underline-offset: 2px; }
+a:hover { text-decoration: none; }
+
+.bw-unterzeile { font-family: var(--bw-font-sans); font-weight: 700; font-size: var(--bw-fs-h3); margin: 0 0 var(--bw-space-3); }
+.bw-leise   { color: var(--bw-text-leise); }
+.bw-klein   { font-size: var(--bw-fs-klein); }
+.bw-app, .bw-flaeche, .bw-card { text-align: left; }
+
+/* ===================== Layout ====================================== */
+.bw-app { max-width: var(--bw-maxw); margin-inline: auto; padding: var(--bw-rand); }
+
+.bw-header { display: flex; align-items: center; justify-content: space-between; gap: var(--bw-space-3); padding-block: var(--bw-space-2); border-bottom: var(--bw-border); margin-bottom: var(--bw-space-4); }
+.bw-logo { height: 44px; width: auto; display: block; }      /* ~2 Grundeinheiten */
+.bw-logo--neg { display: none; }                              /* Negativ-Logo nur auf dunklem Header */
+
+.bw-flaechen { display: grid; gap: var(--bw-space-2); }
+.bw-flaechen.bw-halb    { grid-template-columns: 1fr 1fr; }
+.bw-flaechen.bw-drittel { grid-template-columns: 1fr 1fr 1fr; }
+
+.bw-flaeche { background: var(--bw-flaeche); padding: var(--bw-space-4); }
+.bw-flaeche--gelb    { background: var(--bw-gelb);    color: var(--bw-schwarz); }
+.bw-flaeche--schwarz { background: var(--bw-schwarz); color: var(--bw-weiss); }
+.bw-flaeche--schwarz a { color: var(--bw-weiss); }
+
+/* ===================== Karten / Panels ============================= */
+.bw-card { background: var(--bw-weiss); border: var(--bw-border); border-radius: var(--bw-radius); padding: var(--bw-space-3); }
+
+/* ===================== Buttons ===================================== */
+.bw-btn { font: inherit; font-weight: 700; cursor: pointer; border: 2px solid var(--bw-schwarz); border-radius: var(--bw-radius); padding: 0.55em 1.1em; background: var(--bw-schwarz); color: var(--bw-weiss); transition: background-color .12s ease, color .12s ease; }
+.bw-btn:hover { background: var(--bw-weiss); color: var(--bw-schwarz); }
+.bw-btn--sekundaer { background: var(--bw-weiss); color: var(--bw-schwarz); }
+.bw-btn--sekundaer:hover { background: var(--bw-grau-100); }
+.bw-btn--gelb { background: var(--bw-gelb); color: var(--bw-schwarz); border-color: var(--bw-schwarz); }
+.bw-btn--gelb:hover { background: var(--bw-schwarz); color: var(--bw-weiss); }
+.bw-btn:disabled { background: var(--bw-grau-200); border-color: var(--bw-grau-300); color: var(--bw-grau-500); cursor: not-allowed; }
+
+/* ===================== Formulare =================================== */
+label { display: block; font-weight: 700; font-size: var(--bw-fs-klein); margin-bottom: 0.25rem; }
+input, select, textarea { font: inherit; width: 100%; padding: 0.5em 0.65em; background: var(--bw-weiss); color: var(--bw-text); border: 1px solid var(--bw-grau-300); border-radius: var(--bw-radius); }
+.bw-field { margin-bottom: var(--bw-space-2); }
+
+/* ===================== Tabellen =================================== */
+.bw-table { width: 100%; border-collapse: collapse; font-size: var(--bw-fs-klein); }
+.bw-table th, .bw-table td { text-align: left; padding: 0.55em 0.75em; border-bottom: 1px solid var(--bw-linie); }
+.bw-table thead th { background: var(--bw-schwarz); color: var(--bw-weiss); position: sticky; top: 0; }
+.bw-table tbody tr:nth-child(even) { background: var(--bw-grau-50); }
+.bw-table tbody tr:hover { background: var(--bw-grau-100); }
+.bw-table .bw-highlight { background: var(--bw-gelb); color: var(--bw-schwarz); font-weight: 700; }
+
+/* ===================== Störer (rund) ============================== */
+.bw-stoerer { display: inline-flex; align-items: center; justify-content: center; text-align: center; width: 7rem; height: 7rem; border-radius: var(--bw-radius-rund); background: var(--bw-gelb); color: var(--bw-schwarz); font-family: var(--bw-font-serif); font-weight: 700; line-height: 1.05; padding: 0.5rem; }
+
+/* ===================== Hinweis-/Statusboxen ====================== */
+.bw-hinweis { border: var(--bw-border); border-left: 4px solid var(--bw-schwarz); padding: var(--bw-space-2) var(--bw-space-3); background: var(--bw-grau-50); }
+.bw-hinweis--erfolg { border-left-color: var(--bw-erfolg); }
+.bw-hinweis--fehler { border-left-color: var(--bw-fehler); }
+.bw-status-do   { color: var(--bw-erfolg); font-weight: 700; }
+.bw-status-dont { color: var(--bw-fehler); font-weight: 700; }
+
+/* ===================== Copyright-Badge =========================== */
+.bw-copyright { display: inline-block; background: var(--bw-schwarz); color: var(--bw-weiss); font-size: var(--bw-fs-mini); line-height: 1; padding: 0.35em 0.55em; border-radius: var(--bw-radius); }
+
+/* ===================== Navigation (responsiv + Hamburger) ========
+   Muster aus dem CI: weiße Hauptnav, Logo links, Aktionen (Suche/Menü)
+   rechts. Aktiver Link mit gelbem Marker. Mobil: Hamburger -> Panel. */
+.bw-nav { display: flex; align-items: center; gap: var(--bw-space-3); }
+.bw-nav__brand { display: inline-flex; align-items: center; margin-right: auto; }
+.bw-nav__links { display: flex; gap: var(--bw-space-3); list-style: none; margin: 0; padding: 0; }
+.bw-nav__links a {
+  display: inline-block; padding: 0.4em 0; font-weight: 700; font-size: var(--bw-fs-klein);
+  text-decoration: none; border-bottom: 3px solid transparent;
+}
+.bw-nav__links a:hover { border-bottom-color: var(--bw-grau-300); }
+.bw-nav__links a[aria-current="page"] { border-bottom-color: var(--bw-gelb); } /* aktive Seite */
+
+.bw-nav__actions { display: flex; align-items: center; gap: var(--bw-space-1); }
+.bw-iconbtn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 44px; height: 44px;             /* Touch-Target >= 44px */
+  background: transparent; border: 0; cursor: pointer; color: var(--bw-schwarz);
+  border-radius: var(--bw-radius);
+}
+.bw-iconbtn:hover { background: var(--bw-grau-100); }
+.bw-iconbtn svg { width: 22px; height: 22px; display: block; }
+
+/* Hamburger nur unterhalb des Breakpoints sichtbar */
+.bw-nav__toggle { display: none; }
+
+/* Mobiles Navigationspanel (Off-Canvas, einfach gehalten) */
+.bw-nav__panel { }
+@media (max-width: 800px) {
+  .bw-nav__toggle { display: inline-flex; }
+  .bw-nav__panel {
+    position: absolute; left: 0; right: 0; top: 100%;
+    background: var(--bw-weiss); border-bottom: var(--bw-border);
+    padding: var(--bw-space-2) var(--bw-rand);
+    display: none;
+  }
+  .bw-nav__panel[data-open="true"] { display: block; }
+  .bw-nav__links { flex-direction: column; gap: 0; }
+  .bw-nav__links a { padding: 0.75em 0; border-bottom: 1px solid var(--bw-linie); }
+  .bw-nav__links a[aria-current="page"] { border-bottom-color: var(--bw-gelb); }
+}
+
+/* ===================== Suche ====================================== */
+.bw-search { display: flex; align-items: center; gap: 0; max-width: 28rem; }
+.bw-search input[type="search"] {
+  border: 1px solid var(--bw-grau-300); border-right: 0;
+  border-radius: var(--bw-radius) 0 0 var(--bw-radius);
+}
+.bw-search button {
+  height: 100%; padding: 0.5em 0.8em; border: 1px solid var(--bw-schwarz);
+  background: var(--bw-schwarz); color: var(--bw-weiss); cursor: pointer;
+  border-radius: 0 var(--bw-radius) var(--bw-radius) 0; font-weight: 700;
+}
+.bw-search button:hover { background: var(--bw-weiss); color: var(--bw-schwarz); }
+mark.bw-treffer { background: var(--bw-gelb); color: var(--bw-schwarz); padding: 0 0.1em; } /* Treffer-Hervorhebung */
+
+/* ===================== Diagramme / Infografiken ===================
+   CI-Regeln: einfache Diagramme in Grauabstufungen, BaWü Gelb NUR zur
+   Hervorhebung eines einzelnen Werts (immer mit dunkler Outline).
+   Komplexe Diagramme: Grau + sparsame Nebenfarben. Jede Farbe >= 3:1
+   Kontrast zum Hintergrund. Abgerundete Ecken, klare Trennung, optional
+   Schraffuren als Zusatzcodierung (Farbsehschwäche). */
+:root {
+  /* Kategoriale Reihe (zuerst Grau, dann gedeckte Nebenfarben).
+     HINWEIS: offizielle Nebenfarben im Design-Portal/Infografiken
+     gegenchecken und hier ersetzen. */
+  --bw-cat-1: var(--bw-grau-700);
+  --bw-cat-2: var(--bw-grau-500);
+  --bw-cat-3: #2D6E8E;   /* gedecktes Blau (kühl/technisch) */
+  --bw-cat-4: var(--bw-erfolg);
+  --bw-cat-5: #8A5A2B;   /* gedecktes Braun (warm) */
+  --bw-cat-6: #6B4E8E;   /* gedecktes Violett */
+  --bw-chart-highlight: var(--bw-gelb);   /* einzelner hervorgehobener Wert, mit Outline */
+  --bw-chart-outline:   var(--bw-schwarz);
+  --bw-chart-radius:    3px;
+  --bw-chart-gap:       2px;              /* klare Trennung zwischen Elementen */
+}
+.bw-chart { font-family: var(--bw-font-sans); font-size: var(--bw-fs-klein); }
+.bw-chart .bar { rx: var(--bw-chart-radius); }
+.bw-chart .bar--highlight { fill: var(--bw-chart-highlight); stroke: var(--bw-chart-outline); stroke-width: 1.5; }
+.bw-chart .axis, .bw-chart .grid { stroke: var(--bw-grau-200); }
+.bw-chart .label { fill: var(--bw-text); }
+.bw-chart .label--muted { fill: var(--bw-text-leise); }
+.bw-legend { display: flex; flex-wrap: wrap; gap: var(--bw-space-2); list-style: none; padding: 0; margin: var(--bw-space-2) 0 0; font-size: var(--bw-fs-klein); }
+.bw-legend li { display: inline-flex; align-items: center; gap: 0.4em; }
+.bw-legend .swatch { width: 0.9em; height: 0.9em; border-radius: 2px; display: inline-block; }
+
+/* ===================== Footer (schwarzer Streifen) =============== */
+.bw-footer {
+  background: var(--bw-schwarz); color: var(--bw-weiss);
+  margin-top: var(--bw-space-8); padding: var(--bw-space-3) var(--bw-rand);
+}
+.bw-footer a { color: var(--bw-weiss); }
+.bw-footer .bw-logo--neg { display: block; }
+
+/* ===================== Barrierefreiheit ========================== */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible { outline: 3px solid var(--bw-fokus); outline-offset: 2px; }
+.bw-skip-link { position: absolute; left: -9999px; top: 0; background: var(--bw-schwarz); color: var(--bw-weiss); padding: var(--bw-space-1) var(--bw-space-2); }
+.bw-skip-link:focus { left: var(--bw-space-2); top: var(--bw-space-2); z-index: 10; }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+/* ===================== Responsive ================================ */
+@media (max-width: 640px) {
+  :root { --bw-rand: var(--bw-space-3); }
+  .bw-flaechen.bw-halb, .bw-flaechen.bw-drittel { grid-template-columns: 1fr; }
+  .bw-header { flex-wrap: wrap; }
+  .bw-logo { height: 36px; }
+}
