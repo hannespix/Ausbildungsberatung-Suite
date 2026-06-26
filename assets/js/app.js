@@ -616,6 +616,55 @@ function niederschriftDrucken(termin, ergebnisse, prueferZug) {
   window.print();
 }
 
+/**
+ * Leerer Sammelbewertungsbogen je Prüfling zum handschriftlichen Ausfüllen am
+ * Prüfungstag (5 praktische + 4 Kenntnisbereiche, Notenspalte leer). Verbindet
+ * Planung (Name, Betrieb, Slot) mit der späteren Noteneingabe.
+ */
+function bewertungsbogenHtml(termin, p) {
+  const datum = termin.datum ? new Date(termin.datum).toLocaleDateString("de-DE") : "—";
+  const leer = '<td style="text-align:right;min-width:5rem">&nbsp;</td>';
+  const zeile = (label) => `<tr><td>${esc(label)}</td>${leer}</tr>`;
+  return `
+    <h1>Bewertungsbogen — praktische Abschlussprüfung</h1>
+    <p>Gärtner/in${termin.beruf ? " — Fachrichtung " + esc(termin.beruf) : ""}</p>
+    <table class="bw-table bw-zeugnis"><tbody>
+      <tr><th scope="row">Name</th><td>${esc((p.vorname || "") + " " + (p.nachname || ""))}</td></tr>
+      <tr><th scope="row">Ausbildungsbetrieb</th><td>${esc(p.betrieb || "—")}</td></tr>
+      <tr><th scope="row">Prüfungstag</th><td>${esc(datum)}${p.slot ? " · " + esc(p.slot) + " Uhr" : ""}${termin.ort ? " · " + esc(termin.ort) : ""}</td></tr>
+    </tbody></table>
+
+    <h2>Praktische Prüfung</h2>
+    <table class="bw-table"><thead><tr><th>Bereich</th><th style="text-align:right">Note</th></tr></thead><tbody>
+      ${GALABAU_BEREICHE.praxis.map((b, i) => zeile(roem(i + 1) + ". " + b)).join("")}
+      <tr><th scope="row">Praxis-Schnitt</th>${leer}</tr>
+    </tbody></table>
+
+    <h2>Kenntnisprüfung</h2>
+    <table class="bw-table"><thead><tr><th>Bereich</th><th style="text-align:right">Note</th></tr></thead><tbody>
+      ${GALABAU_BEREICHE.kenntnis.map((b) => zeile(b)).join("")}
+      <tr><th scope="row">Kenntnis-Schnitt</th>${leer}</tr>
+    </tbody></table>
+
+    <table class="bw-table bw-zeugnis"><tbody>
+      <tr><th scope="row">Gesamtnote</th>${leer}</tr>
+      <tr><th scope="row">Ergebnis</th><td>&nbsp;</td></tr>
+    </tbody></table>
+    <div class="bw-druck__unterschriften">
+      <span>Vorsitz des Prüfungsausschusses</span>
+      <span>Beisitz</span>
+    </div>
+    <p class="bw-klein bw-leise">Erstellt mit der Ausbildungsberatung-Suite — Regierungspräsidium Freiburg</p>`;
+}
+
+/** Druckt je zugeteiltem Prüfling einen leeren Bewertungsbogen (eine Seite). */
+function bewertungsboegenDrucken(termin, zugeteilt) {
+  if (!zugeteilt.length) { meldung("Keine Prüflinge zugeteilt.", "fehler"); return; }
+  druckbereich().innerHTML = zugeteilt
+    .map((p) => `<section class="bw-zeugnisblatt">${bewertungsbogenHtml(termin, p)}</section>`).join("");
+  window.print();
+}
+
 async function renderPlanung() {
   const termine = await store.liste("pruefungen");
   if (!termine.length) {
@@ -683,6 +732,8 @@ async function renderPlanung() {
                   ${termin.datum ? "" : "disabled title=\"Termin ohne Datum\""}>Termin als .ics</button>
           <button class="bw-btn bw-btn--sekundaer" type="button" id="drucken-btn"
                   ${zugeteilt.length || prueferZug.length ? "" : "disabled"}>Tagesablauf drucken</button>
+          <button class="bw-btn bw-btn--sekundaer" type="button" id="boegen-btn"
+                  ${zugeteilt.length ? "" : "disabled title=\"Keine Prüflinge zugeteilt\""}>Bewertungsbögen drucken</button>
           <button class="bw-btn bw-btn--sekundaer" type="button" id="niederschrift-btn"
                   ${zugeteilt.length ? "" : "disabled title=\"Keine Prüflinge zugeteilt\""}>Ergebnis-Niederschrift</button>
         </div>
@@ -861,6 +912,10 @@ async function renderPlanung() {
 
     document.getElementById("drucken-btn")?.addEventListener("click", () => {
       tagesablaufDrucken(termin, zugeteilt, prueferZug);
+    });
+
+    document.getElementById("boegen-btn")?.addEventListener("click", () => {
+      bewertungsboegenDrucken(termin, zugeteilt);
     });
 
     document.getElementById("niederschrift-btn")?.addEventListener("click", async () => {
