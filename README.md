@@ -1,12 +1,15 @@
 # Ausbildungsberatung-Suite — RP Freiburg
 
 Interne, **vollständig offline** lauffähige Werkzeug-Suite für die
-**Ausbildungsberatung des Regierungspräsidiums Freiburg** (grüne Berufe,
-Hauswirtschaft). Sie unterstützt die Organisation und Durchführung der
-**praktischen Abschlussprüfungen**: Stammdaten, Prüfungstag-Planung,
-Notenberechnung und Zeugnis-Erstellung — alles im aktuellen Landes-Corporate-
-Design Baden-Württemberg (https://design.landbw.de), barrierefrei und ohne jede
-externe Abhängigkeit (Zero-Trust-Arbeitsplatz).
+**Ausbildungsberatung des Regierungspräsidiums Freiburg**, fokussiert auf die
+**Gärtner-Fachrichtungen** (Garten- und Landschaftsbau, Zierpflanzenbau,
+Baumschule, Staudengärtnerei, Gemüsebau, Obstbau, Friedhofsgärtnerei). Sie
+begleitet die **praktische Abschlussprüfung von der Vorbereitung bis zum
+Zeugnis**: Stammdaten, automatische Prüfungstag-Planung mit Ausschuss-Besetzung,
+Notenberechnung nach offiziellem Schema und Zeugnis-/Niederschrift-Druck — alles
+im aktuellen Landes-Corporate-Design Baden-Württemberg
+(https://design.landbw.de), barrierefrei und ohne jede externe Abhängigkeit
+(Zero-Trust-Arbeitsplatz).
 
 > Oberfläche und Texte durchgehend **Deutsch**. Design verbindlich über
 > `bw-theme.css` (Single Source of Truth, nur `--bw-*`-Tokens).
@@ -15,24 +18,48 @@ externe Abhängigkeit (Zero-Trust-Arbeitsplatz).
 
 ## Funktionsumfang
 
+- **Übersicht / Kommandozentrum** — Kennzahlen, automatisch abgeleiteter
+  **Prüfungsfortschritt** (Funnel) und ein Panel **„Was ist zu tun?"**, das
+  offenen Handlungsbedarf über alle Stationen erkennt (Termine ohne Ausschuss,
+  offene Zusagen, unbewertete Prüflinge, Doppelbelegungen …) und direkt dorthin
+  verlinkt. Großer **fiktiver Beispieldatensatz** per Knopfdruck.
 - **Stammdaten** — Prüflinge, Ausbildungsbetriebe, Prüfer:innen und
-  Prüfungstermine anlegen, bearbeiten, löschen.
-- **Globale Fuzzy-Suche** — tippfehler- und diakritikatolerant, über alle
-  Felder, direkt in der Datenbank (Trigramm-Ähnlichkeit), mit Treffermarkierung.
-- **Saubere Erfassung** — Betriebs-Vorschlagsliste, E-Mail-Validierung,
-  Dublettenwarnung.
-- **Prüfungstag-Planung** — Prüflinge mit Uhrzeit-Slot einem Termin zuteilen,
-  Prüfer:innen/Ausschuss mit Rolle zuordnen, Warnung bei Doppelbelegung am
-  selben Tag, **druckbarer Tagesablauf**.
-- **Notenberechnung** — Punkte → Note nach dem 100-Punkte-Schlüssel
-  (bestanden ab 50), Live-Vorschau, Notenverteilungs-Diagramm.
-- **Zeugnis-Erstellung** — druckbares Prüfungszeugnis je Prüfling aus
-  Stammdaten, Prüfungstermin und Ergebnis (Druck/PDF).
-- **Übersicht** — Kennzahlen und CI-konforme Diagramme.
+  Prüfungstermine anlegen/bearbeiten/löschen; Betriebs-Vorschlagsliste,
+  E-Mail-Validierung, Dublettenwarnung, **Spalten-Sortierung** und
+  **CSV-Import** von Prüflingen (mit Spaltenzuordnung und Dublettenschutz).
+- **Globale Schnellsuche** — durchsucht Prüflinge, Betriebe, Prüfer:innen und
+  Termine zugleich, DB-seitig (Trigramm, tippfehler-/diakritikatolerant), mit
+  Treffermarkierung und Direktsprung zum Datensatz.
+- **Prüflings-Akte** — eine Detailansicht je Prüfling bündelt Stammdaten,
+  Prüfungstag (Uhrzeit-Slot, Ausschuss), Note und Fortschritt; Direkt-Aktionen:
+  Termin zuteilen/entfernen, bewerten, Zeugnis drucken, Stammdaten bearbeiten.
+- **Automatische Prüfungsplanung** — verteilt alle Prüflinge je Fachrichtung
+  gleichmäßig auf passend viele Termine (Kapazität je Tag, PLZ-geclustert),
+  legt fehlende Termine an, vergibt **Uhrzeiten (Zeitraster)** und besetzt je
+  Termin **konfliktfrei einen Ausschuss** (keine Doppelbelegung am selben Tag).
+- **Prüfer-Plan & Zusagen** — Ausschüsse je Termin informieren
+  (`mailto:`-Einladung) und Zu-/Absagen verwalten (offen → angefragt →
+  zugesagt/abgesagt).
+- **Durchführung** — druckbarer **Tagesablauf** (für GaLaBau inkl. festem
+  Prüfungstag-Ablauf) und **Ergebnis-Niederschrift** je Termin mit Noten,
+  Ausschuss und Unterschriftenspalte.
+- **Notenberechnung (Gärtner/Galabau)** — offizielles Sammelbewertungs-Schema:
+  5 praktische Bereiche + 4 Kenntnisbereiche, **Gesamtnote = Praxis · 0,6 +
+  Kenntnis · 0,4** (auf 1 Stelle abgeschnitten), Bestehensregeln (Schnitt/Gesamt
+  < 4,5; Sperrfach; max. ein Bereich ≥ 4,5), Pflanzenkenntnisse als Teilnote;
+  Live-Vorschau und Notenverteilungs-Diagramm.
+- **Zeugnisse** — druckbares Prüfungszeugnis je Prüfling sowie **Serien-Druck**
+  aller bewerteten Zeugnisse (Druck/PDF).
+- **Auswertungen** — Auslastung je Termin, Bestehensquoten je Fachrichtung,
+  Prüfer-Doppelbelegungen; CI-konforme Diagramme.
+- **Adress- & Telefonliste** — konsolidiert Betriebe und Prüfer:innen, druckbar
+  und als **CSV-/vCard-Export** (Outlook/Telefon).
+- **Outlook-/Kalender-Export** — **ICS-Export** der Prüfungstage (offline, kein
+  Graph-API), je Termin oder gesamt.
+- **Datensicherung** — kompletter **Export/Import als JSON-Datei** („DB-Datei
+  daneben"), bewahrt Beziehungen, offline.
 
-Geplante Erweiterungen (siehe [`ROADMAP.md`](ROADMAP.md)): Excel/CSV-Import,
-Outlook-/Kalender-Konnektivität (ICS, offline), Adress-/Telefonliste, weitere
-Auswertungen.
+Roadmap und Detailstand: [`ROADMAP.md`](ROADMAP.md).
 
 ---
 
@@ -65,7 +92,8 @@ node tools/build_standalone.mjs        # -> download/Ausbildungsberatung-Suite.h
 ```
 
 > Hinweis: Unter `file://` ist die Persistenz die Browser-Datenbank (IndexedDB).
-> Ein Datei-Export/-Import der DB („DB-Datei daneben") folgt (ROADMAP).
+> Für Backup/Umzug auf ein anderes Gerät gibt es auf der Übersicht eine
+> **Datensicherung** (Export/Import des gesamten Bestands als JSON-Datei).
 
 ## Lokal starten (Entwicklung)
 
@@ -116,7 +144,8 @@ index.html                 App-Shell (lädt Theme + assets/)
 bw-theme.css               Design-System (Single Source of Truth, --bw-*-Tokens)
 assets/js/model.js         fachliches Datenmodell (Entitäten, Felder)
 assets/js/store.js         Persistenz/CRUD/Suche über PGlite
-assets/js/app.js           Oberfläche: Router, Listen, Planung, Noten, Zeugnisse
+assets/js/app.js           Oberfläche: Router, Listen, Akte, Planung, Noten,
+                           Zeugnisse, Auswertungen, Schnellsuche, Export/Import
 assets/js/db.js            PGlite-Datenbankschicht (initDB, createTable, Suche)
 assets/js/nav.js           Hamburger-Navigation (barrierefrei)
 assets/js/search.js        Treffermarkierung / In-Memory-Suche (Fallback)
