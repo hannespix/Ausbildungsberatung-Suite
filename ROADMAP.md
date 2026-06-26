@@ -269,6 +269,13 @@ CSV/Excel; Format für nachgelagerte Systeme (z. B. Listen, Seriendruck).
   Graph-API): in der Planung „Alle Termine als Kalender (.ics)" und je Termin
   „Termin als .ics". VEVENT mit Datum/Uhrzeit, Ort/Raum und Beschreibung
   (Fachrichtung, Prüflingszahl, Ausschuss). In Outlook importierbar. Smoke-getestet.
+- ✅ **Prüfer-Einsätze als .ics**: in der Prüfer-Akte exportiert „Einsätze als
+  Kalender (.ics)" alle datierten Ausschuss-Einsätze der Person (Datum/Uhrzeit,
+  Ort, Fachrichtung, Rolle) als VCALENDAR — in Outlook importierbar, damit
+  Prüfer:innen ihre Termine in den eigenen Kalender übernehmen. Nutzt die
+  vorhandene ICS-Infrastruktur (`icsBauen`, jetzt mit „Rolle:" je Termin).
+  Chromium-getestet (nur datierter Einsatz im VEVENT, SUMMARY/DTSTART/Rolle
+  korrekt, Mobile 390px).
 - Offen: vCard-Export der Adress-/Telefonliste; `mailto:`-Einladung (Prüfer-Plan
   vorhanden).
 
