@@ -1315,14 +1315,14 @@ export async function kontakteSuche(query, { limit = 400 } = {}) {
     .split(/\s+/).filter(Boolean);
 
   const quelle = `(
-      SELECT 'Betrieb'::text AS typ,
+      SELECT 'Betrieb'::text AS typ, id,
              name AS bezeichnung,
              coalesce(ort, '') AS zusatz,
              coalesce(ansprechpartner, '') AS person,
              telefon, email, such_text
         FROM betriebe
       UNION ALL
-      SELECT 'Prüfer:in'::text AS typ,
+      SELECT 'Prüfer:in'::text AS typ, id,
              (nachname || ', ' || coalesce(vorname, '')) AS bezeichnung,
              coalesce(organisation, '') AS zusatz,
              coalesce(funktion, '') AS person,

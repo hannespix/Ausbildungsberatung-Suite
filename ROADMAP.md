@@ -45,6 +45,13 @@ E-Mail-Format-Validierung mit deutscher Meldung; Dublettenwarnung (bestätigbar)
   Über `muster`/`musterText` je Feld erweiterbar. Smoke-getestet.
 - Offen: Berufe-Lookup, Inline-Bearbeitung.
 
+### Suche & Adressliste mit Akten verknüpft ✅
+Die globale Schnellsuche und die Adress-/Telefonliste verlinken Betriebe und
+Prüfer:innen jetzt direkt zu ihrer **Akte** (`#/betrieb/<id>`, `#/pruefer/<id>`),
+Termine zur **Planung** (`#/planung?termin=<id>`) — ein Treffer führt mit einem
+Klick zur passenden Detailansicht. `kontakteSuche` liefert dafür die `id` mit.
+Chromium-getestet (Verlinkung beider Stellen, Klick öffnet Akte, CSV ok, Mobile).
+
 ### Globale Schnellsuche ✅
 Eigene Ansicht (`#/suche`, über die Header-Lupe erreichbar): durchsucht
 Prüflinge, Betriebe, Prüfer:innen und Termine **gleichzeitig** DB-seitig
