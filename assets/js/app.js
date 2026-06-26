@@ -66,7 +66,7 @@ function navAufbauen() {
   const route = aktiveRoute();
   const punkte = [{ key: "uebersicht", label: "Übersicht" }]
     .concat(NAV_REIHENFOLGE.map((k) => ({ key: k, label: ENTITAETEN[k].plural })))
-    .concat([{ key: "planung", label: "Planung" }, { key: "noten", label: "Noten" }, { key: "zeugnisse", label: "Zeugnisse" }, { key: "kontakte", label: "Adressliste" }]);
+    .concat([{ key: "planung", label: "Planung" }, { key: "planungsliste", label: "Prüfer-Plan" }, { key: "noten", label: "Noten" }, { key: "zeugnisse", label: "Zeugnisse" }, { key: "kontakte", label: "Adressliste" }]);
   ul.innerHTML = punkte.map((p) => {
     const aktiv = p.key === route ? ' aria-current="page"' : "";
     return `<li><a href="#/${p.key === "uebersicht" ? "" : p.key}"${aktiv}>${esc(p.label)}</a></li>`;
@@ -116,6 +116,16 @@ async function renderUebersicht() {
         </div>
       </div>
     </section>
+
+    <section aria-labelledby="autoplan-h" style="margin-top:var(--bw-space-4)">
+      <h2 id="autoplan-h">Automatische Prüfungsplanung</h2>
+      <div class="bw-card">
+        <p class="bw-klein bw-leise">Verteilt alle Prüflinge je Fachrichtung gleichmäßig auf passend viele Prüfungstermine (Kapazität je Tag), nach PLZ geclustert, legt fehlende Termine an und besetzt je Termin einen Ausschuss. Ergebnis im <a href="#/planungsliste">Prüfer-Plan</a>.</p>
+        <div class="bw-toolbar" style="margin-top:var(--bw-space-2)">
+          <button class="bw-btn bw-btn--gelb" type="button" id="autoplan-btn">Jetzt automatisch planen</button>
+        </div>
+      </div>
+    </section>
   `;
 
   document.getElementById("demo-erzeugen").addEventListener("click", async () => {
@@ -131,6 +141,18 @@ async function renderUebersicht() {
     if (!confirm("Wirklich ALLE Daten löschen? Das kann nicht rückgängig gemacht werden.")) return;
     try { await store.alleLoeschen(); meldung("Alle Daten gelöscht."); renderUebersicht(); }
     catch (e) { console.error(e); meldung("Löschen fehlgeschlagen: " + e.message, "fehler"); }
+  });
+  document.getElementById("autoplan-btn").addEventListener("click", async () => {
+    const eingabe = prompt("Kapazität je Prüfungstermin (Prüflinge pro Tag):", "12");
+    if (eingabe === null) return;
+    const cap = Math.max(1, parseInt(eingabe, 10) || 12);
+    if (!confirm(`Alle Prüflinge automatisch auf Termine (max. ${cap} je Termin) verteilen und Ausschüsse besetzen? Bestehende Zuteilungen werden ersetzt.`)) return;
+    meldung("Planung wird erstellt…");
+    try {
+      const r = await store.planungAutomatisch(cap);
+      meldung(`Geplant: ${zahl(r.zuteilungen)} Prüflinge auf ${zahl(r.termine)} Termine, ${zahl(r.prueferZuteilungen)} Prüfer-Zuteilungen.`);
+      location.hash = "#/planungsliste";
+    } catch (e) { console.error(e); meldung("Planung fehlgeschlagen: " + e.message, "fehler"); }
   });
 
   if (window.bwChart && jeStatus.length) {
@@ -468,6 +490,94 @@ async function renderPlanung() {
 
   wahl.addEventListener("change", planZeichnen);
   planZeichnen();
+}
+
+/* --------------------------------------------------- Prüfer-Plan / Zusagen */
+
+function zusageBadge(status) {
+  if (status === "zugesagt") return '<span class="bw-status-do">zugesagt</span>';
+  if (status === "abgesagt") return '<span class="bw-status-dont">abgesagt</span>';
+  if (status === "angefragt") return '<span class="bw-tag">angefragt</span>';
+  return '<span class="bw-leise">offen</span>';
+}
+
+function anfrageMailto(termin) {
+  const emails = termin.pruefer.map((p) => p.email).filter(Boolean);
+  const datum = termin.datum ? new Date(termin.datum).toLocaleDateString("de-DE") : "—";
+  const betreff = `Prüfungseinladung – ${termin.titel} am ${datum}`;
+  const text =
+    `Sehr geehrte Prüferin, sehr geehrter Prüfer,\n\n` +
+    `Sie sind für folgende praktische Abschlussprüfung (Gärtner/in) als Mitglied des Prüfungsausschusses vorgesehen:\n\n` +
+    `Termin: ${termin.titel}\nDatum: ${datum}${termin.zeit_von ? ", " + termin.zeit_von + " Uhr" : ""}\n` +
+    `Ort: ${termin.ort || "—"}${termin.raum ? " (" + termin.raum + ")" : ""}\n` +
+    `Prüflinge: ${termin.anzahl_prueflinge}\n\n` +
+    `Bitte teilen Sie uns Ihre Zu- oder Absage mit.\n\nMit freundlichen Grüßen\nAusbildungsberatung, Regierungspräsidium Freiburg`;
+  return `mailto:${encodeURIComponent(emails.join(","))}?subject=${encodeURIComponent(betreff)}&body=${encodeURIComponent(text)}`;
+}
+
+async function renderPlanungsliste() {
+  const liste = await store.planungsListe();
+  const z = await store.zusageZaehler();
+
+  const terminCard = (t) => `
+    <div class="bw-card" style="margin-bottom:var(--bw-space-3)">
+      <div class="bw-toolbar" style="margin-bottom:var(--bw-space-2)">
+        <div>
+          <strong>${esc(t.titel)}</strong>
+          <div class="bw-klein bw-leise">
+            ${t.datum ? esc(new Date(t.datum).toLocaleDateString("de-DE")) : "ohne Datum"}${t.zeit_von ? " · " + esc(t.zeit_von) : ""}
+            ${t.ort ? " · " + esc(t.ort) : ""}${t.raum ? ", " + esc(t.raum) : ""} · ${zahl(t.anzahl_prueflinge)} Prüflinge
+          </div>
+        </div>
+        <button class="bw-btn bw-btn--sekundaer" type="button" data-anfrage="${t.id}"
+                ${t.pruefer.length ? "" : "disabled"}>Prüfer:innen anfragen (E-Mail)</button>
+      </div>
+      <div class="bw-tablewrap">
+        <table class="bw-table">
+          <thead><tr><th>Rolle</th><th>Name</th><th>Organisation</th><th>Zusage</th><th>Aktion</th></tr></thead>
+          <tbody>
+            ${t.pruefer.length ? t.pruefer.map((p) => `
+              <tr>
+                <td>${esc(p.rolle || "—")}</td>
+                <td>${esc((p.nachname || "") + ", " + (p.vorname || ""))}</td>
+                <td>${esc(p.organisation || "")}</td>
+                <td>${zusageBadge(p.status)}</td>
+                <td class="bw-actions">
+                  <button class="bw-iconbtn" type="button" data-status="zugesagt" data-zid="${p.zuteilung_id}" title="Zusage" aria-label="Zusage">✓</button>
+                  <button class="bw-iconbtn" type="button" data-status="abgesagt" data-zid="${p.zuteilung_id}" title="Absage" aria-label="Absage">✗</button>
+                  <button class="bw-iconbtn" type="button" data-status="offen" data-zid="${p.zuteilung_id}" title="Zurücksetzen" aria-label="Zurücksetzen">↺</button>
+                </td>
+              </tr>`).join("") : `<tr><td colspan="5" class="bw-leise">Noch kein Ausschuss zugeteilt.</td></tr>`}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+
+  appEl().innerHTML = `
+    <h1>Prüfer-Plan &amp; Zusagen</h1>
+    <p class="bw-unterzeile">Ausschüsse je Termin informieren und Zu-/Absagen verwalten</p>
+    <p class="bw-hinweis">Zusage-Stand: ${zahl(z.zugesagt)} zugesagt · ${zahl(z.angefragt)} angefragt · ${zahl(z.offen)} offen · ${zahl(z.abgesagt)} abgesagt</p>
+    <div id="planliste">
+      ${liste.length ? liste.map(terminCard).join("") : '<p class="bw-hinweis">Noch keine Termine. Erst unter <a href="#/">Übersicht</a> „Automatische Prüfungsplanung" starten.</p>'}
+    </div>
+  `;
+
+  document.getElementById("planliste").addEventListener("click", async (ev) => {
+    const statusBtn = ev.target.closest("[data-status]");
+    const anfrageBtn = ev.target.closest("[data-anfrage]");
+    if (statusBtn) {
+      await store.setzePrueferStatus(Number(statusBtn.getAttribute("data-zid")), statusBtn.getAttribute("data-status"));
+      meldung("Zusage-Status aktualisiert.");
+      renderPlanungsliste();
+    } else if (anfrageBtn) {
+      const t = liste.find((x) => String(x.id) === anfrageBtn.getAttribute("data-anfrage"));
+      if (!t) return;
+      await store.anfrageStellen(t.id);
+      window.location.href = anfrageMailto(t);
+      meldung("Anfrage gestellt — E-Mail-Programm geöffnet.");
+      setTimeout(renderPlanungsliste, 300);
+    }
+  });
 }
 
 /* --------------------------------------------------------------- Noten */
@@ -945,6 +1055,7 @@ async function route() {
   try {
     if (r === "uebersicht") await renderUebersicht();
     else if (r === "planung") await renderPlanung();
+    else if (r === "planungsliste") await renderPlanungsliste();
     else if (r === "noten") await renderNoten();
     else if (r === "zeugnisse") await renderZeugnisse();
     else if (r === "kontakte") await renderKontakte();

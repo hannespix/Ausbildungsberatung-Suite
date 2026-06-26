@@ -134,11 +134,15 @@ mit 1–10 Azubis, passende Prüfer:innen und Prüfungstermine je Fachrichtung;
 
 ### Workflow-Ausbau (Loop)
 „Von der Vorbereitung bis zum Zeugnis":
-- ✅ Auto-Zuteilung aller passenden Prüflinge zu einem Termin nach Fachrichtung
-  (alphabetisch, idempotent).
-- Offen: Ausschuss-Vorschlag (Prüfer automatisch), Zeitraster/Slots mit
-  Tageskapazität/Gruppen, Status-Workflow (angemeldet→zugelassen→geprüft→
-  bestanden), Serien-Zeugnisdruck, Auswertungen.
+- ✅ Auto-Zuteilung passender Prüflinge zu einem Termin (alphabetisch, idempotent).
+- ✅ **Intelligente Gesamtplanung**: je Fachrichtung gleichmäßige Verteilung auf
+  passend viele Termine (Kapazität je Tag), PLZ-geclustert, fehlende Termine
+  automatisch angelegt, **Ausschuss je Termin** automatisch besetzt.
+- ✅ **Prüfer-Plan & Zusage-Workflow**: je Termin Ausschuss informieren
+  (E-Mail/mailto), Status offen→angefragt→zugesagt/abgesagt in einer Übersicht.
+- Offen: Zeitraster/Slots mit Gruppen, Status-Workflow der Prüflinge
+  (angemeldet→zugelassen→geprüft→bestanden), Serien-Zeugnisdruck, Auswertungen,
+  Prüfer-Verfügbarkeiten/Konfliktprüfung bei der Ausschuss-Besetzung.
 
 ### Laufend
 Datensicherung (DB-Export/-Import als Datei), Robustheit, Tests, Performance.
