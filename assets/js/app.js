@@ -2066,6 +2066,8 @@ async function renderAuswertungen(jahr = null) {
   const quoten = await store.quoteJeFachrichtung(jahr);
   const konflikte = await store.prueferKonflikte();
   const einsaetze = await store.prueferEinsaetze(jahr);
+  const spiegel = await store.notenVerteilung(jahr);
+  const spiegelSumme = spiegel.reduce((s, r) => s + r.wert, 0);
 
   const belegt = auslast.filter((t) => t.prueflinge > 0);
   const summePl = belegt.reduce((s, t) => s + t.prueflinge, 0);
@@ -2162,6 +2164,22 @@ async function renderAuswertungen(jahr = null) {
       </div>
     </section>
 
+    <section aria-labelledby="spiegel-h" style="margin-top:var(--bw-space-4)">
+      <h2 id="spiegel-h">Notenspiegel (Gesamtnote)</h2>
+      <div id="spiegel-diagramm" class="bw-card"></div>
+      <ul class="bw-legend"${spiegelSumme ? "" : " hidden"}>
+        <li><span class="swatch" style="background:var(--bw-cat-1)"></span> Anzahl je Notenstufe</li>
+        <li><span class="swatch" style="background:var(--bw-gelb);outline:1.5px solid var(--bw-schwarz)"></span> häufigste Stufe</li>
+      </ul>
+      <div class="bw-tablewrap" style="margin-top:var(--bw-space-2)">
+        <table class="bw-table">
+          <thead><tr><th>Notenstufe</th><th style="text-align:right">Anzahl</th><th style="text-align:right">Anteil</th></tr></thead>
+          <tbody>${spiegelSumme ? spiegel.map((r) => `<tr><td>${esc(r.label)}</td><td style="text-align:right">${zahl(r.wert)}</td><td style="text-align:right">${Math.round((r.wert / spiegelSumme) * 100)} %</td></tr>`).join("")
+            : '<tr><td colspan="3" class="bw-leise">Noch keine Bewertungen — erscheint, sobald unter <a href="#/noten">Noten</a> bewertet wurde.</td></tr>'}</tbody>
+        </table>
+      </div>
+    </section>
+
     <section aria-labelledby="auslast-h" style="margin-top:var(--bw-space-4)">
       <h2 id="auslast-h">Auslastung je Prüfungstermin</h2>
       ${ohneAusschuss ? `<p class="bw-hinweis bw-hinweis--fehler">${zahl(ohneAusschuss)} belegte(r) Termin(e) ohne Ausschuss — bitte im <a href="#/planung">Planung</a> besetzen.</p>` : ""}
@@ -2205,6 +2223,20 @@ async function renderAuswertungen(jahr = null) {
     );
   } else {
     document.getElementById("quote-diagramm").innerHTML = '<p class="bw-leise">Noch keine Bewertungen — Quote erscheint, sobald unter <a href="#/noten">Noten</a> bewertet wurde.</p>';
+  }
+
+  const spiegelDia = document.getElementById("spiegel-diagramm");
+  if (window.bwChart && spiegelSumme) {
+    const maxS = Math.max.apply(null, spiegel.map((r) => r.wert));
+    // Bei Gleichstand nur die erste häufigste Stufe gelb (CI: Gelb gilt EINEM Wert).
+    const hlIdx = spiegel.findIndex((r) => r.wert === maxS);
+    window.bwChart.bars(
+      spiegelDia,
+      spiegel.map((r, i) => ({ label: r.label, value: r.wert, highlight: i === hlIdx && maxS > 0 })),
+      { titel: "Notenspiegel (Gesamtnote)", max: Math.max(1, maxS) }
+    );
+  } else {
+    spiegelDia.innerHTML = '<p class="bw-leise">Noch keine Bewertungen — Notenspiegel erscheint nach der Bewertung (<a href="#/noten">Noten</a>).</p>';
   }
 
   const auslastDia = document.getElementById("auslast-diagramm");
@@ -2280,6 +2312,12 @@ async function renderAuswertungen(jahr = null) {
       <table class="bw-table">
         <thead><tr><th>Fachrichtung</th><th style="text-align:right">Prüflinge</th><th style="text-align:right">bewertet</th><th style="text-align:right">bestanden</th><th style="text-align:right">Quote</th><th style="text-align:right">Ø Note</th></tr></thead>
         <tbody>${quoten.length ? quoten.map((r) => `<tr><td>${esc(r.beruf)}</td><td style="text-align:right">${zahl(r.gesamt)}</td><td style="text-align:right">${zahl(r.bewertet)}</td><td style="text-align:right">${zahl(r.bestanden)}</td><td style="text-align:right">${r.quote == null ? "—" : zahl(r.quote) + " %"}</td><td style="text-align:right">${r.schnitt == null ? "—" : formatNote(r.schnitt)}</td></tr>`).join("") : '<tr><td colspan="6">Keine Daten.</td></tr>'}</tbody>
+      </table>
+
+      <h2>Notenspiegel (Gesamtnote)</h2>
+      <table class="bw-table">
+        <thead><tr><th>Notenstufe</th><th style="text-align:right">Anzahl</th><th style="text-align:right">Anteil</th></tr></thead>
+        <tbody>${spiegelSumme ? spiegel.map((r) => `<tr><td>${esc(r.label)}</td><td style="text-align:right">${zahl(r.wert)}</td><td style="text-align:right">${Math.round((r.wert / spiegelSumme) * 100)} %</td></tr>`).join("") : '<tr><td colspan="3">Keine Daten.</td></tr>'}</tbody>
       </table>
 
       <h2>Auslastung je Prüfungstermin</h2>
