@@ -263,6 +263,11 @@ Offen: Stichtagsauswertung.
 ### M11 — Barrierefreiheit & Feinschliff
 WCAG-AA-Audit, Tastatur-/Screenreader-Durchgang, Leer-/Fehlerzustände,
 Hilfetexte, Tastenkürzel, Dark-Mode-Prüfung der Tokens.
+- ✅ **Tastenkürzel „/"**: springt überall zur Suche — auf Listenseiten
+  fokussiert es das vorhandene Suchfeld, sonst öffnet es die Schnellsuche und
+  fokussiert sie. Greift nicht beim Tippen in Feldern, bei offenem Dialog oder
+  mit Modifikatortasten; Hinweis im Such-Header (`title`) und auf der
+  Schnellsuche-Seite. Chromium-getestet (alle Fälle, Mobile 390px).
 
 ### Single-File (Doppelklick, ohne Server) ✅
 PGlite läuft ohne Server unter `file://`: WASM/Daten eingebettet (Provisioning),

@@ -1576,7 +1576,7 @@ async function einladungenSerienDruck() {
 async function renderSuche() {
   appEl().innerHTML = `
     <h1>Schnellsuche</h1>
-    <p class="bw-unterzeile">Prüflinge, Betriebe, Prüfer:innen und Termine auf einmal — tippfehlertolerant</p>
+    <p class="bw-unterzeile">Prüflinge, Betriebe, Prüfer:innen und Termine auf einmal — tippfehlertolerant. Tipp: Taste <kbd>/</kbd> springt überall zur Suche.</p>
     <div class="bw-search" style="max-width:42rem">
       <label for="modulsuche" class="bw-skip-link">Suchbegriff</label>
       <input id="modulsuche" type="search" placeholder="Name, Betrieb, Ort, Termin …"
@@ -2563,7 +2563,42 @@ async function start() {
   }
   dbModusHinweis();
   window.addEventListener("hashchange", route);
+  tastenkuerzel();
   route();
+}
+
+/**
+ * Globale Tastenkürzel (barrierearm, M11):
+ *  „/"  → Suche fokussieren (Listenseiten) bzw. zur Schnellsuche springen.
+ * Greift nicht, während in einem Eingabefeld getippt wird, ein Dialog offen ist
+ * oder Modifikatortasten gedrückt sind.
+ */
+function tastenkuerzel() {
+  // Fokussiert das Suchfeld, sobald es im DOM ist (route() fokussiert nach jedem
+  // Rendern #inhalt — daher per rAF-Schleife nachfassen, statt sofort).
+  const suchfeldFokussieren = () => {
+    let versuche = 0;
+    const tick = () => {
+      const feld = document.getElementById("modulsuche");
+      if (feld) { feld.focus(); feld.select?.(); return; }
+      if (versuche++ < 30) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  };
+  document.addEventListener("keydown", (ev) => {
+    if (ev.defaultPrevented || ev.ctrlKey || ev.metaKey || ev.altKey) return;
+    const ziel = ev.target;
+    const tag = ziel && ziel.tagName;
+    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || (ziel && ziel.isContentEditable)) return;
+    if (document.querySelector("dialog[open]")) return;
+    if (ev.key === "/") {
+      ev.preventDefault();
+      const feld = document.getElementById("modulsuche");
+      if (feld) { feld.focus(); feld.select?.(); return; }
+      location.hash = "#/suche";
+      suchfeldFokussieren();
+    }
+  });
 }
 
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
