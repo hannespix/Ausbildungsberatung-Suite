@@ -55,13 +55,24 @@ Verfügbarkeiten, Ausschuss-Zusammenstellung (Vorsitz/Beisitz/Lehrkraft),
 ausgewogene Zuteilung, Einladungs-/Bestätigungsstatus.
 
 ### M5 — Notenberechnung ✅
-Neue Ansicht „Noten": Gesamtbewertung je Prüfling über den 100-Punkte-Schlüssel
-(Punkte→Note 1–6, bestanden ab 50), Bewerten-Dialog mit Live-Vorschau,
-Notenverteilungs-Diagramm. Smoke-getestet (Chromium).
+Neue Ansicht „Noten": Gesamtbewertung je Prüfling, Bewerten-Dialog mit
+Live-Vorschau, Notenverteilungs-Diagramm. Smoke-getestet (Chromium).
 
-### M5b — Notenberechnung vertiefen (offen)
-Gewichtete Teilleistungen je Beruf, Bestehensregeln/Sperrfächer (Fachentscheidung),
-Nachprüfungs-Kennzeichnung, Verknüpfung mit Prüfungsterminen.
+### M5a — Linearer Dezimal-Schlüssel ✅
+Auf das offizielle Schema BW (grüne Berufe) umgestellt: **Note = 6 − 5·(Punkte/
+Maximalpunktzahl)** als Dezimalnote (1,0–6,0), wählbare Maximalpunktzahl
+(40/60/80/100/120/150/200), Wortstufen (sehr gut … ungenügend). Grundlage:
+Notenberechnungs-Vorlage „Gärtner AP S 2026" (RP Freiburg). Smoke-getestet.
+
+### M5b — Volles Gärtner-Gesamtschema (offen, Fachentscheidung)
+Prüfungsbereiche praktische Prüfung (I–V) + Kenntnisprüfung (Landschaftsgärtn.
+Arbeiten, Pflanzenkenntnisse, Betriebl. Zusammenhänge, WiSo), **Gewichtung**,
+GESAMTNOTE, **Bestehensregeln/Sperrfach** und Nachprüfung. Gewichte/Regeln aus
+der Vorlage extrahieren und VOR dem Verdrahten mit dem Fachbereich bestätigen.
+
+### M7 — Excel-Import der Bewertungsbögen (offen)
+SheetJS lokal vendoren; Azubi-/Punktedaten aus den `.xlsm/.xlsx`-Sammelbögen
+einlesen (Mapping-Vorschau, Dublettenabgleich).
 
 ### M6 — Zeugnis-Erstellung ✅
 Neue Ansicht „Zeugnisse": druckbares Prüfungszeugnis je Prüfling aus Stammdaten
