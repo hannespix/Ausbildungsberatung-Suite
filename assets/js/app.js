@@ -100,6 +100,15 @@ async function renderUebersicht() {
   const fBewertet = fBestanden + fNicht;
   const quote = fBewertet ? Math.round((fBestanden / fBewertet) * 100) : null;
 
+  // Nächste Prüfungstage: heute oder später, chronologisch, max. 5.
+  const heute = new Date(); heute.setHours(0, 0, 0, 0);
+  let naechste = [];
+  try {
+    naechste = (await store.auslastung())
+      .filter((t) => t.datum && new Date(t.datum) >= heute)
+      .slice(0, 5);
+  } catch (e) { console.warn("Termine nicht verfügbar:", e); }
+
   appEl().innerHTML = `
     <h1>Übersicht</h1>
     <p class="bw-unterzeile">Abschlussprüfung Gärtner/in — Planung, Verwaltung, Notenberechnung und Zeugnis</p>
@@ -114,6 +123,22 @@ async function renderUebersicht() {
           </a>`).join("")}
       </div>
     </section>
+
+    ${naechste.length ? `
+    <section aria-labelledby="naechste-h" style="margin-top:var(--bw-space-4)">
+      <h2 id="naechste-h">Nächste Prüfungstage</h2>
+      <ul class="bw-trefferliste">
+        ${naechste.map((t) => `
+          <li>
+            <span>
+              <strong>${t.datum ? esc(new Date(t.datum).toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit" })) : "—"}</strong>
+              · ${esc(t.titel || "Termin")}
+              <span class="bw-klein bw-leise">${t.beruf ? esc(t.beruf) + " · " : ""}${zahl(t.prueflinge)} Prüflinge${t.ausschuss ? "" : ' · <span class="bw-status-dont">kein Ausschuss</span>'}</span>
+            </span>
+            <a class="bw-btn bw-btn--sekundaer" href="#/planung?termin=${t.id}" style="margin-left:auto">Öffnen</a>
+          </li>`).join("")}
+      </ul>
+    </section>` : ""}
 
     <section aria-labelledby="todo-h" style="margin-top:var(--bw-space-4)">
       <h2 id="todo-h">Was ist zu tun?</h2>

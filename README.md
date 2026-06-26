@@ -18,7 +18,8 @@ im aktuellen Landes-Corporate-Design Baden-Württemberg
 
 ## Funktionsumfang
 
-- **Übersicht / Kommandozentrum** — Kennzahlen, automatisch abgeleiteter
+- **Übersicht / Kommandozentrum** — Kennzahlen, **nächste Prüfungstage**
+  (Terminvorschau mit Direktsprung in die Planung), automatisch abgeleiteter
   **Prüfungsfortschritt** (Funnel) und ein Panel **„Was ist zu tun?"**, das
   offenen Handlungsbedarf über alle Stationen erkennt (Termine ohne Ausschuss,
   offene Zusagen, unbewertete Prüflinge, Doppelbelegungen, Prüflinge ohne
