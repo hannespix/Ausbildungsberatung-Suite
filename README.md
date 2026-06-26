@@ -1,199 +1,145 @@
-# RPF Browsertool — Vorlage (Landes-CI Baden-Württemberg)
+# Ausbildungsberatung-Suite — RP Freiburg
 
-**Grobe Vorlage — ein Startpunkt, kein fertiges Produkt.** Sie liefert das
-Gerüst, das Design-System und die komplette Claude-Arbeitsumgebung für
-browserbasierte Werkzeuge und kleine Datenbanken des Regierungspräsidiums
-Freiburg. **Pro Tool wird sie angepasst**, nicht 1:1 übernommen — was nicht
-gebraucht wird, fliegt raus; was fehlt, kommt dazu.
+Interne, **vollständig offline** lauffähige Werkzeug-Suite für die
+**Ausbildungsberatung des Regierungspräsidiums Freiburg** (grüne Berufe,
+Hauswirtschaft). Sie unterstützt die Organisation und Durchführung der
+**praktischen Abschlussprüfungen**: Stammdaten, Prüfungstag-Planung,
+Notenberechnung und Zeugnis-Erstellung — alles im aktuellen Landes-Corporate-
+Design Baden-Württemberg (https://design.landbw.de), barrierefrei und ohne jede
+externe Abhängigkeit (Zero-Trust-Arbeitsplatz).
 
-Alle daraus gebauten Tools sehen **wie aus einem Guss** aus (aktuelles
-Landes-Corporate-Design, https://design.landbw.de) und entstehen im
-**agentischen Loop** mit `@claude` über GitHub.
-
-- **Design & Technik:** [`CLAUDE.md`](CLAUDE.md)
-- **Prozess / Loop:** [`AGENTS.md`](AGENTS.md)
-- **Aufgaben / Milestones:** [`ROADMAP.md`](ROADMAP.md)
-
-### Was du anpasst — was verbindlich bleibt
-
-Die Vorlage ist bewusst grob gehalten.
-
-- **Anpassen pro Tool:** Inhalt und Funktion von `index.html`, die Milestones
-  in `ROADMAP.md`, `<title>` und der App-Name in `site.webmanifest`, die Auswahl
-  der Komponenten und Skripte (nur einbinden, was das Tool braucht), das
-  Datenmodell in `assets/js/db.js`.
-- **Verbindlich (nicht aufweichen):** das Design-System in `bw-theme.css` (nur
-  `--bw-*`-Tokens, keine hartcodierten Farben/Schriften/Abstände), die
-  Offline-/Zero-Trust-Pflicht (keine CDNs, alle Abhängigkeiten lokal vendored)
-  und die Barrierefreiheit (WCAG 2.1 AA). Begründung und Details: `CLAUDE.md`.
+> Oberfläche und Texte durchgehend **Deutsch**. Design verbindlich über
+> `bw-theme.css` (Single Source of Truth, nur `--bw-*`-Tokens).
 
 ---
 
-## Neues Arbeits-Repo aus dieser Vorlage erstellen
+## Funktionsumfang
 
-Für **jedes Tool entsteht ein eigenes, privates Repo** aus dieser Vorlage. Das
-neue Repo enthält die komplette Claude-Arbeitsumgebung bereits fertig:
+- **Stammdaten** — Prüflinge, Ausbildungsbetriebe, Prüfer:innen und
+  Prüfungstermine anlegen, bearbeiten, löschen.
+- **Globale Fuzzy-Suche** — tippfehler- und diakritikatolerant, über alle
+  Felder, direkt in der Datenbank (Trigramm-Ähnlichkeit), mit Treffermarkierung.
+- **Saubere Erfassung** — Betriebs-Vorschlagsliste, E-Mail-Validierung,
+  Dublettenwarnung.
+- **Prüfungstag-Planung** — Prüflinge mit Uhrzeit-Slot einem Termin zuteilen,
+  Prüfer:innen/Ausschuss mit Rolle zuordnen, Warnung bei Doppelbelegung am
+  selben Tag, **druckbarer Tagesablauf**.
+- **Notenberechnung** — Punkte → Note nach dem 100-Punkte-Schlüssel
+  (bestanden ab 50), Live-Vorschau, Notenverteilungs-Diagramm.
+- **Zeugnis-Erstellung** — druckbares Prüfungszeugnis je Prüfling aus
+  Stammdaten, Prüfungstermin und Ergebnis (Druck/PDF).
+- **Übersicht** — Kennzahlen und CI-konforme Diagramme.
 
-- `CLAUDE.md` + `AGENTS.md` — **alle Arbeitsanweisungen** für Design, Loop und
-  Entwicklung (`@claude` liest sie vor jeder Aufgabe),
-- `bw-theme.css` + `assets/` — Design-System, Schriften, Logo, Favicons, JS,
-- `.github/workflows/claude.yml` — der `@claude`-Loop (Issue/PR → Branch → PR),
-- `.github/workflows/ci.yml` — Offline-Check bei jedem PR (wird mit
-  `main`-Schutz zum echten Merge-Gate, Schritt 3),
-- `.github/ISSUE_TEMPLATE/` — Vorlagen für Milestones und Aufgaben,
-- `ROADMAP.md` — Milestone-Gerüst zum Ausfüllen.
+Geplante Erweiterungen (siehe [`ROADMAP.md`](ROADMAP.md)): Excel/CSV-Import,
+Outlook-/Kalender-Konnektivität (ICS, offline), Adress-/Telefonliste, weitere
+Auswertungen.
 
-Du baust davon **nichts neu auf** — es bleiben nur die Schritte unten:
-scharfschalten, `main` schützen, zuschneiden.
+---
 
-**Einmalig an dieser Vorlage** (durch die Eigentümerin/den Eigentümer): unter
-**Settings → General → „Template repository"** anhaken. Danach trägt das Repo
-oben den grünen Knopf **„Use this template"**.
+## Technik
 
-**Pro neuem Tool:**
+- **Vanilla JS, ES-Module**, kein Framework-Zwang; datengetriebenes Modell
+  (`assets/js/model.js` → Tabellen, Formulare und Listen entstehen daraus).
+- **PGlite** (Postgres als WebAssembly), Persistenz in **OPFS** mit
+  automatischem Fallback (IndexedDB → Arbeitsspeicher). DB-seitige Fuzzy-Suche
+  über `pg_trgm`/`unaccent`/`fuzzystrmatch`.
+- **Komplett offline / Zero-Trust:** keine CDNs, keine fremden Web-Fonts, kein
+  `fetch`/`import` gegen externe URLs. Alle Abhängigkeiten lokal **vendored**
+  (`assets/vendor/pglite/`, inkl. WASM).
 
-1. **Repo erzeugen** — „Use this template" → „Create a new repository" → Namen
-   vergeben → Sichtbarkeit **Private** (Pflicht wegen lizenzierter Schriften &
-   Logo, siehe „Recht & Lizenz"). Das neue Repo ist eine vollständige Kopie
-   inkl. aller Arbeitsanweisungen, aber mit **frischer Git-Historie** (ein
-   Initial-Commit, nicht die Historie der Vorlage).
-2. **`@claude` scharfschalten** — zwei Dinge im neuen Repo:
-   - Repo-Secret `CLAUDE_CODE_OAUTH_TOKEN` (oder `ANTHROPIC_API_KEY`) anlegen;
-     siehe [„`@claude`-Action einrichten"](#claude-action-einrichten). Secrets
-     werden **nicht** mitkopiert — pro Repo neu zu setzen.
-   - **Settings → Actions → General:** Actions zulassen und unter „Workflow
-     permissions" die Option **„Allow GitHub Actions to create and approve pull
-     requests"** aktivieren. Sie ist standardmäßig **aus** — ohne sie kann
-     `@claude` keinen Pull Request öffnen.
-3. **`main` schützen** (macht den Offline-Check zum echten Merge-Gate) — unter
-   **Settings → Branches** (Branch-Schutz/Ruleset) für `main`: „Require a pull
-   request before merging" und „Require status checks to pass" mit dem Check
-   **„Offline-Check"** als erforderlich. Damit blockiert ein roter Check den
-   Merge, und niemand — auch `@claude` nicht — pusht direkt auf `main`
-   (vgl. `AGENTS.md`).
-4. **Vorlage zuschneiden** — `ROADMAP.md` mit Tool-Zweck und Milestones füllen,
-   `<title>` in `index.html` und den App-Namen in `site.webmanifest` anpassen,
-   nicht benötigte Komponenten aus `index.html` entfernen.
-5. **Loop starten** — Issue „M0 — Gerüst" eröffnen und `@claude` erwähnen, z. B.
-   `@claude setze Milestone M0 aus ROADMAP.md um und öffne einen PR`. Ab hier
-   läuft der Zyklus aus `AGENTS.md`: Branch → Pull Request → CI + Review → Merge.
+---
 
-> **Ohne „Use this template"** (falls der Knopf nicht gesetzt ist): leeres,
-> privates Repo anlegen, diese Dateien hineinkopieren oder die Vorlage klonen,
-> `origin` auf das neue Repo umbiegen und pushen — `CLAUDE.md`, `AGENTS.md` und
-> `.github/workflows/` müssen mitkommen. „Dasselbe Ergebnis" gilt nur für den
-> **Repo-Inhalt**; die Konfigurationsschritte 2–3 (Secret, Workflow-Permission,
-> ggf. Actions aktivieren, `main`-Schutz) sind danach genauso auszuführen.
+## Lokal starten
 
-## `@claude`-Action einrichten
+WASM und ES-Module laufen **nicht** per Doppelklick (`file://`), sondern über
+einen lokalen Webserver:
 
-1. Lokal mit Claude Code einen OAuth-Token erzeugen:
-   ```
-   claude setup-token
-   ```
-   (Pro/Max-Zugang. Alternativ ein `ANTHROPIC_API_KEY`.)
-2. Im Repo unter **Settings → Secrets and variables → Actions** anlegen:
-   `CLAUDE_CODE_OAUTH_TOKEN` (bzw. `ANTHROPIC_API_KEY`).
-3. Den Workflow [`.github/workflows/claude.yml`](.github/workflows/claude.yml)
-   übernehmen (liegt bereits im Template).
-4. Test: ein Issue eröffnen und `@claude stell dich kurz vor` schreiben.
-
-Danach läuft der Loop: `@claude` in Issues/PRs erwähnen → Branch + Pull
-Request → CI + Review → Merge. Details in `AGENTS.md`.
-
-## Lokal entwickeln
-
-Wegen `@font-face` die Dateien über einen lokalen Server öffnen (nicht per
-`file://`):
-```
-python3 -m http.server 8000
-# dann http://localhost:8000/ aufrufen
-```
-
-## Auslieferung & Testen (Zero-Trust)
-
-Die Suite ist ein **DB-Tool** (PGlite/Postgres-WASM, OPFS-Persistenz). WASM und
-ES-Module laufen **nicht** per Doppelklick (`file://`), sondern über einen
-lokalen Webserver — daher Auslieferung als **Ordner-Bundle**, nicht als
-Einzeldatei.
-
-**Lokal testen:**
 ```
 python3 -m http.server 8000     # im Projektordner
 # dann http://localhost:8000/ aufrufen
 ```
 
-**Ohne lokales Bauen testen:** Die Action
-[`.github/workflows/build.yml`](.github/workflows/build.yml) packt bei jedem
-Stand das Ordner-Bundle und legt es als Artifact
-**`ausbildungsberatung-suite-bundle`** ab: Workflow-Run unter **Actions** öffnen
-→ Artifact herunterladen → entpacken → im Ordner `python3 -m http.server 8000`
-starten → `http://localhost:8000/` öffnen. Artifacts sind **nur für
-Repo-Mitglieder** abrufbar — keine öffentliche Verteilung der lizenzierten
-Schriften/Logos (deshalb **kein GitHub Pages**, das den Output öffentlich machen
-würde — siehe „Recht & Lizenz").
+Beim ersten Start legt die Suite einige **fiktive Beispieldaten** an (keine
+echten personenbezogenen Daten).
 
-Der Single-File-Builder (`tools/build_singlefile.py`) bleibt für einfache,
-DB-lose Werkzeuge erhalten, eignet sich aber nicht für dieses WASM-Tool.
+---
 
-## Offline-Pflicht (keine CDN-Abhängigkeit)
+## Testen ohne lokales Bauen (Bundle-Artifact)
 
-Jedes Tool muss **vollständig offline** laufen — im Flugmodus, ohne Netzwerk.
-Keine CDNs, keine fremden Web-Fonts, kein `import`/`fetch` gegen externe URLs.
-Alle Abhängigkeiten **lokal vendoren** (`assets/vendor/<lib>/`), ausdrücklich
-auch React/ReactDOM, Babel Standalone und PGlite (inkl. WASM):
-```
-npm i react react-dom @electric-sql/pglite
-# Paketinhalte nach assets/vendor/<lib>/ kopieren und lokal einbinden
-```
-Prüfen (läuft auch im CI bei jedem PR):
+Die Action [`.github/workflows/build.yml`](.github/workflows/build.yml) packt bei
+jedem Stand das offline-lauffähige **Ordner-Bundle** und legt es als Artifact
+**`ausbildungsberatung-suite-bundle`** ab:
+
+1. Im Repo unter **Actions** den letzten „App-Bundle"-Run öffnen,
+2. Artifact herunterladen und entpacken,
+3. im Ordner `python3 -m http.server 8000` starten und `http://localhost:8000/`
+   öffnen.
+
+Artifacts sind **nur für Repo-Mitglieder** abrufbar — daher keine öffentliche
+Verteilung der lizenzierten Schriften/Logos (deshalb **kein GitHub Pages**, das
+den Output öffentlich machen würde, siehe „Recht & Lizenz").
+
+---
+
+## Offline-Pflicht prüfen
+
 ```
 python3 tools/check_offline.py     # findet externe Referenzen -> Exit 1
 ```
-Endgültiger Test: Tool im **Flugmodus** öffnen. Lädt etwas nicht oder zeigt das
-Netzwerk-Panel einen externen Request, ist es nicht offline-fähig.
+Läuft auch im CI bei jedem Push/PR (Check **„Offline-Check"**). Endgültiger
+Test: die Suite im **Flugmodus** öffnen — lädt etwas nicht oder zeigt das
+Netzwerk-Panel einen externen Request, ist sie nicht offline-fähig.
 
-## Struktur
+---
+
+## Projektstruktur
 
 ```
-index.html                 das Tool
-bw-theme.css               Design-System (Single Source of Truth)
+index.html                 App-Shell (lädt Theme + assets/)
+bw-theme.css               Design-System (Single Source of Truth, --bw-*-Tokens)
+assets/js/model.js         fachliches Datenmodell (Entitäten, Felder)
+assets/js/store.js         Persistenz/CRUD/Suche über PGlite
+assets/js/app.js           Oberfläche: Router, Listen, Planung, Noten, Zeugnisse
+assets/js/db.js            PGlite-Datenbankschicht (initDB, createTable, Suche)
+assets/js/nav.js           Hamburger-Navigation (barrierefrei)
+assets/js/search.js        Treffermarkierung / In-Memory-Suche (Fallback)
+assets/js/chart.js         CI-konforme SVG-Diagramme
+assets/vendor/pglite/      lokal abgelegtes PGlite inkl. WASM (kein CDN)
 assets/fonts/              BaWue Sans/Serif (woff2+woff)   — lizenzpflichtig
 assets/logo/               RPF-Logo (schwarz/negativ/flag) — geschützt
 assets/favicons/           Favicon-Paket + favicon.ico
-assets/js/nav.js           Hamburger-Navigation (barrierefrei)
-assets/js/search.js        globale Fuzzy-Suche (In-Memory)
-assets/js/chart.js         CI-konforme SVG-Diagramme
-assets/js/db.js            PGlite-Datenbankschicht (DB-Tools)
-assets/vendor/pglite/      lokal abgelegtes PGlite (kein CDN) — bei DB-Tools
 site.webmanifest           PWA-Manifest
-tools/build_singlefile.py  Single-File-Builder
 tools/check_offline.py     Offline-/CDN-Prüfung (CI-Gate)
-.github/workflows/claude.yml   @claude-Loop
+tools/build_singlefile.py  Single-File-Builder (für einfache, DB-lose Tools)
 .github/workflows/ci.yml       Offline-Check bei Push/PR
-.github/ISSUE_TEMPLATE/    Vorlagen für Milestones/Aufgaben
-CLAUDE.md AGENTS.md ROADMAP.md
+.github/workflows/build.yml    baut das Bundle-Artifact
+.github/workflows/claude.yml   @claude-Loop (Issue/PR → Branch → PR)
+CLAUDE.md  AGENTS.md  ROADMAP.md
 ```
 
-## Datenbank-Tools (PGlite)
+---
 
-DB-basierte Tools nutzen **PGlite** (Postgres-WASM) mit OPFS-Persistenz und
-DB-seitiger Fuzzy-Suche (`pg_trgm`/`unaccent`/`fuzzystrmatch`). PGlite **lokal
-ablegen** (kein CDN):
-```
-npm i @electric-sql/pglite
-# Paketinhalt nach assets/vendor/pglite/ kopieren (inkl. contrib/)
-```
-Referenz: `assets/js/db.js` (`initDB`, `createTable`, `globaleSuche`). DB-Tools
-werden als Ordner-Bundle ausgeliefert (WASM lässt sich nicht in eine
-Einzeldatei pressen); einfache Tools als Single-File.
+## Entwicklung & Prozess
+
+- **Design & Technik:** [`CLAUDE.md`](CLAUDE.md) — Design-System, Offline-/
+  Zero-Trust-Pflicht, Barrierefreiheit, Diagramm- und Suchregeln.
+- **Prozess / Loop:** [`AGENTS.md`](AGENTS.md) — Branch → Pull Request → CI →
+  Merge auf `main`; jede Änderung ist ein abgeschlossener, lauffähiger Zuwachs.
+- **Roadmap / Milestones:** [`ROADMAP.md`](ROADMAP.md).
+
+Verbindlich bleibt: Design nur über `--bw-*`-Tokens, vollständige
+Offline-Fähigkeit (alle Abhängigkeiten lokal vendored) und Barrierefreiheit
+(WCAG 2.1 AA).
+
+---
 
 ## Recht & Lizenz
 
-- **Schriften** (BaWue Sans/Serif, Luzi Type) und **Logo** sind
-  lizenziert/geschützt → `assets/fonts/LIZENZ.md`, `assets/logo/LIZENZ.md`.
+- **Schriften** (BaWue Sans/Serif, Luzi Type) und **RPF-Logo** sind
+  lizenziert/geschützt → [`assets/fonts/LIZENZ.md`](assets/fonts/LIZENZ.md),
+  [`assets/logo/LIZENZ.md`](assets/logo/LIZENZ.md).
 - **Repository privat halten.** Bei öffentlichem Repo `assets/fonts/` und
-  `assets/logo/` in `.gitignore` aktivieren; das Theme nutzt dann die
-  System-Fallbacks.
-- Keine Secrets und keine personenbezogenen Echtdaten ins Repo.
-- Produktiver Betrieb mit Personenbezug nur über BITBW/LVN.
+  `assets/logo/` in `.gitignore` aktivieren; das Theme nutzt dann System-
+  Fallbacks.
+- Keine Secrets und keine personenbezogenen Echtdaten im Repo.
+- Produktiver Betrieb mit Personenbezug nur über **BITBW/LVN**.
