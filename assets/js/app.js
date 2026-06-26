@@ -2154,6 +2154,8 @@ async function renderAuswertungen(jahr = null) {
       <td>${esc(t.beruf || "—")}</td>
       <td style="text-align:right">${zahl(t.prueflinge)}</td>
       <td style="text-align:right">${t.ausschuss ? zahl(t.ausschuss) : '<a href="#/planung?termin=' + t.id + '" class="bw-status-dont" title="Ausschuss besetzen">0</a>'}</td>
+      <td style="text-align:right">${zahl(t.bewertet)}/${zahl(t.prueflinge)}</td>
+      <td style="text-align:right">${t.bewertet ? zahl(t.bestanden) : "—"}</td>
     </tr>`;
 
   const quoteZeile = (r) => `
@@ -2268,7 +2270,7 @@ async function renderAuswertungen(jahr = null) {
     </section>
 
     <section aria-labelledby="auslast-h" style="margin-top:var(--bw-space-4)">
-      <h2 id="auslast-h">Auslastung je Prüfungstermin</h2>
+      <h2 id="auslast-h">Auslastung &amp; Ergebnis je Prüfungstermin</h2>
       ${ohneAusschuss ? `<p class="bw-hinweis bw-hinweis--fehler">${zahl(ohneAusschuss)} belegte(r) Termin(e) ohne Ausschuss — bitte im <a href="#/planung">Planung</a> besetzen.</p>` : ""}
       <div id="auslast-diagramm" class="bw-card"></div>
       <ul class="bw-legend"${belegt.length ? "" : " hidden"}>
@@ -2277,8 +2279,8 @@ async function renderAuswertungen(jahr = null) {
       </ul>
       <div class="bw-tablewrap" style="margin-top:var(--bw-space-2)">
         <table class="bw-table">
-          <thead><tr><th>Termin</th><th>Datum</th><th>Fachrichtung</th><th style="text-align:right">Prüflinge</th><th style="text-align:right">Ausschuss</th></tr></thead>
-          <tbody>${auslast.length ? auslast.map(terminZeile).join("") : '<tr><td colspan="5" class="bw-leise">Noch keine Prüfungstermine. Erst unter <a href="#/">Übersicht</a> „Automatische Prüfungsplanung" starten.</td></tr>'}</tbody>
+          <thead><tr><th>Termin</th><th>Datum</th><th>Fachrichtung</th><th style="text-align:right">Prüflinge</th><th style="text-align:right">Ausschuss</th><th style="text-align:right">bewertet</th><th style="text-align:right">bestanden</th></tr></thead>
+          <tbody>${auslast.length ? auslast.map(terminZeile).join("") : '<tr><td colspan="7" class="bw-leise">Noch keine Prüfungstermine. Erst unter <a href="#/">Übersicht</a> „Automatische Prüfungsplanung" starten.</td></tr>'}</tbody>
         </table>
       </div>
     </section>
@@ -2381,8 +2383,8 @@ async function renderAuswertungen(jahr = null) {
     meldung(`Quoten exportiert: ${zahl(quoten.length)} Fachrichtungen.`);
   });
   document.getElementById("csv-auslastung")?.addEventListener("click", () => {
-    const kopf = ["Termin", "Datum", "Beginn", "Fachrichtung", "Ort", "Prüflinge", "Ausschuss"];
-    const zeilen = auslast.map((t) => [t.titel || "", t.datum ? new Date(t.datum).toLocaleDateString("de-DE") : "", t.zeit_von || "", t.beruf || "", t.ort || "", t.prueflinge, t.ausschuss]);
+    const kopf = ["Termin", "Datum", "Beginn", "Fachrichtung", "Ort", "Prüflinge", "Ausschuss", "bewertet", "bestanden"];
+    const zeilen = auslast.map((t) => [t.titel || "", t.datum ? new Date(t.datum).toLocaleDateString("de-DE") : "", t.zeit_von || "", t.beruf || "", t.ort || "", t.prueflinge, t.ausschuss, t.bewertet, t.bestanden]);
     dateiDownload(`Auslastung${jahr ? "-" + jahr : ""}.csv`, csvText(kopf, zeilen), "text/csv;charset=utf-8");
     meldung(`Auslastung exportiert: ${zahl(auslast.length)} Termine.`);
   });
@@ -2426,10 +2428,10 @@ async function renderAuswertungen(jahr = null) {
         <tbody>${bereicheMit.length ? bereiche.map((b) => `<tr><td>${esc(b.kurz)}</td><td>${esc(bereichLabel(b))}</td><td style="text-align:right">${b.schnitt == null ? "—" : formatNote(b.schnitt)}</td><td style="text-align:right">${zahl(b.anzahl)}</td></tr>`).join("") : '<tr><td colspan="4">Keine Daten.</td></tr>'}</tbody>
       </table>
 
-      <h2>Auslastung je Prüfungstermin</h2>
+      <h2>Auslastung &amp; Ergebnis je Prüfungstermin</h2>
       <table class="bw-table">
-        <thead><tr><th>Termin</th><th>Datum</th><th>Fachrichtung</th><th style="text-align:right">Prüflinge</th><th style="text-align:right">Ausschuss</th></tr></thead>
-        <tbody>${auslast.length ? auslast.map((t) => `<tr><td>${esc(t.titel || "—")}</td><td>${t.datum ? esc(new Date(t.datum).toLocaleDateString("de-DE")) : "—"}</td><td>${esc(t.beruf || "—")}</td><td style="text-align:right">${zahl(t.prueflinge)}</td><td style="text-align:right">${zahl(t.ausschuss)}</td></tr>`).join("") : '<tr><td colspan="5">Keine Daten.</td></tr>'}</tbody>
+        <thead><tr><th>Termin</th><th>Datum</th><th>Fachrichtung</th><th style="text-align:right">Prüflinge</th><th style="text-align:right">Ausschuss</th><th style="text-align:right">bewertet</th><th style="text-align:right">bestanden</th></tr></thead>
+        <tbody>${auslast.length ? auslast.map((t) => `<tr><td>${esc(t.titel || "—")}</td><td>${t.datum ? esc(new Date(t.datum).toLocaleDateString("de-DE")) : "—"}</td><td>${esc(t.beruf || "—")}</td><td style="text-align:right">${zahl(t.prueflinge)}</td><td style="text-align:right">${zahl(t.ausschuss)}</td><td style="text-align:right">${zahl(t.bewertet)}/${zahl(t.prueflinge)}</td><td style="text-align:right">${t.bewertet ? zahl(t.bestanden) : "—"}</td></tr>`).join("") : '<tr><td colspan="7">Keine Daten.</td></tr>'}</tbody>
       </table>
 
       <h2>Prüfer-Einsätze</h2>
