@@ -140,6 +140,13 @@ Einladungs-/Bestätigungsstatus ✅ (Prüfer-Plan).
 - ✅ **Abwesenheits-Konflikte sichtbar**: Warnung bei manueller Prüfer-Zuteilung
   an einem Abwesenheitstag; verbleibende Verstöße erscheinen als Hinweis in
   „Was ist zu tun?" (`prueferAbwesenheitsKonflikte`, `istAbwesend`). Smoke-getestet.
+- ✅ **Doppelbelegungs-Warnung beim Zuteilen**: wird ein:e Prüfer:in manuell
+  einem Termin zugeteilt, obwohl die Person am selben Tag schon einem anderen
+  Termin zugeordnet ist, erscheint eine bestätigbare Warnung (analog zur
+  Prüfling-Konfliktwarnung) — verhindert genau die Doppelbelegungen, die die
+  Auswertungen sonst nachträglich melden. `prueferTerminkonflikte()`.
+  Chromium-getestet (selber Tag warnt, anderer Tag nicht; nach Bestätigen meldet
+  `prueferKonflikte` die Doppelbelegung; Mobile 390px).
 - ✅ **Prüfer-Einladung drucken**: je Termin eine persönliche, druckbare
   Einladung pro Ausschussmitglied (Rolle, Datum, Ort, Prüflingszahl, Bitte um
   Zu-/Absage) — eine Seite je Mitglied, ergänzt die `mailto`-Anfrage für
