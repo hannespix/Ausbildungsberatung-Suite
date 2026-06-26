@@ -1955,6 +1955,7 @@ async function renderPrueflingAkte(id) {
           <tr><th scope="row">E-Mail</th><td>${p.email ? `<a href="mailto:${esc(p.email)}">${esc(p.email)}</a>` : "—"}</td></tr>
           <tr><th scope="row">Telefon</th><td>${p.telefon ? `<a href="tel:${esc(String(p.telefon).replace(/[^\d+]/g, ""))}">${esc(p.telefon)}</a>` : "—"}</td></tr>
           <tr><th scope="row">Status</th><td>${esc(p.status || "—")}</td></tr>
+          ${p.bemerkung ? `<tr><th scope="row">Bemerkung</th><td>${esc(p.bemerkung)}</td></tr>` : ""}
         </tbody></table>
       </section>
 
@@ -1975,6 +1976,7 @@ async function renderPrueflingAkte(id) {
               ${b.bestanden === false && store.bewertungGruende(b).length
                 ? `<tr><th scope="row">Grund</th><td>${store.bewertungGruende(b).map(esc).join("; ")}</td></tr>`
                 : ""}
+              ${b.bemerkung ? `<tr><th scope="row">Bemerkung des Ausschusses</th><td>${esc(b.bemerkung)}</td></tr>` : ""}
             </tbody></table>
             ${einzelnotenHtml()}`
           : '<p class="bw-leise">Noch nicht bewertet.</p>'}
