@@ -206,6 +206,11 @@ dorthin: belegte Termine ohne Ausschuss, Prüfer-Doppelbelegungen, offene/
 angefragte Zusagen, eingeplante aber unbewertete Prüflinge, Termine ohne
 Prüflinge. Nur Punkte mit Bedarf werden gezeigt; sonst „Alles erledigt".
 `store.hinweise()`. Smoke-getestet (inkl. Leerzustand, Mobile).
+✅ **Fortschritt-Funnel klickbar**: unter dem Diagramm öffnet je Phase ein Chip
+(„Eingeplant (152)" …) die Prüflingsliste **gefiltert nach dieser Phase**
+(Deep-Link `#/prueflinge?phase=…`). Die Prüflingsliste hat zudem einen
+eigenen Fortschritt-Filter (mit Such-/Sortier-/Export-Zusammenspiel). Verbindet
+Übersicht und Stammdaten. Chromium-getestet (Deep-Link, Teilmenge, Mobile).
 ✅ **Datenqualität sichtbar**: Prüflinge ohne Fachrichtung (die sich nicht
 automatisch einplanen lassen) erscheinen als Hinweis und verlinken in die
 Stammdaten; die automatische Planung meldet zusätzlich, wie viele Prüflinge

@@ -57,7 +57,18 @@ function debounce(fn, ms = 200) {
 
 function aktiveRoute() {
   const h = location.hash.replace(/^#\/?/, "").trim();
-  return h || "uebersicht";
+  return (h.split("?")[0]) || "uebersicht";
+}
+
+/** Parameter aus dem Hash (z. B. #/prueflinge?phase=eingeplant). */
+function routeParams() {
+  const q = location.hash.replace(/^#\/?/, "").split("?")[1] || "";
+  const p = {};
+  q.split("&").filter(Boolean).forEach((kv) => {
+    const [k, v] = kv.split("=");
+    p[decodeURIComponent(k)] = decodeURIComponent(v || "");
+  });
+  return p;
 }
 
 function navAufbauen() {
@@ -132,6 +143,11 @@ async function renderUebersicht() {
         <li><span class="swatch" style="background:var(--bw-cat-1)"></span> Anzahl je Phase</li>
         <li><span class="swatch" style="background:var(--bw-gelb);outline:1.5px solid var(--bw-schwarz)"></span> größter Wert</li>
       </ul>
+      ${fGesamt ? `
+      <p class="bw-klein bw-leise" style="margin-top:var(--bw-space-2)">Phase öffnen — zeigt die Prüflinge gefiltert:</p>
+      <div class="bw-toolbar" style="gap:var(--bw-space-1)">
+        ${fortschritt.map((f) => `<a class="bw-btn bw-btn--sekundaer" href="#/prueflinge?phase=${encodeURIComponent(f.key)}">${esc(f.label)} (${zahl(f.wert)})</a>`).join("")}
+      </div>` : ""}
     </section>
 
     <section aria-labelledby="demo-h" style="margin-top:var(--bw-space-4)">
@@ -292,6 +308,9 @@ async function renderListe(key) {
   const spalten = tabellenSpalten(ent);
   const zeigtFortschritt = key === "prueflinge";
   let sortName = null, sortDir = 1;
+  // Optionaler Fortschritt-Filter (nur Prüflinge), per Deep-Link aus der
+  // Übersicht (#/prueflinge?phase=eingeplant) vorbelegt.
+  let phaseFilter = zeigtFortschritt ? (routeParams().phase || "") : "";
 
   const kopfRow = () => spalten.map((f) => {
     const aktiv = f.name === sortName;
@@ -310,6 +329,14 @@ async function renderListe(key) {
                aria-label="${esc(ent.plural)} durchsuchen" autocomplete="off">
         <button type="button" id="suche-btn">Suchen</button>
       </div>
+      ${zeigtFortschritt ? `
+      <div class="bw-field" style="margin:0">
+        <label for="phase-filter" class="bw-skip-link">Nach Fortschritt filtern</label>
+        <select id="phase-filter" aria-label="Nach Fortschritt filtern">
+          <option value="">Alle Phasen</option>
+          ${store.FORTSCHRITT_STUFEN.map((s) => `<option value="${s.key}"${s.key === phaseFilter ? " selected" : ""}>${esc(s.label)}</option>`).join("")}
+        </select>
+      </div>` : ""}
       ${key === "prueflinge" ? '<button class="bw-btn bw-btn--sekundaer" type="button" id="csv-btn">CSV importieren</button>' : ""}
       <button class="bw-btn bw-btn--sekundaer" type="button" id="csv-export-btn">CSV exportieren</button>
       <button class="bw-btn bw-btn--sekundaer" type="button" id="drucken-btn">Liste drucken</button>
@@ -344,16 +371,22 @@ async function renderListe(key) {
         phaseMap = new Map(ph.map((r) => [String(r.id), r.phase]));
       } catch (e) { console.warn("Fortschritt nicht verfügbar:", e); }
     }
+    if (phaseFilter && phaseMap) {
+      rows = rows.filter((r) => (phaseMap.get(String(r.id)) || "angemeldet") === phaseFilter);
+    }
     aktuelleRows = rows; aktuellePhasen = phaseMap;
     document.getElementById("zeilen").innerHTML = rows
       .map((r) => zeileHtml(ent, r, q, phaseMap ? (phaseMap.get(String(r.id)) || "angemeldet") : undefined))
       .join("");
     const leer = document.getElementById("leer");
     if (!rows.length) {
+      const phaseLabel = (store.FORTSCHRITT_STUFEN.find((s) => s.key === phaseFilter) || {}).label;
       leer.hidden = false;
       leer.textContent = q
         ? `Keine Treffer für „${q}". Suchbegriff ändern oder neuen Eintrag anlegen.`
-        : `Noch keine ${ent.plural} erfasst. Mit „Neuer Eintrag" beginnen.`;
+        : phaseFilter
+          ? `Keine Prüflinge in der Phase „${phaseLabel || phaseFilter}".`
+          : `Noch keine ${ent.plural} erfasst. Mit „Neuer Eintrag" beginnen.`;
     } else {
       leer.hidden = true;
     }
@@ -361,6 +394,7 @@ async function renderListe(key) {
 
   eingabe.addEventListener("input", debounce(zeichne, 180));
   document.getElementById("suche-btn").addEventListener("click", zeichne);
+  document.getElementById("phase-filter")?.addEventListener("change", (ev) => { phaseFilter = ev.target.value; zeichne(); });
   document.getElementById("neu-btn").addEventListener("click", () => formularOeffnen(key, null, zeichne));
   document.getElementById("csv-btn")?.addEventListener("click", () => csvImportDialog(zeichne));
 
