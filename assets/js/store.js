@@ -209,6 +209,31 @@ export async function entferneZuteilung(zuteilungId) {
 }
 
 /**
+ * Teilt alle noch nicht zugeteilten Prüflinge der Termin-Fachrichtung diesem
+ * Termin zu (alphabetische Reihenfolge). Uhrzeiten bleiben offen und werden
+ * manuell oder später per Tagesraster vergeben.
+ * @returns {{zugeteilt:number}}
+ */
+export async function autoZuteilenNachFachrichtung(pruefungId) {
+  const t = (await _pg.query(`SELECT beruf FROM pruefungen WHERE id = $1`, [pruefungId])).rows[0];
+  if (!t || !t.beruf) return { zugeteilt: 0 };
+  const res = await _pg.query(
+    `INSERT INTO zuteilungen (pruefung_id, pruefling_id, slot, reihenfolge)
+     SELECT $1::bigint, x.id, NULL, x.rn
+     FROM (
+       SELECT p.id, row_number() OVER (ORDER BY p.nachname, p.vorname) AS rn
+         FROM prueflinge p
+        WHERE p.beruf = $2
+          AND p.id NOT IN (SELECT pruefling_id FROM zuteilungen WHERE pruefung_id = $1)
+     ) x
+     ON CONFLICT (pruefung_id, pruefling_id) DO NOTHING
+     RETURNING pruefling_id`,
+    [pruefungId, t.beruf]
+  );
+  return { zugeteilt: res.rows.length };
+}
+
+/**
  * Terminkonflikte: andere Prüfungstermine am selben Datum, denen dieser
  * Prüfling ebenfalls zugeteilt ist (Doppelbelegung am selben Tag).
  */
