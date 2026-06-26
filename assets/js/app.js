@@ -205,29 +205,46 @@ async function renderListe(key) {
 
 /* ------------------------------------------------------------- CRUD-Dialog */
 
-function feldHtml(f, value) {
+function feldHtml(f, value, refOptionen) {
   const id = "f_" + f.name;
   const v = value == null ? "" : String(value);
   const pflicht = f.pflicht ? " required" : "";
   const stern = f.pflicht ? ' <span aria-hidden="true">*</span>' : "";
-  let control;
+  let control = "";
   if (f.input === "textarea") {
     control = `<textarea id="${id}" name="${f.name}" rows="3"${pflicht}>${esc(v)}</textarea>`;
   } else if (f.input === "select") {
     const opts = ['<option value="">— bitte wählen —</option>']
       .concat((f.optionen || []).map((o) => `<option${o === v ? " selected" : ""}>${esc(o)}</option>`));
     control = `<select id="${id}" name="${f.name}"${pflicht}>${opts.join("")}</select>`;
+  } else if (f.input === "reftext") {
+    const listId = "dl_" + f.name;
+    const opts = (refOptionen || []).map((o) => `<option value="${esc(o)}"></option>`).join("");
+    control = `<input id="${id}" name="${f.name}" type="text" value="${esc(v)}"${pflicht}
+                 list="${listId}" autocomplete="off">
+               <datalist id="${listId}">${opts}</datalist>`;
   } else {
     control = `<input id="${id}" name="${f.name}" type="${f.input}" value="${esc(v)}"${pflicht}${f.input === "number" ? ' inputmode="numeric"' : ""}>`;
   }
   return `<div class="bw-field"><label for="${id}">${esc(f.label)}${stern}</label>${control}${f.hinweis ? `<small class="bw-leise">${esc(f.hinweis)}</small>` : ""}</div>`;
 }
 
-function formularOeffnen(key, rec, nachher) {
+const RE_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+async function formularOeffnen(key, rec, nachher) {
   const ent = ENTITAETEN[key];
   const istNeu = !rec;
   const alt = document.getElementById("dialog");
   if (alt) alt.remove();
+
+  // Vorschlagswerte (datalist) für ref-Felder vorab laden
+  const refMap = {};
+  for (const f of ent.felder) {
+    if (f.input === "reftext" && f.ref) {
+      try { refMap[f.name] = await store.werteFuer(f.ref.entitaet, f.ref.feld); }
+      catch (e) { refMap[f.name] = []; }
+    }
+  }
 
   const dlg = document.createElement("dialog");
   dlg.className = "bw-dialog";
@@ -236,7 +253,7 @@ function formularOeffnen(key, rec, nachher) {
     <form method="dialog" id="dialog-form" novalidate>
       <h2 style="margin-top:0">${istNeu ? "Neuer Eintrag" : "Bearbeiten"} — ${esc(ent.singular)}</h2>
       <div class="bw-dialog__felder">
-        ${ent.felder.map((f) => feldHtml(f, rec ? rec[f.name] : "")).join("")}
+        ${ent.felder.map((f) => feldHtml(f, rec ? rec[f.name] : "", refMap[f.name])).join("")}
       </div>
       <p class="bw-klein bw-leise">Mit <span aria-hidden="true">*</span> markierte Felder sind Pflicht.</p>
       <div class="bw-dialog__aktionen">
@@ -263,8 +280,31 @@ function formularOeffnen(key, rec, nachher) {
         }
       }
     }
+    // Format prüfen (E-Mail)
+    for (const f of ent.felder) {
+      if (f.input === "email") {
+        const wertE = form.elements[f.name].value.trim();
+        if (wertE && !RE_EMAIL.test(wertE)) {
+          form.elements[f.name].focus();
+          meldung(`„${f.label}" ist keine gültige E-Mail-Adresse.`, "fehler");
+          return;
+        }
+      }
+    }
     const daten = {};
     for (const f of ent.felder) daten[f.name] = form.elements[f.name].value;
+
+    // Dublettenwarnung (nicht-blockierend bestätigbar)
+    try {
+      const treffer = await store.findeDubletten(key, daten, istNeu ? null : rec.id);
+      if (treffer.length) {
+        const bez = (ent.dublette || []).map((k) => daten[k]).filter(Boolean).join(" ");
+        if (!confirm(`Es gibt bereits einen Eintrag „${bez}". Trotzdem ${istNeu ? "anlegen" : "speichern"}?`)) {
+          return;
+        }
+      }
+    } catch (e) { console.warn("Dublettenprüfung übersprungen:", e); }
+
     try {
       if (istNeu) { await store.anlegen(key, daten); meldung(`${ent.singular} angelegt.`); }
       else { await store.aendern(key, rec.id, daten); meldung(`${ent.singular} gespeichert.`); }
