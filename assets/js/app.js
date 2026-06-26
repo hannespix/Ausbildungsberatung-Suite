@@ -709,6 +709,19 @@ function niederschriftHtml(termin, ergebnisse, prueferZug) {
   ].filter(Boolean).join(" · ");
   const bestanden = ergebnisse.filter((r) => r.bestanden === true).length;
   const bewertet = ergebnisse.filter((r) => r.gesamt != null).length;
+  // Begründung des Nichtbestehens je betroffenem Prüfling (aus den Bereichsnoten
+  // abgeleitet, identisch zur Bewerten-Vorschau) — amtlich für das Protokoll.
+  const nichtBestanden = ergebnisse
+    .filter((r) => r.bestanden === false)
+    .map((r) => ({ r, gruende: store.bewertungGruende(r) }))
+    .filter((x) => x.gruende.length);
+  const begruendung = nichtBestanden.length ? `
+    <h2>Begründung Nichtbestehen</h2>
+    <table class="bw-table">
+      <thead><tr><th>Name</th><th>Grund</th></tr></thead>
+      <tbody>${nichtBestanden.map((x) => `
+        <tr><td>${esc((x.r.nachname || "") + ", " + (x.r.vorname || ""))}</td><td>${x.gruende.map(esc).join("; ")}</td></tr>`).join("")}</tbody>
+    </table>` : "";
 
   return `
     <h1>Ergebnis-Niederschrift — ${esc(termin.titel)}</h1>
@@ -728,6 +741,7 @@ function niederschriftHtml(termin, ergebnisse, prueferZug) {
           <td>${r.bestanden === true ? "bestanden" : r.bestanden === false ? "nicht bestanden" : "—"}</td>
         </tr>`).join("")}</tbody>
     </table>
+    ${begruendung}
 
     <h2>Prüfungsausschuss</h2>
     <table class="bw-table">
@@ -1867,6 +1881,9 @@ async function renderPrueflingAkte(id) {
               <tr><th scope="row">Kenntnis-Schnitt</th><td>${formatNote(b.kenntnis)}</td></tr>
               <tr><th scope="row">Gesamtnote</th><td><strong>${formatNote(b.gesamt)}</strong></td></tr>
               <tr><th scope="row">Ergebnis</th><td>${ergebnisBadge(b.bestanden)}</td></tr>
+              ${b.bestanden === false && store.bewertungGruende(b).length
+                ? `<tr><th scope="row">Grund</th><td>${store.bewertungGruende(b).map(esc).join("; ")}</td></tr>`
+                : ""}
             </tbody></table>`
           : '<p class="bw-leise">Noch nicht bewertet.</p>'}
         </div>
