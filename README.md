@@ -35,6 +35,8 @@ im aktuellen Landes-Corporate-Design Baden-Württemberg
 - **Globale Schnellsuche** — durchsucht Prüflinge, Betriebe, Prüfer:innen und
   Termine zugleich, DB-seitig (Trigramm, tippfehler-/diakritikatolerant), mit
   Treffermarkierung und Direktsprung zum Datensatz.
+- **Betriebs-Akte** — eine Detailansicht je Ausbildungsbetrieb mit Kontaktdaten
+  und allen zugeordneten Prüflingen (Fortschritt, Direktsprung in deren Akte).
 - **Prüflings-Akte** — eine Detailansicht je Prüfling bündelt Stammdaten,
   Prüfungstag (Uhrzeit-Slot, Ausschuss), Note und Fortschritt; Direkt-Aktionen:
   Termin zuteilen/entfernen, bewerten, Zeugnis drucken, Stammdaten bearbeiten.

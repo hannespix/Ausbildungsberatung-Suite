@@ -1184,6 +1184,25 @@ export async function setzeStatusViele(ids, status) {
 }
 
 /**
+ * Betriebs-Akte: Stammdaten des Ausbildungsbetriebs und alle ihm zugeordneten
+ * Prüflinge (Name über das Betriebsfeld verknüpft) samt abgeleiteter Phase und
+ * Bestehensstatus — verbindet Betriebe und Prüflinge in einer Ansicht.
+ */
+export async function betriebAkte(betriebId) {
+  const b = (await _pg.query(`SELECT * FROM betriebe WHERE id = $1`, [betriebId])).rows[0];
+  if (!b) return null;
+  const prueflinge = (await _pg.query(
+    `SELECT p.id, p.nachname, p.vorname, p.beruf, p.pruefungsjahr, p.status,
+            ${_FORTSCHRITT_CASE} AS phase, b.gesamt, b.bestanden
+       FROM prueflinge p LEFT JOIN bewertungen b ON b.pruefling_id = p.id
+      WHERE lower(btrim(coalesce(p.betrieb,''))) = lower(btrim($1))
+      ORDER BY p.nachname, p.vorname`,
+    [b.name]
+  )).rows;
+  return { betrieb: b, prueflinge };
+}
+
+/**
  * Gesamtakte eines Prüflings: Stammdaten, zugeteilte Termine (mit Slot und
  * Ausschuss), Bewertung und abgeleitete Phase — die verbindende Klammer über
  * Stammdaten, Planung, Noten und Zeugnis in einer Ansicht.
