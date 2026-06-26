@@ -77,9 +77,15 @@ integriert: 5 praktische Bereiche (I–V) + 4 Kenntnisbereiche, Praxis-Schnitt
 Bewerten-Dialog (9 Bereiche, Live-Ergebnis), Noten-Liste, Zeugnis. Smoke-getestet
 (inkl. 60/40, Sperrfach, 2×≥4,5). Tool jetzt auf **Gärtner-Fachrichtungen** fokussiert.
 
-### M5c — Notenberechnung-Detail (offen)
-Theorie-Finals aus schriftlich (doppelt) + mündlich/Nachprüfung ((U+U+V)/3),
-Punkte→Note je Bereich mit eigenem Schlüssel, weitere Fachrichtungen.
+### M5c — Notenberechnung-Detail (teils ✅)
+- ✅ **Pflanzenkenntnisse als Teilnote**: aus den offiziellen Folien
+  übernommen — Pflanzenkenntnisse = TRUNC((2·schriftliche PK + 1·Pflanzen­
+  bestimmung)/3, 1). Im Bewerten-Dialog füllen zwei Teilnoten automatisch das
+  Pflanzenkenntnisse-Feld; Teilwerte werden gespeichert und beim Wiederöffnen
+  vorbelegt. Nebenbei behoben: Dezimalnoten gingen beim Wiederöffnen verloren
+  (`type=number` akzeptiert kein Komma). Smoke-getestet.
+- Offen: Mündliche Ergänzungsprüfung ((U+U+V)/3, nur schriftliche Fächer),
+  „eine einzige 6 → durchgefallen" explizit, weitere Fachrichtungen.
 
 ### M7 — Excel-/CSV-Import (teils ✅)
 - ✅ **CSV-Import von Prüflingen**: offline-Parser (Trennzeichen-Erkennung ; / ,,
