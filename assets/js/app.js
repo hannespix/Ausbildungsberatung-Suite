@@ -66,7 +66,7 @@ function navAufbauen() {
   const route = aktiveRoute();
   const punkte = [{ key: "uebersicht", label: "Übersicht" }]
     .concat(NAV_REIHENFOLGE.map((k) => ({ key: k, label: ENTITAETEN[k].plural })))
-    .concat([{ key: "planung", label: "Planung" }, { key: "planungsliste", label: "Prüfer-Plan" }, { key: "noten", label: "Noten" }, { key: "zeugnisse", label: "Zeugnisse" }, { key: "kontakte", label: "Adressliste" }]);
+    .concat([{ key: "planung", label: "Planung" }, { key: "planungsliste", label: "Prüfer-Plan" }, { key: "noten", label: "Noten" }, { key: "zeugnisse", label: "Zeugnisse" }, { key: "auswertungen", label: "Auswertungen" }, { key: "kontakte", label: "Adressliste" }]);
   ul.innerHTML = punkte.map((p) => {
     const aktiv = p.key === route ? ' aria-current="page"' : "";
     return `<li><a href="#/${p.key === "uebersicht" ? "" : p.key}"${aktiv}>${esc(p.label)}</a></li>`;
@@ -924,6 +924,101 @@ async function serienZeugnisDruck() {
   window.print();
 }
 
+/* --------------------------------------------------------- Auswertungen */
+
+async function renderAuswertungen() {
+  const auslast = await store.auslastung();
+  const quoten = await store.quoteJeFachrichtung();
+
+  const belegt = auslast.filter((t) => t.prueflinge > 0);
+  const summePl = belegt.reduce((s, t) => s + t.prueflinge, 0);
+  const schnittPl = belegt.length ? Math.round((summePl / belegt.length) * 10) / 10 : 0;
+  const ohneAusschuss = belegt.filter((t) => t.ausschuss === 0).length;
+  const gesamtBewertet = quoten.reduce((s, r) => s + r.bewertet, 0);
+  const gesamtBestanden = quoten.reduce((s, r) => s + r.bestanden, 0);
+  const gesamtQuote = gesamtBewertet ? Math.round((gesamtBestanden / gesamtBewertet) * 100) : null;
+
+  const terminZeile = (t) => `
+    <tr>
+      <td>${esc(t.titel || "—")}</td>
+      <td>${t.datum ? esc(new Date(t.datum).toLocaleDateString("de-DE")) : "—"}${t.zeit_von ? " · " + esc(t.zeit_von) : ""}</td>
+      <td>${esc(t.beruf || "—")}</td>
+      <td style="text-align:right">${zahl(t.prueflinge)}</td>
+      <td style="text-align:right">${t.ausschuss ? zahl(t.ausschuss) : '<span class="bw-status-dont">0</span>'}</td>
+    </tr>`;
+
+  const quoteZeile = (r) => `
+    <tr>
+      <td>${esc(r.beruf)}</td>
+      <td style="text-align:right">${zahl(r.gesamt)}</td>
+      <td style="text-align:right">${zahl(r.bewertet)}</td>
+      <td style="text-align:right">${zahl(r.bestanden)}</td>
+      <td style="text-align:right">${r.quote == null ? "—" : zahl(r.quote) + " %"}</td>
+      <td style="text-align:right">${r.schnitt == null ? "—" : formatNote(r.schnitt)}</td>
+    </tr>`;
+
+  appEl().innerHTML = `
+    <h1>Auswertungen</h1>
+    <p class="bw-unterzeile">Auslastung der Prüfungstage und Bestehensquoten je Fachrichtung — automatisch aus den vorhandenen Daten</p>
+
+    <div class="bw-flaechen bw-stat-grid">
+      <div class="bw-card bw-stat"><span class="bw-stat__zahl">${zahl(belegt.length)}</span><span class="bw-stat__label">belegte Termine</span></div>
+      <div class="bw-card bw-stat"><span class="bw-stat__zahl">${zahl(schnittPl)}</span><span class="bw-stat__label">Ø Prüflinge / Termin</span></div>
+      <div class="bw-card bw-stat"><span class="bw-stat__zahl">${gesamtQuote == null ? "—" : zahl(gesamtQuote) + " %"}</span><span class="bw-stat__label">Bestehensquote gesamt</span></div>
+    </div>
+
+    <section aria-labelledby="quote-h" style="margin-top:var(--bw-space-4)">
+      <h2 id="quote-h">Bestehensquote je Fachrichtung</h2>
+      <div id="quote-diagramm" class="bw-card"></div>
+      <ul class="bw-legend">
+        <li><span class="swatch" style="background:var(--bw-cat-1)"></span> Quote in %</li>
+        <li><span class="swatch" style="background:var(--bw-gelb);outline:1.5px solid var(--bw-schwarz)"></span> höchste Quote</li>
+      </ul>
+      <div class="bw-tablewrap" style="margin-top:var(--bw-space-2)">
+        <table class="bw-table">
+          <thead><tr><th>Fachrichtung</th><th style="text-align:right">Prüflinge</th><th style="text-align:right">bewertet</th><th style="text-align:right">bestanden</th><th style="text-align:right">Quote</th><th style="text-align:right">Ø Note</th></tr></thead>
+          <tbody>${quoten.length ? quoten.map(quoteZeile).join("") : '<tr><td colspan="6" class="bw-leise">Noch keine Prüflinge erfasst.</td></tr>'}</tbody>
+        </table>
+      </div>
+    </section>
+
+    <section aria-labelledby="auslast-h" style="margin-top:var(--bw-space-4)">
+      <h2 id="auslast-h">Auslastung je Prüfungstermin</h2>
+      ${ohneAusschuss ? `<p class="bw-hinweis bw-hinweis--fehler">${zahl(ohneAusschuss)} belegte(r) Termin(e) ohne Ausschuss — bitte im <a href="#/planung">Planung</a> besetzen.</p>` : ""}
+      <div class="bw-tablewrap">
+        <table class="bw-table">
+          <thead><tr><th>Termin</th><th>Datum</th><th>Fachrichtung</th><th style="text-align:right">Prüflinge</th><th style="text-align:right">Ausschuss</th></tr></thead>
+          <tbody>${auslast.length ? auslast.map(terminZeile).join("") : '<tr><td colspan="5" class="bw-leise">Noch keine Prüfungstermine. Erst unter <a href="#/">Übersicht</a> „Automatische Prüfungsplanung" starten.</td></tr>'}</tbody>
+        </table>
+      </div>
+    </section>
+  `;
+
+  const mitQuote = quoten.filter((r) => r.quote != null);
+  if (window.bwChart && mitQuote.length) {
+    const maxQ = Math.max.apply(null, mitQuote.map((r) => r.quote));
+    window.bwChart.bars(
+      document.getElementById("quote-diagramm"),
+      mitQuote.map((r) => ({ label: kurzBeruf(r.beruf), value: r.quote, highlight: r.quote === maxQ })),
+      { titel: "Bestehensquote je Fachrichtung", max: 100, einheit: "%" }
+    );
+  } else {
+    document.getElementById("quote-diagramm").innerHTML = '<p class="bw-leise">Noch keine Bewertungen — Quote erscheint, sobald unter <a href="#/noten">Noten</a> bewertet wurde.</p>';
+  }
+}
+
+/** Kürzt lange Fachrichtungsnamen für Diagramm-Achsen. */
+function kurzBeruf(b) {
+  return String(b || "")
+    .replace("Garten- und Landschaftsbau", "GaLaBau")
+    .replace("Friedhofsgärtnerei", "Friedhof")
+    .replace("Staudengärtnerei", "Stauden")
+    .replace("Zierpflanzenbau", "Zierpfl.")
+    .replace("Gemüsebau", "Gemüse")
+    .replace("Baumschule", "Baumsch.")
+    .replace("Obstbau", "Obst");
+}
+
 /* --------------------------------------------------------- Adressliste */
 
 function telLink(tel, q) {
@@ -1146,6 +1241,7 @@ async function route() {
     else if (r === "planungsliste") await renderPlanungsliste();
     else if (r === "noten") await renderNoten();
     else if (r === "zeugnisse") await renderZeugnisse();
+    else if (r === "auswertungen") await renderAuswertungen();
     else if (r === "kontakte") await renderKontakte();
     else if (ENTITAETEN[r]) await renderListe(r);
     else { location.hash = "#/"; return; }
