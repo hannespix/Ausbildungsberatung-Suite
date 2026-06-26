@@ -1,10 +1,12 @@
-name: Single-File-Build
+name: App-Bundle
 
-# Baut bei jedem Stand die offline-lauffähige Einzeldatei (dist/index.html)
-# und legt sie als Artifact ab. Artifacts sind nur für Repo-Mitglieder
-# herunterladbar — keine öffentliche Verteilung der lizenzierten Schriften/Logos.
-# Zum Testen: Run öffnen -> Artifact "ausbildungsberatung-suite-singlefile"
-# laden -> entpacken -> index.html per Doppelklick öffnen (offline lauffähig).
+# Packt bei jedem Stand das offline-lauffähige Ordner-Bundle (DB-Tool mit
+# PGlite/WASM lässt sich nicht in eine Einzeldatei pressen) und legt es als
+# Artifact ab. Artifacts sind nur für Repo-Mitglieder herunterladbar — keine
+# öffentliche Verteilung der lizenzierten Schriften/Logos.
+# Zum Testen: Run öffnen -> Artifact "ausbildungsberatung-suite-bundle" laden ->
+# entpacken -> im Ordner einen lokalen Server starten
+# (python3 -m http.server 8000) und http://localhost:8000/ öffnen.
 
 on:
   push:
@@ -16,19 +18,21 @@ permissions:
   contents: read
 
 jobs:
-  build:
+  bundle:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.x"
-      - name: Einzeldatei bauen
-        run: python3 tools/build_singlefile.py
+      - name: Bundle packen
+        run: |
+          mkdir -p dist
+          zip -r -q dist/ausbildungsberatung-suite-bundle.zip \
+            index.html bw-theme.css site.webmanifest assets \
+            -x '*/.DS_Store'
+          echo "Inhalt:" && unzip -l dist/ausbildungsberatung-suite-bundle.zip | tail -n 3
       - name: Artifact hochladen
         uses: actions/upload-artifact@v4
         with:
-          name: ausbildungsberatung-suite-singlefile
-          path: dist/index.html
+          name: ausbildungsberatung-suite-bundle
+          path: dist/ausbildungsberatung-suite-bundle.zip
           if-no-files-found: error
           retention-days: 30
