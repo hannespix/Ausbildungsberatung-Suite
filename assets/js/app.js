@@ -265,6 +265,7 @@ async function renderListe(key) {
                aria-label="${esc(ent.plural)} durchsuchen" autocomplete="off">
         <button type="button" id="suche-btn">Suchen</button>
       </div>
+      ${key === "prueflinge" ? '<button class="bw-btn bw-btn--sekundaer" type="button" id="csv-btn">CSV importieren</button>' : ""}
       <button class="bw-btn bw-btn--gelb" type="button" id="neu-btn">＋ Neuer Eintrag</button>
     </div>
 
@@ -307,6 +308,7 @@ async function renderListe(key) {
   eingabe.addEventListener("input", debounce(zeichne, 180));
   document.getElementById("suche-btn").addEventListener("click", zeichne);
   document.getElementById("neu-btn").addEventListener("click", () => formularOeffnen(key, null, zeichne));
+  document.getElementById("csv-btn")?.addEventListener("click", () => csvImportDialog(zeichne));
 
   document.getElementById("zeilen").addEventListener("click", async (ev) => {
     const editId = ev.target.closest("[data-edit]")?.getAttribute("data-edit");
@@ -1276,6 +1278,150 @@ function kontakteDrucken(rows) {
     <p class="bw-klein bw-leise">Erstellt mit der Ausbildungsberatung-Suite — Regierungspräsidium Freiburg</p>
   `;
   window.print();
+}
+
+/* --------------------------------------------------------- CSV-Import (Prüflinge)
+   Offline-Parser (kein Fremdcode): erkennt Trennzeichen (; oder ,), behandelt
+   Anführungszeichen und Zeilenumbrüche in Feldern. Spalten werden automatisch
+   den Prüflingsfeldern zugeordnet (überschreibbar), Vorschau + Dublettenschutz. */
+
+function csvParse(text) {
+  text = String(text || "").replace(/^﻿/, ""); // BOM entfernen
+  const kopf = text.slice(0, (text.indexOf("\n") + 1) || text.length);
+  const delim = (kopf.split(";").length > kopf.split(",").length) ? ";" : ",";
+  const zeilen = [];
+  let feld = "", zeile = [], inQ = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQ) {
+      if (c === '"') { if (text[i + 1] === '"') { feld += '"'; i++; } else inQ = false; }
+      else feld += c;
+    } else if (c === '"') { inQ = true; }
+    else if (c === delim) { zeile.push(feld); feld = ""; }
+    else if (c === "\n") { zeile.push(feld); zeilen.push(zeile); zeile = []; feld = ""; }
+    else if (c === "\r") { /* ignorieren */ }
+    else feld += c;
+  }
+  if (feld.length || zeile.length) { zeile.push(feld); zeilen.push(zeile); }
+  return zeilen.filter((z) => z.some((f) => String(f).trim() !== ""));
+}
+
+const CSV_FELDER = [
+  { name: "nachname",     label: "Nachname",     syn: ["nachname", "name", "familienname", "lastname"] },
+  { name: "vorname",      label: "Vorname",      syn: ["vorname", "firstname", "rufname"] },
+  { name: "geburtsdatum", label: "Geburtsdatum", syn: ["geburtsdatum", "geboren", "geb", "geburtstag", "birthdate"] },
+  { name: "beruf",        label: "Fachrichtung", syn: ["beruf", "fachrichtung", "ausbildungsberuf"] },
+  { name: "betrieb",      label: "Ausbildungsbetrieb", syn: ["betrieb", "ausbildungsbetrieb", "firma", "unternehmen", "ausbildungsstaette"] },
+  { name: "pruefungsjahr",label: "Prüfungsjahr", syn: ["pruefungsjahr", "jahr", "pruefjahr"] },
+  { name: "email",        label: "E-Mail",       syn: ["email", "mail", "emailadresse"] },
+  { name: "telefon",      label: "Telefon",      syn: ["telefon", "tel", "telefonnummer", "handy", "mobil"] },
+];
+
+function csvNorm(s) {
+  return String(s || "").toLowerCase().replace(/ä/g, "a").replace(/ö/g, "o").replace(/ü/g, "u").replace(/ß/g, "ss").replace(/[^a-z0-9]/g, "");
+}
+function csvAutoMap(header) {
+  const norm = header.map(csvNorm);
+  const map = {};
+  CSV_FELDER.forEach((f) => {
+    let idx = norm.findIndex((h) => f.syn.includes(h));
+    if (idx < 0) idx = norm.findIndex((h) => h && f.syn.some((s) => h.includes(s)));
+    map[f.name] = idx; // -1 = nicht zugeordnet
+  });
+  return map;
+}
+
+function csvImportDialog(nachher) {
+  const alt = document.getElementById("dialog");
+  if (alt) alt.remove();
+  const dlg = document.createElement("dialog");
+  dlg.className = "bw-dialog bw-dialog--breit";
+  dlg.id = "dialog";
+  dlg.innerHTML = `
+    <form method="dialog" id="csv-form" novalidate>
+      <h2 style="margin-top:0">Prüflinge aus CSV importieren</h2>
+      <p class="bw-klein bw-leise">CSV-Datei wählen (Excel: „Speichern unter → CSV"). Erste Zeile = Spaltenüberschriften.
+        Trennzeichen <code>;</code> oder <code>,</code> werden automatisch erkannt.</p>
+      <div class="bw-field">
+        <label for="csv-datei">CSV-Datei</label>
+        <input id="csv-datei" type="file" accept=".csv,text/csv">
+      </div>
+      <div id="csv-zuordnung" hidden>
+        <h3>Spaltenzuordnung</h3>
+        <div class="bw-dialog__felder" id="csv-mapping"></div>
+        <p id="csv-info" class="bw-hinweis" aria-live="polite"></p>
+        <div class="bw-tablewrap">
+          <table class="bw-table"><thead id="csv-vorschau-kopf"></thead><tbody id="csv-vorschau"></tbody></table>
+        </div>
+      </div>
+      <div class="bw-dialog__aktionen">
+        <button type="button" class="bw-btn bw-btn--sekundaer" id="csv-abbrechen">Abbrechen</button>
+        <button type="submit" class="bw-btn" id="csv-import" disabled>Importieren</button>
+      </div>
+    </form>`;
+  document.body.appendChild(dlg);
+
+  let header = [], daten = [];
+  const form = dlg.querySelector("#csv-form");
+  const mappingEl = dlg.querySelector("#csv-mapping");
+  const infoEl = dlg.querySelector("#csv-info");
+
+  function aktualisiere() {
+    const map = {};
+    CSV_FELDER.forEach((f) => { map[f.name] = Number(form.elements["map_" + f.name].value); });
+    const namensSpalte = map.nachname >= 0 || map.vorname >= 0;
+    form.elements["csv-import"].disabled = !(namensSpalte && daten.length);
+    infoEl.textContent = `${daten.length} Datensätze erkannt${namensSpalte ? "" : " — bitte mindestens Nach- oder Vorname zuordnen"}.`;
+    // Vorschau (erste 5)
+    dlg.querySelector("#csv-vorschau-kopf").innerHTML =
+      "<tr>" + CSV_FELDER.map((f) => `<th>${esc(f.label)}</th>`).join("") + "</tr>";
+    dlg.querySelector("#csv-vorschau").innerHTML = daten.slice(0, 5).map((z) =>
+      "<tr>" + CSV_FELDER.map((f) => `<td>${esc(map[f.name] >= 0 ? (z[map[f.name]] || "") : "")}</td>`).join("") + "</tr>"
+    ).join("");
+    return map;
+  }
+
+  dlg.querySelector("#csv-datei").addEventListener("change", async (ev) => {
+    const datei = ev.target.files && ev.target.files[0];
+    if (!datei) return;
+    try {
+      const zeilen = csvParse(await datei.text());
+      if (zeilen.length < 2) { meldung("CSV enthält keine Datenzeilen (Kopfzeile + mindestens eine Zeile nötig).", "fehler"); return; }
+      header = zeilen[0]; daten = zeilen.slice(1);
+      const map = csvAutoMap(header);
+      mappingEl.innerHTML = CSV_FELDER.map((f) => `
+        <div class="bw-field">
+          <label for="map_${f.name}">${esc(f.label)}</label>
+          <select id="map_${f.name}" name="map_${f.name}">
+            <option value="-1">— nicht importieren —</option>
+            ${header.map((h, i) => `<option value="${i}"${map[f.name] === i ? " selected" : ""}>${esc(h || ("Spalte " + (i + 1)))}</option>`).join("")}
+          </select>
+        </div>`).join("");
+      mappingEl.querySelectorAll("select").forEach((s) => s.addEventListener("change", aktualisiere));
+      dlg.querySelector("#csv-zuordnung").hidden = false;
+      aktualisiere();
+    } catch (e) { console.error(e); meldung("CSV konnte nicht gelesen werden: " + e.message, "fehler"); }
+  });
+
+  dlg.querySelector("#csv-abbrechen").addEventListener("click", () => dlg.close());
+  dlg.addEventListener("close", () => dlg.remove());
+  form.addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const map = aktualisiere();
+    const saetze = daten.map((z) => {
+      const s = {};
+      CSV_FELDER.forEach((f) => { if (map[f.name] >= 0) s[f.name] = (z[map[f.name]] || "").trim(); });
+      return s;
+    });
+    try {
+      const r = await store.prueflingeImportieren(saetze);
+      meldung(`Import: ${zahl(r.angelegt)} Prüflinge angelegt, ${zahl(r.uebersprungen)} übersprungen (Dublette/leer).`);
+      dlg.close();
+      if (nachher) nachher();
+    } catch (e) { console.error(e); meldung("Import fehlgeschlagen: " + e.message, "fehler"); }
+  });
+
+  dlg.showModal();
 }
 
 /* ------------------------------------------------------------- CRUD-Dialog */

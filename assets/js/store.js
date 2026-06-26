@@ -750,6 +750,31 @@ export async function sicherungEinspielen(daten) {
 }
 
 /**
+ * Importiert Prüflinge aus aufbereiteten Datensätzen (z. B. CSV). Dubletten
+ * (gleicher Nach-/Vorname, case-insensitiv) werden übersprungen; leere Zeilen
+ * (ohne Namen) ignoriert.
+ * @returns {{angelegt:number, uebersprungen:number}}
+ */
+export async function prueflingeImportieren(saetze, { dubletten = "ueberspringen" } = {}) {
+  const vorhanden = new Set((await _pg.query(
+    `SELECT lower(btrim(nachname)) || '|' || lower(btrim(coalesce(vorname,''))) AS k FROM prueflinge`
+  )).rows.map((r) => r.k));
+  let angelegt = 0, uebersprungen = 0;
+  const neu = [];
+  for (const s of saetze || []) {
+    const nn = String(s.nachname || "").trim();
+    const vn = String(s.vorname || "").trim();
+    if (!nn && !vn) { uebersprungen++; continue; }
+    const k = nn.toLowerCase() + "|" + vn.toLowerCase();
+    if (dubletten === "ueberspringen" && vorhanden.has(k)) { uebersprungen++; continue; }
+    vorhanden.add(k);
+    neu.push(s);
+  }
+  for (const s of neu) { await anlegen("prueflinge", s); angelegt++; }
+  return { angelegt, uebersprungen };
+}
+
+/**
  * Termine mit allen Eckdaten für den Kalender-Export (ICS): Zeiten, Ort/Raum,
  * Fachrichtung, Prüflingszahl und Ausschuss. Nur Termine mit Datum.
  */
