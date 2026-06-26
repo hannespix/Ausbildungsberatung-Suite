@@ -1358,6 +1358,7 @@ async function renderNoten(pruefungId = null) {
       ${gefiltert && rows.some((r) => r.gesamt == null)
         ? `<button class="bw-btn bw-btn--gelb" type="button" id="reihen-btn">Reihen-Bewertung (${zahl(rows.filter((r) => r.gesamt == null).length)} offen)</button>`
         : ""}
+      <button class="bw-btn bw-btn--sekundaer" type="button" id="noten-import">Noten importieren (CSV)</button>
       <button class="bw-btn bw-btn--sekundaer" type="button" id="noten-csv" ${bewertet ? "" : "disabled"}>Noten als CSV</button>
     </div>` : ""}
 
@@ -1406,6 +1407,9 @@ async function renderNoten(pruefungId = null) {
     document.getElementById("noten-diagramm").innerHTML = '<p class="bw-leise">Noch keine Bewertungen erfasst.</p>';
   }
 
+  document.getElementById("noten-import")?.addEventListener("click", () => {
+    notenImportDialog(pruefungId, () => renderNoten(pruefungId));
+  });
   document.getElementById("noten-termin")?.addEventListener("change", (ev) => {
     const v = ev.target.value;
     renderNoten(v ? Number(v) : null);
@@ -2872,6 +2876,122 @@ function csvImportDialog(key, nachher) {
       dlg.close();
       if (nachher) nachher();
     } catch (e) { console.error(e); meldung("Import fehlgeschlagen: " + e.message, "fehler"); }
+  });
+
+  dlg.showModal();
+}
+
+/* ----------------------------------------------------------- Noten-Import */
+
+// Felder für den Noten-CSV-Import: Zuordnung über Name, dazu die 9 Bereichsnoten.
+const NOTEN_IMPORT_FELDER = [
+  { name: "nachname", label: "Nachname", syn: ["nachname", "name", "familienname"] },
+  { name: "vorname", label: "Vorname", syn: ["vorname", "rufname"] },
+  { name: "p1", label: "Praxis I", syn: ["p1", "praxis1", "praxisi", "bereich1"] },
+  { name: "p2", label: "Praxis II", syn: ["p2", "praxis2", "praxisii", "bereich2"] },
+  { name: "p3", label: "Praxis III", syn: ["p3", "praxis3", "praxisiii", "bereich3"] },
+  { name: "p4", label: "Praxis IV", syn: ["p4", "praxis4", "praxisiv", "bereich4"] },
+  { name: "p5", label: "Praxis V", syn: ["p5", "praxis5", "praxisv", "bereich5"] },
+  { name: "k1", label: "Kenntnis 1", syn: ["k1", "kenntnis1", "kenntnisi"] },
+  { name: "k2", label: "Kenntnis 2", syn: ["k2", "kenntnis2", "kenntnisii"] },
+  { name: "k3", label: "Kenntnis 3", syn: ["k3", "kenntnis3", "kenntnisiii"] },
+  { name: "k4", label: "Kenntnis 4", syn: ["k4", "kenntnis4", "kenntnisiv"] },
+];
+const NOTEN_PFLICHT = NOTEN_IMPORT_FELDER.filter((f) => f.name !== "vorname").map((f) => f.name);
+
+function notenImportDialog(pruefungId, nachher) {
+  const FELDER = NOTEN_IMPORT_FELDER;
+  const alt = document.getElementById("dialog");
+  if (alt) alt.remove();
+  const dlg = document.createElement("dialog");
+  dlg.className = "bw-dialog bw-dialog--breit";
+  dlg.id = "dialog";
+  dlg.innerHTML = `
+    <form method="dialog" id="ni-form" novalidate>
+      <h2 style="margin-top:0">Noten aus CSV importieren</h2>
+      <p class="bw-klein bw-leise">CSV mit Spalten <code>Nachname</code>, <code>Vorname</code> und den 9 Bereichsnoten
+        (<code>Praxis I–V</code>, <code>Kenntnis 1–4</code>; Dezimalkomma erlaubt). Zuordnung über den Namen;
+        gespeichert wird nur, wenn alle 9 Noten vorhanden sind. Erste Zeile = Überschriften.</p>
+      <div class="bw-field">
+        <label for="ni-datei">CSV-Datei</label>
+        <input id="ni-datei" type="file" accept=".csv,text/csv">
+      </div>
+      <div id="ni-zuordnung" hidden>
+        <h3>Spaltenzuordnung</h3>
+        <div class="bw-dialog__felder" id="ni-mapping"></div>
+        <p id="ni-info" class="bw-hinweis" aria-live="polite"></p>
+        <div class="bw-tablewrap">
+          <table class="bw-table"><thead id="ni-kopf"></thead><tbody id="ni-vorschau"></tbody></table>
+        </div>
+      </div>
+      <div class="bw-dialog__aktionen">
+        <button type="button" class="bw-btn bw-btn--sekundaer" id="ni-abbrechen">Abbrechen</button>
+        <button type="submit" class="bw-btn" id="ni-import" disabled>Importieren</button>
+      </div>
+    </form>`;
+  document.body.appendChild(dlg);
+
+  let header = [], daten = [];
+  const form = dlg.querySelector("#ni-form");
+  const mappingEl = dlg.querySelector("#ni-mapping");
+  const infoEl = dlg.querySelector("#ni-info");
+
+  function aktualisiere() {
+    const map = {};
+    FELDER.forEach((f) => { map[f.name] = Number(form.elements["map_" + f.name].value); });
+    const vollstaendig = NOTEN_PFLICHT.every((n) => map[n] >= 0);
+    form.elements["ni-import"].disabled = !(vollstaendig && daten.length);
+    infoEl.textContent = vollstaendig
+      ? `${daten.length} Zeile(n) erkannt — Zuordnung vollständig.`
+      : "Bitte Nachname und alle 9 Bereichsnoten zuordnen.";
+    dlg.querySelector("#ni-kopf").innerHTML =
+      "<tr>" + FELDER.map((f) => `<th>${esc(f.label)}</th>`).join("") + "</tr>";
+    dlg.querySelector("#ni-vorschau").innerHTML = daten.slice(0, 5).map((z) =>
+      "<tr>" + FELDER.map((f) => `<td>${esc(map[f.name] >= 0 ? (z[map[f.name]] || "") : "")}</td>`).join("") + "</tr>"
+    ).join("");
+    return map;
+  }
+
+  dlg.querySelector("#ni-datei").addEventListener("change", async (ev) => {
+    const datei = ev.target.files && ev.target.files[0];
+    if (!datei) return;
+    try {
+      const zeilen = csvParse(await datei.text());
+      if (zeilen.length < 2) { meldung("CSV enthält keine Datenzeilen (Kopfzeile + mindestens eine Zeile nötig).", "fehler"); return; }
+      header = zeilen[0]; daten = zeilen.slice(1);
+      const map = csvAutoMap(header, FELDER);
+      mappingEl.innerHTML = FELDER.map((f) => `
+        <div class="bw-field">
+          <label for="map_${f.name}">${esc(f.label)}</label>
+          <select id="map_${f.name}" name="map_${f.name}">
+            <option value="-1">— nicht importieren —</option>
+            ${header.map((h, i) => `<option value="${i}"${map[f.name] === i ? " selected" : ""}>${esc(h || ("Spalte " + (i + 1)))}</option>`).join("")}
+          </select>
+        </div>`).join("");
+      mappingEl.querySelectorAll("select").forEach((s) => s.addEventListener("change", aktualisiere));
+      dlg.querySelector("#ni-zuordnung").hidden = false;
+      aktualisiere();
+    } catch (e) { console.error(e); meldung("CSV konnte nicht gelesen werden: " + e.message, "fehler"); }
+  });
+
+  dlg.querySelector("#ni-abbrechen").addEventListener("click", () => dlg.close());
+  dlg.addEventListener("close", () => dlg.remove());
+  form.addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const map = aktualisiere();
+    const wert = (z, n) => map[n] >= 0 ? (z[map[n]] || "").trim() : "";
+    const saetze = daten.map((z) => ({
+      nachname: wert(z, "nachname"),
+      vorname: wert(z, "vorname"),
+      praxis: ["p1", "p2", "p3", "p4", "p5"].map((n) => wert(z, n)),
+      kenntnis: ["k1", "k2", "k3", "k4"].map((n) => wert(z, n)),
+    }));
+    try {
+      const r = await store.notenImportieren(saetze);
+      meldung(`Noten-Import: ${zahl(r.gesetzt)} gespeichert, ${zahl(r.nichtGefunden)} ohne Treffer, ${zahl(r.unvollstaendig)} unvollständig.`);
+      dlg.close();
+      if (nachher) nachher();
+    } catch (e) { console.error(e); meldung("Noten-Import fehlgeschlagen: " + e.message, "fehler"); }
   });
 
   dlg.showModal();
