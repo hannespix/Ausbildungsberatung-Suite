@@ -251,6 +251,13 @@ Bewerten-Dialog (9 Bereiche, Live-Ergebnis), Noten-Liste, Zeugnis. Smoke-geteste
   Abtippen der in Excel gesammelten Punkte; speist Gesamtnote, Zeugnis,
   Auswertungen. Chromium-getestet (Treffer/ohne Treffer/unvollständig gezählt,
   Datei-Upload im Dialog setzt Bewertungen, Mobile 390px).
+- ✅ **Bewertungsvorlage (CSV) — Round-Trip**: „Bewertungsvorlage (CSV)" in der
+  Noten-Ansicht exportiert alle (ggf. termingefilterten) Prüflinge mit
+  vorausgefülltem Namen und leeren, **import-kompatiblen** Notenspalten (Praxis
+  I–V, Kenntnis 1–4). In Excel ausfüllen → über „Noten importieren (CSV)"
+  zurückspielen. Schließt den Kreis aus Export und Import.
+  Chromium-getestet (Vorlage exportiert → ausgefüllt → reimportiert, beide
+  Prüflinge bewertet; Mobile 390px).
 - Offen: SheetJS lokal vendoren für `.xlsx/.xlsm`-Sammelbögen (Punktedaten).
 
 ### M6 — Zeugnis-Erstellung ✅
