@@ -175,6 +175,8 @@ input, select, textarea { font: inherit; width: 100%; padding: 0.5em 0.65em; bac
 .bw-hinweis--fehler { border-left-color: var(--bw-fehler); }
 .bw-status-do   { color: var(--bw-erfolg); font-weight: 700; }
 .bw-status-dont { color: var(--bw-fehler); font-weight: 700; }
+.bw-tag { display: inline-block; background: var(--bw-grau-200); color: var(--bw-schwarz);
+  font-size: var(--bw-fs-mini); font-weight: 700; padding: 0.1em 0.6em; border-radius: var(--bw-radius-rund); }
 
 /* ===================== Copyright-Badge =========================== */
 .bw-copyright { display: inline-block; background: var(--bw-schwarz); color: var(--bw-weiss); font-size: var(--bw-fs-mini); line-height: 1; padding: 0.35em 0.55em; border-radius: var(--bw-radius); }

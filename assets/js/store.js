@@ -61,8 +61,10 @@ export async function oeffnen() {
       pruefung_id bigint NOT NULL,
       pruefer_id  bigint NOT NULL,
       rolle text,
+      status text DEFAULT 'offen',
       UNIQUE (pruefung_id, pruefer_id)
     );
+    ALTER TABLE pruefer_zuteilungen ADD COLUMN IF NOT EXISTS status text DEFAULT 'offen';
   `);
   // Bewertung je Prüfling nach dem Galabau-Sammelbewertungsbogen:
   // 5 praktische Bereiche (p1..p5) + 4 Kenntnisbereiche (k1..k4) als Dezimalnoten,
@@ -253,7 +255,7 @@ export async function terminkonflikte(prueflingId, pruefungId) {
 /** Einem Prüfungstermin zugeteilte Prüfer:innen (mit Rolle), sortiert. */
 export async function prueferFuer(pruefungId) {
   const res = await _pg.query(
-    `SELECT pz.id AS zuteilung_id, pz.rolle, p.*
+    `SELECT pz.id AS zuteilung_id, pz.rolle, pz.status, p.*
        FROM pruefer_zuteilungen pz JOIN pruefer p ON p.id = pz.pruefer_id
       WHERE pz.pruefung_id = $1
       ORDER BY pz.rolle NULLS LAST, p.nachname, p.vorname`,
@@ -283,6 +285,138 @@ export async function prueferZuteilen(pruefungId, prueferId, rolle = null) {
 
 export async function entfernePrueferZuteilung(zuteilungId) {
   await _pg.query(`DELETE FROM pruefer_zuteilungen WHERE id = $1`, [zuteilungId]);
+}
+
+/** Zusage-Status einer Prüfer-Zuteilung setzen (offen/angefragt/zugesagt/abgesagt). */
+export async function setzePrueferStatus(zuteilungId, status) {
+  await _pg.query(`UPDATE pruefer_zuteilungen SET status = $2 WHERE id = $1`, [zuteilungId, status]);
+}
+
+/** Alle „offenen" Prüfer eines Termins auf „angefragt" setzen. */
+export async function anfrageStellen(pruefungId) {
+  const res = await _pg.query(
+    `UPDATE pruefer_zuteilungen SET status = 'angefragt'
+      WHERE pruefung_id = $1 AND coalesce(status,'offen') = 'offen' RETURNING id`,
+    [pruefungId]
+  );
+  return res.rows.length;
+}
+
+/**
+ * Intelligente Gesamtplanung (ersetzt vorhandene Zuteilungen):
+ * Verteilt je Fachrichtung alle Prüflinge möglichst gleichmäßig auf passend
+ * viele Prüfungstermine (Kapazität je Tag), nach PLZ des Betriebs geclustert,
+ * legt fehlende Termine automatisch an und besetzt je Termin einen Ausschuss
+ * (Vorsitz + 2 Beisitz) aus dem Prüfer-Pool (Last ausgeglichen).
+ */
+export async function planungAutomatisch(kapazitaet = 12) {
+  const cap = Math.max(1, Number(kapazitaet) || 12);
+  await _pg.exec(`TRUNCATE zuteilungen RESTART IDENTITY; TRUNCATE pruefer_zuteilungen RESTART IDENTITY;`);
+
+  const pruefer = (await _pg.query(`SELECT id FROM pruefer ORDER BY nachname, vorname`)).rows;
+  let prCursor = 0;
+  const naechstePruefer = (n, ausgeschlossen) => {
+    const out = [];
+    let versuche = 0;
+    while (out.length < n && pruefer.length && versuche < pruefer.length * 2) {
+      const pr = pruefer[prCursor++ % pruefer.length];
+      versuche++;
+      if (!ausgeschlossen.has(pr.id)) { out.push(pr.id); ausgeschlossen.add(pr.id); }
+    }
+    return out;
+  };
+
+  const berufe = (await _pg.query(
+    `SELECT DISTINCT beruf FROM prueflinge WHERE beruf IS NOT NULL AND btrim(beruf) <> '' ORDER BY beruf`
+  )).rows.map((r) => r.beruf);
+
+  const zRows = [], pzRows = [];
+  let summeTermine = 0;
+  const ROLLEN = ["Vorsitz", "Beisitz Arbeitgeber", "Beisitz Arbeitnehmer"];
+
+  for (const beruf of berufe) {
+    const pl = (await _pg.query(
+      `SELECT p.id, coalesce(b.plz,'') AS plz
+         FROM prueflinge p LEFT JOIN betriebe b ON b.name = p.betrieb
+        WHERE p.beruf = $1
+        ORDER BY b.plz NULLS LAST, b.ort NULLS LAST, p.nachname, p.vorname`,
+      [beruf]
+    )).rows;
+    if (!pl.length) continue;
+
+    const needed = Math.ceil(pl.length / cap);
+    let termine = (await _pg.query(
+      `SELECT id FROM pruefungen WHERE beruf = $1 ORDER BY datum, id`, [beruf]
+    )).rows;
+
+    if (termine.length < needed) {
+      const vorlage = (await _pg.query(
+        `SELECT datum, ort, zeit_von, zeit_bis FROM pruefungen WHERE beruf = $1 ORDER BY datum DESC, id DESC LIMIT 1`, [beruf]
+      )).rows[0] || { datum: "2026-07-13", ort: "Übungsgelände GBA Freiburg", zeit_von: "08:00", zeit_bis: "16:00" };
+      const basis = new Date(vorlage.datum || "2026-07-13");
+      const neu = [];
+      for (let i = termine.length; i < needed; i++) {
+        const d = new Date(basis);
+        d.setDate(d.getDate() + (i - termine.length + 1));
+        neu.push({
+          titel: `Praktische AP ${beruf} (Gruppe ${i + 1})`, beruf,
+          datum: d.toISOString().slice(0, 10),
+          zeit_von: vorlage.zeit_von || "08:00", zeit_bis: vorlage.zeit_bis || "16:00",
+          ort: vorlage.ort || "Übungsgelände GBA Freiburg", raum: `Gruppe ${i + 1}`,
+        });
+      }
+      await bulkInsert("pruefungen", ["titel", "beruf", "datum", "zeit_von", "zeit_bis", "ort", "raum"], neu);
+      termine = (await _pg.query(`SELECT id FROM pruefungen WHERE beruf = $1 ORDER BY datum, id`, [beruf])).rows;
+    }
+    summeTermine += needed;
+
+    // gleichmäßige, PLZ-zusammenhängende Gruppen (Größen unterscheiden sich um ≤1)
+    const base = Math.floor(pl.length / needed), extra = pl.length % needed;
+    let idx = 0;
+    for (let g = 0; g < needed; g++) {
+      const size = base + (g < extra ? 1 : 0);
+      const termin = termine[g];
+      for (let k = 0; k < size; k++, idx++) {
+        zRows.push({ pruefung_id: termin.id, pruefling_id: pl[idx].id, slot: null, reihenfolge: k + 1 });
+      }
+      const ausschuss = naechstePruefer(ROLLEN.length, new Set());
+      ausschuss.forEach((prId, i) =>
+        pzRows.push({ pruefung_id: termin.id, pruefer_id: prId, rolle: ROLLEN[i] || "Beisitz", status: "offen" })
+      );
+    }
+  }
+
+  await bulkInsert("zuteilungen", ["pruefung_id", "pruefling_id", "slot", "reihenfolge"], zRows);
+  await bulkInsert("pruefer_zuteilungen", ["pruefung_id", "pruefer_id", "rolle", "status"], pzRows);
+  return { termine: summeTermine, zuteilungen: zRows.length, prueferZuteilungen: pzRows.length };
+}
+
+/** Planungs-/Zusageliste: je Termin Eckdaten, Prüflingszahl und Prüfer mit Status. */
+export async function planungsListe() {
+  const termine = (await _pg.query(
+    `SELECT pr.id, pr.titel, pr.beruf, pr.datum, pr.ort, pr.raum, pr.zeit_von,
+            (SELECT count(*)::int FROM zuteilungen z WHERE z.pruefung_id = pr.id) AS anzahl_prueflinge
+       FROM pruefungen pr ORDER BY pr.beruf, pr.datum, pr.id`
+  )).rows;
+  const pruefer = (await _pg.query(
+    `SELECT pz.id AS zuteilung_id, pz.pruefung_id, pz.rolle, coalesce(pz.status,'offen') AS status,
+            p.nachname, p.vorname, p.email, p.organisation
+       FROM pruefer_zuteilungen pz JOIN pruefer p ON p.id = pz.pruefer_id
+      ORDER BY pz.rolle NULLS LAST, p.nachname`
+  )).rows;
+  const map = {};
+  pruefer.forEach((p) => { (map[p.pruefung_id] || (map[p.pruefung_id] = [])).push(p); });
+  return termine.map((t) => ({ ...t, pruefer: map[t.id] || [] }));
+}
+
+/** Zähler über alle Zusage-Status (für die Übersicht). */
+export async function zusageZaehler() {
+  const res = await _pg.query(
+    `SELECT coalesce(status,'offen') AS status, count(*)::int AS n FROM pruefer_zuteilungen GROUP BY 1`
+  );
+  const z = { offen: 0, angefragt: 0, zugesagt: 0, abgesagt: 0 };
+  res.rows.forEach((r) => { z[r.status] = r.n; });
+  return z;
 }
 
 /* ------------------------------------------------------------ Notenberechnung */
