@@ -42,6 +42,18 @@ export async function oeffnen() {
       suchspalten(e)
     );
   }
+
+  // Zuteilung Prüfling <-> Prüfungstermin (Join, m:n) für die Tagesplanung.
+  await _pg.exec(`
+    CREATE TABLE IF NOT EXISTS zuteilungen (
+      id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      pruefung_id  bigint NOT NULL,
+      pruefling_id bigint NOT NULL,
+      slot text,
+      reihenfolge int DEFAULT 0,
+      UNIQUE (pruefung_id, pruefling_id)
+    );
+  `);
   return { pg: _pg, modus: _modus };
 }
 
@@ -109,7 +121,65 @@ export async function aendern(key, id, daten) {
 
 export async function loeschen(key, id) {
   const e = ent(key);
+  // abhängige Zuteilungen mitentfernen (kein Datenmüll)
+  if (key === "prueflinge") await _pg.query(`DELETE FROM zuteilungen WHERE pruefling_id = $1`, [id]);
+  if (key === "pruefungen") await _pg.query(`DELETE FROM zuteilungen WHERE pruefung_id = $1`, [id]);
   await _pg.query(`DELETE FROM ${e.key} WHERE id = $1`, [id]);
+}
+
+/* ------------------------------------------------------- Zuteilung/Planung */
+
+/** Einem Prüfungstermin zugeteilte Prüflinge (mit Slot), sortiert. */
+export async function zuteilungenFuer(pruefungId) {
+  const res = await _pg.query(
+    `SELECT z.id AS zuteilung_id, z.slot, z.reihenfolge, p.*
+       FROM zuteilungen z JOIN prueflinge p ON p.id = z.pruefling_id
+      WHERE z.pruefung_id = $1
+      ORDER BY z.slot NULLS LAST, z.reihenfolge, p.nachname, p.vorname`,
+    [pruefungId]
+  );
+  return res.rows;
+}
+
+/** Prüflinge, die diesem Termin noch nicht zugeteilt sind. */
+export async function nichtZugeteilt(pruefungId) {
+  const res = await _pg.query(
+    `SELECT * FROM prueflinge
+      WHERE id NOT IN (SELECT pruefling_id FROM zuteilungen WHERE pruefung_id = $1)
+      ORDER BY nachname, vorname`,
+    [pruefungId]
+  );
+  return res.rows;
+}
+
+/** Teilt einen Prüfling einem Termin zu (idempotent; aktualisiert ggf. Slot). */
+export async function zuteilen(pruefungId, prueflingId, slot = null) {
+  await _pg.query(
+    `INSERT INTO zuteilungen (pruefung_id, pruefling_id, slot) VALUES ($1, $2, $3)
+       ON CONFLICT (pruefung_id, pruefling_id) DO UPDATE SET slot = EXCLUDED.slot`,
+    [pruefungId, prueflingId, slot || null]
+  );
+}
+
+export async function entferneZuteilung(zuteilungId) {
+  await _pg.query(`DELETE FROM zuteilungen WHERE id = $1`, [zuteilungId]);
+}
+
+/**
+ * Terminkonflikte: andere Prüfungstermine am selben Datum, denen dieser
+ * Prüfling ebenfalls zugeteilt ist (Doppelbelegung am selben Tag).
+ */
+export async function terminkonflikte(prueflingId, pruefungId) {
+  const res = await _pg.query(
+    `SELECT pr.titel, pr.datum
+       FROM zuteilungen z
+       JOIN pruefungen pr ON pr.id = z.pruefung_id
+      WHERE z.pruefling_id = $1
+        AND z.pruefung_id <> $2
+        AND pr.datum = (SELECT datum FROM pruefungen WHERE id = $2)`,
+    [prueflingId, pruefungId]
+  );
+  return res.rows;
 }
 
 export async function anzahl(key) {

@@ -35,9 +35,14 @@ E-Mail-Format-Validierung mit deutscher Meldung; Dublettenwarnung (bestätigbar)
 ### M2b — Weitere Stammdaten-Politur (offen)
 Berufe-Lookup, PLZ-Format, Inline-Bearbeitung, Sortierung per Spaltenkopf.
 
-### M3 — Prüfungstage & Tagesplanung
-Prüfungstermine mit Prüflings- und Prüfer-**Zuteilung**, Zeitslots je Prüfling,
-Tagesablaufplan (druckbar), Konflikt-/Doppelbelegungsprüfung, Kapazitäten.
+### M3 — Prüfungstag-Planung (Zuteilung) ✅
+Neue Ansicht „Planung": Prüflinge je Prüfungstermin **zuteilen** (mit Uhrzeit-
+Slot), Tagesliste mit Entfernen, Konflikt-/Doppelbelegungswarnung am selben Tag,
+saubere Aufräumung abhängiger Zuteilungen beim Löschen. Smoke-getestet (Chromium).
+
+### M3b — Tagesplanung vertiefen (offen)
+Prüfer-Zuteilung je Termin/Ausschuss, druckbarer Tagesablauf (`@media print`),
+Reihenfolge per Drag/Sortierung, Kapazitäts-/Pausenraster.
 
 ### M4 — Prüfer-Organisation
 Verfügbarkeiten, Ausschuss-Zusammenstellung (Vorsitz/Beisitz/Lehrkraft),
