@@ -63,9 +63,15 @@ Notenverteilungs-Diagramm. Smoke-getestet (Chromium).
 Gewichtete Teilleistungen je Beruf, Bestehensregeln/Sperrfächer (Fachentscheidung),
 Nachprüfungs-Kennzeichnung, Verknüpfung mit Prüfungsterminen.
 
-### M6 — Zeugnis-Erstellung
-Zeugnis/Bescheinigung aus Stammdaten + Noten, CI-konforme Druckvorlage
-(`@media print`), Serien-Erstellung, PDF über Druckdialog.
+### M6 — Zeugnis-Erstellung ✅
+Neue Ansicht „Zeugnisse": druckbares Prüfungszeugnis je Prüfling aus Stammdaten
+(Name, Geburtsdatum, Beruf, Betrieb), Prüfungstermin und Note/Ergebnis, mit
+Unterschriftslinien und Datum; CI-konforme Druckvorlage, PDF über Druckdialog.
+Druck nur bei vorhandener Bewertung. Smoke-getestet (Chromium).
+
+### M6b — Zeugnis-Serie (offen)
+Serien-/Stapeldruck mehrerer Zeugnisse, amtlicher Kopf/Logo im Druck,
+konfigurierbarer Zeugnistext je Beruf.
 
 ### M7 — Import / Export
 **Excel/CSV-Import** (Mapping-Assistent, Vorschau, Dublettenabgleich), Export

@@ -290,6 +290,24 @@ export async function bewertungenListe() {
   return res.rows;
 }
 
+/** Alle Daten für ein Zeugnis: Prüfling + Bewertung + (erster) Prüfungstermin. */
+export async function zeugnisDaten(prueflingId) {
+  const p = (await _pg.query(
+    `SELECT p.*, b.punkte, b.note, b.status
+       FROM prueflinge p LEFT JOIN bewertungen b ON b.pruefling_id = p.id
+      WHERE p.id = $1`,
+    [prueflingId]
+  )).rows[0];
+  if (!p) return null;
+  const t = (await _pg.query(
+    `SELECT pr.titel, pr.datum, pr.ort
+       FROM zuteilungen z JOIN pruefungen pr ON pr.id = z.pruefung_id
+      WHERE z.pruefling_id = $1 ORDER BY pr.datum LIMIT 1`,
+    [prueflingId]
+  )).rows[0] || null;
+  return { ...p, termin: t };
+}
+
 /** Notenverteilung (Note 1..6) für Auswertungen/Diagramme. */
 export async function notenVerteilung() {
   const res = await _pg.query(

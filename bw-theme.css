@@ -321,6 +321,10 @@ mark.bw-treffer { background: var(--bw-gelb); color: var(--bw-schwarz); padding:
 .bw-druck { display: none; }
 .bw-druck h1 { margin-top: 0; }
 .bw-druck table { margin-bottom: var(--bw-space-3); }
+/* Zeugnis: Zeilenkopf-Tabelle + Unterschriftenlinien */
+.bw-druck .bw-zeugnis th { width: 14rem; vertical-align: top; background: var(--bw-weiss); color: var(--bw-schwarz); }
+.bw-druck__unterschriften { display: flex; gap: var(--bw-space-6); margin-top: var(--bw-space-8); font-size: var(--bw-fs-klein); }
+.bw-druck__unterschriften span { flex: 1; border-top: 1px solid var(--bw-schwarz); padding-top: var(--bw-space-1); }
 
 @media print {
   body > *:not(.bw-druck) { display: none !important; }
