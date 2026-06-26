@@ -658,6 +658,31 @@ function tagesablaufDrucken(termin, zugeteilt, prueferZug) {
   window.print();
 }
 
+/** Druckbare Anwesenheitsliste (Unterschriftenspalte) je Prüfungstag. */
+function anwesenheitDrucken(termin, zugeteilt) {
+  if (!zugeteilt.length) { meldung("Keine Prüflinge zugeteilt.", "fehler"); return; }
+  const datum = termin.datum ? new Date(termin.datum).toLocaleDateString("de-DE") : "—";
+  const kopf = [datum, termin.ort ? esc(termin.ort) + (termin.raum ? ", " + esc(termin.raum) : "") : "", termin.beruf ? esc(termin.beruf) : ""]
+    .filter(Boolean).join(" · ");
+  druckbereich().innerHTML = `
+    <h1>Anwesenheitsliste — ${esc(termin.titel)}</h1>
+    <p>${kopf}</p>
+    <p class="bw-klein">Praktische Abschlussprüfung Gärtner/in · ${zahl(zugeteilt.length)} Prüflinge</p>
+    <table class="bw-table">
+      <thead><tr><th>Uhrzeit</th><th>Name</th><th>Ausbildungsbetrieb</th><th>Unterschrift</th></tr></thead>
+      <tbody>${zugeteilt.map((z) => `
+        <tr>
+          <td>${esc(z.slot || "—")}</td>
+          <td>${esc((z.nachname || "") + ", " + (z.vorname || ""))}</td>
+          <td>${esc(z.betrieb || "")}</td>
+          <td style="min-width:9rem">&nbsp;</td>
+        </tr>`).join("")}</tbody>
+    </table>
+    <p>Ort, Datum: ${esc(termin.ort || "")}${termin.ort ? ", " : ""}den ${esc(datum)}</p>
+    <p class="bw-klein bw-leise">Erstellt mit der Ausbildungsberatung-Suite — Regierungspräsidium Freiburg</p>`;
+  window.print();
+}
+
 /** Inneres HTML der Ergebnis-Niederschrift je Termin (Prüflinge mit Note). */
 function niederschriftHtml(termin, ergebnisse, prueferZug) {
   const datum = termin.datum ? new Date(termin.datum).toLocaleDateString("de-DE") : "—";
@@ -858,6 +883,8 @@ async function renderPlanung() {
             <div class="bw-disclosure__panel">
               <button class="bw-btn bw-btn--sekundaer" type="button" id="drucken-btn"
                       ${zugeteilt.length || prueferZug.length ? "" : "disabled"}>Tagesablauf drucken</button>
+              <button class="bw-btn bw-btn--sekundaer" type="button" id="anwesenheit-btn"
+                      ${zugeteilt.length ? "" : "disabled title=\"Keine Prüflinge zugeteilt\""}>Anwesenheitsliste drucken</button>
               <button class="bw-btn bw-btn--sekundaer" type="button" id="boegen-btn"
                       ${zugeteilt.length ? "" : "disabled title=\"Keine Prüflinge zugeteilt\""}>Bewertungsbögen drucken</button>
               <button class="bw-btn bw-btn--sekundaer" type="button" id="niederschrift-btn"
@@ -1044,6 +1071,10 @@ async function renderPlanung() {
 
     document.getElementById("drucken-btn")?.addEventListener("click", () => {
       tagesablaufDrucken(termin, zugeteilt, prueferZug);
+    });
+
+    document.getElementById("anwesenheit-btn")?.addEventListener("click", () => {
+      anwesenheitDrucken(termin, zugeteilt);
     });
 
     document.getElementById("boegen-btn")?.addEventListener("click", () => {

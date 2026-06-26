@@ -101,6 +101,10 @@ beim Löschen aufgeräumt. Smoke-getestet (Chromium).
 „Tagesablauf drucken" je Termin: CI-konforme Druckvorlage (`@media print`,
 tintensparend) mit Kopf, Prüflingen inkl. Slots und Ausschuss; über den
 Druckdialog auch als PDF. Smoke-getestet (Chromium, `window.print` gestubbt).
+- ✅ **Anwesenheitsliste**: druckbare Teilnehmerliste je Prüfungstag (Uhrzeit,
+  Name, Betrieb, Unterschriftenspalte) zum Abzeichnen am Prüfungstag — in der
+  Planung unter „Einzeldokumente". Chromium-getestet (Druck, Unterschriftenspalte,
+  Mobile 390px).
 
 ### M3e — Tagesablauf-Phasen (GaLaBau) ✅
 Der druckbare Tagesablauf zeigt für GaLaBau-Termine zusätzlich den festen
