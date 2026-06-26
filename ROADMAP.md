@@ -221,6 +221,10 @@ Druck nur bei vorhandener Bewertung. Smoke-getestet (Chromium).
   beschränkt sich auf deren bewertete Zeugnisse („Zeugnisse dieses Termins
   drucken"). `alleZeugnisDaten(pruefungId)`. Chromium-getestet (3 von 4
   bewerteten gefiltert, je Seite, Mobile 390px).
+- ✅ **Note in Worten im Zeugnis**: Praxis-Schnitt, Kenntnis-Schnitt und
+  Gesamtnote tragen zusätzlich die Wortstufe (z. B. „2,4 (gut)") — amtsüblich
+  auf der Urkunde. `store.wortStufe()`. Chromium-getestet (gut/sehr gut/
+  ausreichend/ungenügend, alle drei Schnitte).
 - Offen: konfigurierbarer Zeugnistext je Beruf.
 
 ### M7 — Import / Export
