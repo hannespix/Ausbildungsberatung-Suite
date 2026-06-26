@@ -868,6 +868,49 @@ export async function quoteJeFachrichtung() {
   }));
 }
 
+/**
+ * Offene Aufgaben („Was ist zu tun?"): erkennt automatisch Handlungsbedarf über
+ * alle Stationen und verlinkt dorthin. Nur Punkte mit Bedarf werden geliefert.
+ * @returns {Array<{key,n,text,route,art}>}
+ */
+export async function hinweise() {
+  const items = [];
+
+  const ohneAusschuss = (await _pg.query(
+    `SELECT count(*)::int AS n FROM pruefungen pr
+      WHERE (SELECT count(*) FROM zuteilungen z WHERE z.pruefung_id = pr.id) > 0
+        AND (SELECT count(*) FROM pruefer_zuteilungen pz WHERE pz.pruefung_id = pr.id) = 0`
+  )).rows[0].n;
+  if (ohneAusschuss) items.push({ key: "ausschuss", n: ohneAusschuss, route: "#/planung", art: "fehler",
+    text: `${ohneAusschuss} belegte(r) Prüfungstermin(e) ohne Ausschuss` });
+
+  const k = (await prueferKonflikte()).length;
+  if (k) items.push({ key: "konflikt", n: k, route: "#/auswertungen", art: "fehler",
+    text: `${k} Prüfer-Doppelbelegung(en) am selben Tag` });
+
+  const z = await zusageZaehler();
+  const offen = (z.offen || 0) + (z.angefragt || 0);
+  if (offen) items.push({ key: "zusagen", n: offen, route: "#/planungsliste", art: "hinweis",
+    text: `${offen} Prüfer-Zusage(n) noch offen oder angefragt` });
+
+  const unbewertet = (await _pg.query(
+    `SELECT count(DISTINCT z.pruefling_id)::int AS n
+       FROM zuteilungen z LEFT JOIN bewertungen b ON b.pruefling_id = z.pruefling_id
+      WHERE b.gesamt IS NULL`
+  )).rows[0].n;
+  if (unbewertet) items.push({ key: "unbewertet", n: unbewertet, route: "#/noten", art: "hinweis",
+    text: `${unbewertet} eingeplante(r) Prüfling(e) noch nicht bewertet` });
+
+  const offeneTermine = (await _pg.query(
+    `SELECT count(*)::int AS n FROM pruefungen pr
+      WHERE (SELECT count(*) FROM zuteilungen z WHERE z.pruefung_id = pr.id) = 0`
+  )).rows[0].n;
+  if (offeneTermine) items.push({ key: "leer", n: offeneTermine, route: "#/planung", art: "hinweis",
+    text: `${offeneTermine} Prüfungstermin(e) ohne zugeteilte Prüflinge` });
+
+  return items;
+}
+
 /** Häufigkeiten einer Spalte (für Auswertungen/Diagramme). */
 export async function gruppiert(key, spalte) {
   const e = ent(key);

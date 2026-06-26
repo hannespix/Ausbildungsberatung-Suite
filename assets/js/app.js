@@ -82,6 +82,8 @@ async function renderUebersicht() {
   }
   const fortschritt = await store.fortschrittVerteilung();
   const fGesamt = fortschritt.reduce((s, r) => s + r.wert, 0);
+  let hinweise = [];
+  try { hinweise = await store.hinweise(); } catch (e) { console.warn("Hinweise nicht verfügbar:", e); }
   const fBestanden = (fortschritt.find((r) => r.key === "bestanden") || {}).wert || 0;
   const fNicht = (fortschritt.find((r) => r.key === "nicht_bestanden") || {}).wert || 0;
   const fBewertet = fBestanden + fNicht;
@@ -100,6 +102,19 @@ async function renderUebersicht() {
             <span class="bw-stat__label">${esc(s.label)}</span>
           </a>`).join("")}
       </div>
+    </section>
+
+    <section aria-labelledby="todo-h" style="margin-top:var(--bw-space-4)">
+      <h2 id="todo-h">Was ist zu tun?</h2>
+      ${hinweise.length ? `
+        <ul class="bw-trefferliste">
+          ${hinweise.map((h) => `
+            <li>
+              <span>${h.art === "fehler" ? '<span class="bw-status-dont">●</span> ' : ""}${esc(h.text)}</span>
+              <a class="bw-btn bw-btn--sekundaer" href="${h.route}" style="margin-left:auto">Öffnen</a>
+            </li>`).join("")}
+        </ul>`
+        : '<p class="bw-hinweis bw-hinweis--erfolg">Alles erledigt — keine offenen Aufgaben.</p>'}
     </section>
 
     <section aria-labelledby="diagramm-h" style="margin-top:var(--bw-space-4)">
