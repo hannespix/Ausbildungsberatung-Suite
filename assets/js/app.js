@@ -1096,6 +1096,59 @@ async function serienZeugnisDruck() {
   window.print();
 }
 
+/* --------------------------------------------------------- Schnellsuche */
+
+async function renderSuche() {
+  appEl().innerHTML = `
+    <h1>Schnellsuche</h1>
+    <p class="bw-unterzeile">Prüflinge, Betriebe, Prüfer:innen und Termine auf einmal — tippfehlertolerant</p>
+    <div class="bw-search" style="max-width:42rem">
+      <label for="modulsuche" class="bw-skip-link">Suchbegriff</label>
+      <input id="modulsuche" type="search" placeholder="Name, Betrieb, Ort, Termin …"
+             aria-label="Schnellsuche" autocomplete="off">
+      <button type="button" id="suche-btn">Suchen</button>
+    </div>
+    <div id="such-ergebnis" aria-live="polite" style="margin-top:var(--bw-space-3)"></div>
+  `;
+
+  const eingabe = document.getElementById("modulsuche");
+  const ziel = document.getElementById("such-ergebnis");
+
+  const prueflingZeile = (r, q) => `
+    <li><a href="#/pruefling/${r.id}">${hl((r.nachname || "") + ", " + (r.vorname || ""), q)}</a>
+      <span class="bw-klein bw-leise">${esc(r.beruf || "")}${r.betrieb ? " · " + esc(r.betrieb) : ""}</span></li>`;
+  const kontaktZeile = (r, q, name, zusatz) => `
+    <li>${hl(name, q)}${zusatz ? ` <span class="bw-klein bw-leise">${esc(zusatz)}</span>` : ""}
+      <span class="bw-klein">${[r.telefon ? telLink(r.telefon, q) : "", r.email ? mailLink(r.email, q) : ""].filter(Boolean).join(" · ")}</span></li>`;
+  const terminZeile = (r, q) => `
+    <li><a href="#/planung">${hl(r.titel || "Termin", q)}</a>
+      <span class="bw-klein bw-leise">${r.datum ? esc(new Date(r.datum).toLocaleDateString("de-DE")) : ""}${r.beruf ? " · " + esc(r.beruf) : ""}${r.ort ? " · " + esc(r.ort) : ""}</span></li>`;
+
+  const gruppe = (titel, items, html) => items.length
+    ? `<section style="margin-bottom:var(--bw-space-3)"><h2>${esc(titel)} (${zahl(items.length)})</h2><ul class="bw-trefferliste">${items.map(html).join("")}</ul></section>`
+    : "";
+
+  const zeichne = async () => {
+    const q = eingabe.value.trim();
+    if (!q) { ziel.innerHTML = '<p class="bw-leise">Suchbegriff eingeben — es werden alle Stammdaten gleichzeitig durchsucht.</p>'; return; }
+    let r;
+    try { r = await store.schnellsuche(q); }
+    catch (e) { console.error(e); meldung("Suche fehlgeschlagen: " + e.message, "fehler"); return; }
+    const gesamt = r.prueflinge.length + r.betriebe.length + r.pruefer.length + r.pruefungen.length;
+    const html =
+      gruppe("Prüflinge", r.prueflinge, (x) => prueflingZeile(x, q)) +
+      gruppe("Betriebe", r.betriebe, (x) => kontaktZeile(x, q, x.name, x.ort)) +
+      gruppe("Prüfer:innen", r.pruefer, (x) => kontaktZeile(x, q, (x.nachname || "") + ", " + (x.vorname || ""), x.organisation)) +
+      gruppe("Prüfungstermine", r.pruefungen, (x) => terminZeile(x, q));
+    ziel.innerHTML = gesamt ? html : `<p class="bw-hinweis">Keine Treffer für „${esc(q)}".</p>`;
+  };
+
+  eingabe.addEventListener("input", debounce(zeichne, 180));
+  document.getElementById("suche-btn").addEventListener("click", zeichne);
+  zeichne();
+  eingabe.focus();
+}
+
 /* --------------------------------------------------------- Prüflings-Akte */
 
 async function renderPrueflingAkte(id) {
@@ -1713,6 +1766,7 @@ async function route() {
     else if (r === "zeugnisse") await renderZeugnisse();
     else if (r === "auswertungen") await renderAuswertungen();
     else if (r === "kontakte") await renderKontakte();
+    else if (r === "suche") await renderSuche();
     else if (r.startsWith("pruefling/")) await renderPrueflingAkte(r.slice("pruefling/".length));
     else if (ENTITAETEN[r]) await renderListe(r);
     else { location.hash = "#/"; return; }
