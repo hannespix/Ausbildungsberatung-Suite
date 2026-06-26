@@ -67,7 +67,8 @@ im aktuellen Landes-Corporate-Design Baden-Württemberg
   Die Notenliste lässt sich **nach Prüfungstermin filtern** (Schnellerfassung am
   Prüfungstag: Prüflinge in Uhrzeit-Reihenfolge, Zähler „X von Y bewertet").
 - **Zeugnisse** — druckbares Prüfungszeugnis je Prüfling sowie **Serien-Druck**
-  aller bewerteten Zeugnisse (Druck/PDF).
+  aller bewerteten Zeugnisse, wahlweise **auf einen Prüfungstermin gefiltert**
+  (Druck/PDF).
 - **Auswertungen** — Auslastung je Termin (mit Balkendiagramm „Prüflinge je
   Prüfungstermin"), Bestehensquoten je Fachrichtung, **Prüfer-Einsätze** (Last
   je Prüfer:in) und Prüfer-Doppelbelegungen; CI-konforme Diagramme,

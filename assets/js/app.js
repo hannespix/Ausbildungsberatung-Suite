@@ -1436,16 +1436,27 @@ function roem(n) { return ["", "I", "II", "III", "IV", "V"][n] || String(n); }
 
 /* --------------------------------------------------------------- Zeugnisse */
 
-async function renderZeugnisse() {
-  const rows = await store.bewertungenListe();
+async function renderZeugnisse(pruefungId = null) {
+  const termine = await store.liste("pruefungen");
+  const rows = await store.bewertungenListe(pruefungId);
+  const bewertete = rows.filter((r) => r.gesamt != null).length;
+  const serienLabel = pruefungId != null ? "Zeugnisse dieses Termins drucken (Serie)" : "Alle Zeugnisse drucken (Serie)";
 
   appEl().innerHTML = `
     <h1>Zeugnisse</h1>
     <p class="bw-unterzeile">Prüfungszeugnis je Prüfling drucken (oder als PDF speichern)</p>
     <div class="bw-toolbar">
-      <span class="bw-klein bw-leise">${zahl(rows.filter((r) => r.gesamt != null).length)} bewertete Prüflinge</span>
+      ${termine.length ? `
+      <div class="bw-field" style="max-width:36rem;flex:1 1 22rem;margin:0">
+        <label for="zeugnis-termin">Prüfungstermin</label>
+        <select id="zeugnis-termin">
+          <option value="">— alle Prüflinge —</option>
+          ${termine.map((t) => `<option value="${t.id}"${String(t.id) === String(pruefungId) ? " selected" : ""}>${esc(terminLabel(t))}</option>`).join("")}
+        </select>
+      </div>` : ""}
+      <span class="bw-klein bw-leise" style="align-self:center">${zahl(bewertete)} bewertete Prüflinge</span>
       <button class="bw-btn bw-btn--gelb" type="button" id="serien-druck"
-              ${rows.some((r) => r.gesamt != null) ? "" : "disabled"}>Alle Zeugnisse drucken (Serie)</button>
+              ${bewertete ? "" : "disabled"}>${serienLabel}</button>
     </div>
     <div class="bw-tablewrap">
     <table class="bw-table">
@@ -1465,10 +1476,16 @@ async function renderZeugnisse() {
       </tbody>
     </table>
     </div>
-    <p class="bw-hinweis"${rows.length ? " hidden" : ""}>Noch keine Prüflinge vorhanden — zuerst unter <a href="#/prueflinge">Prüflinge</a> anlegen.</p>
+    <p class="bw-hinweis"${rows.length ? " hidden" : ""}>${pruefungId != null
+      ? "Diesem Termin sind noch keine Prüflinge zugeteilt — unter <a href=\"#/planung\">Planung</a> zuteilen."
+      : "Noch keine Prüflinge vorhanden — zuerst unter <a href=\"#/prueflinge\">Prüflinge</a> anlegen."}</p>
     <p class="bw-klein bw-leise" style="margin-top:var(--bw-space-2)">Ein Zeugnis kann erst gedruckt werden, wenn unter <a href="#/noten">Noten</a> eine Bewertung erfasst ist.</p>
   `;
 
+  document.getElementById("zeugnis-termin")?.addEventListener("change", (ev) => {
+    const v = ev.target.value;
+    renderZeugnisse(v ? Number(v) : null);
+  });
   document.getElementById("zeugnis-koerper").addEventListener("click", async (ev) => {
     const pid = ev.target.closest("[data-zeugnis]")?.getAttribute("data-zeugnis");
     if (!pid) return;
@@ -1476,7 +1493,7 @@ async function renderZeugnisse() {
     catch (e) { console.error(e); meldung("Zeugnis konnte nicht erstellt werden: " + e.message, "fehler"); }
   });
   document.getElementById("serien-druck")?.addEventListener("click", async () => {
-    try { await serienZeugnisDruck(); }
+    try { await serienZeugnisDruck(pruefungId); }
     catch (e) { console.error(e); meldung("Serien-Druck fehlgeschlagen: " + e.message, "fehler"); }
   });
 }
@@ -1542,9 +1559,9 @@ async function zeugnisDrucken(prueflingId) {
   window.print();
 }
 
-/** Serien-Druck aller bewerteten Zeugnisse (je Zeugnis eine Seite). */
-async function serienZeugnisDruck() {
-  const liste = await store.alleZeugnisDaten();
+/** Serien-Druck der bewerteten Zeugnisse (optional auf einen Termin beschränkt). */
+async function serienZeugnisDruck(pruefungId = null) {
+  const liste = await store.alleZeugnisDaten(pruefungId);
   if (!liste.length) { meldung("Keine bewerteten Prüflinge für den Serien-Druck.", "fehler"); return; }
   druckbereich().innerHTML = liste
     .map((d) => `<section class="bw-zeugnisblatt">${zeugnisHtml(d)}</section>`).join("");

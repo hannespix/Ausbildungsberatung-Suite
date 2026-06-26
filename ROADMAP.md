@@ -204,9 +204,14 @@ Neue Ansicht „Zeugnisse": druckbares Prüfungszeugnis je Prüfling aus Stammda
 Unterschriftslinien und Datum; CI-konforme Druckvorlage, PDF über Druckdialog.
 Druck nur bei vorhandener Bewertung. Smoke-getestet (Chromium).
 
-### M6b — Zeugnis-Serie (offen)
-Serien-/Stapeldruck mehrerer Zeugnisse, amtlicher Kopf/Logo im Druck,
-konfigurierbarer Zeugnistext je Beruf.
+### M6b — Zeugnis-Serie ✅
+- ✅ **Serien-/Stapeldruck** aller bewerteten Zeugnisse (je Zeugnis eine Seite).
+- ✅ **Prüfungstermin-Filter** auf der Zeugnisse-Seite (wie bei den Noten): die
+  Liste zeigt dann die zugeteilten Prüflinge dieses Tages, der Serien-Druck
+  beschränkt sich auf deren bewertete Zeugnisse („Zeugnisse dieses Termins
+  drucken"). `alleZeugnisDaten(pruefungId)`. Chromium-getestet (3 von 4
+  bewerteten gefiltert, je Seite, Mobile 390px).
+- Offen: konfigurierbarer Zeugnistext je Beruf.
 
 ### M7 — Import / Export
 **Excel/CSV-Import** (Mapping-Assistent, Vorschau, Dublettenabgleich), Export
