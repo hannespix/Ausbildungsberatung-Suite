@@ -1823,6 +1823,7 @@ async function renderAuswertungen(jahr = null) {
       <button class="bw-btn bw-btn--sekundaer" type="button" id="csv-quoten" ${quoten.length ? "" : "disabled"}>Quoten als CSV</button>
       <button class="bw-btn bw-btn--sekundaer" type="button" id="csv-auslastung" ${auslast.length ? "" : "disabled"}>Auslastung als CSV</button>
       <button class="bw-btn bw-btn--sekundaer" type="button" id="csv-einsaetze" ${einsaetze.length ? "" : "disabled"}>Prüfer-Einsätze als CSV</button>
+      <button class="bw-btn bw-btn--gelb" type="button" id="bericht-drucken" ${(quoten.length || auslast.length) ? "" : "disabled"}>Bericht drucken</button>
     </div>
 
     <div class="bw-flaechen bw-stat-grid">
@@ -1962,6 +1963,42 @@ async function renderAuswertungen(jahr = null) {
     const zeilen = einsaetze.map((r) => [r.name, r.organisation || "", r.einsaetze, r.tage, r.zugesagt, r.offen, r.abgesagt]);
     dateiDownload(`Pruefer-Einsaetze${jahr ? "-" + jahr : ""}.csv`, csvText(kopf, zeilen), "text/csv;charset=utf-8");
     meldung(`Prüfer-Einsätze exportiert: ${zahl(einsaetze.length)} Prüfer:innen.`);
+  });
+  document.getElementById("bericht-drucken")?.addEventListener("click", () => {
+    const heute = new Date().toLocaleDateString("de-DE");
+    const kennzahl = (wert, label) => `<tr><th scope="row">${esc(label)}</th><td style="text-align:right">${wert}</td></tr>`;
+    druckbereich().innerHTML = `
+      <h1>Auswertungsbericht — Abschlussprüfung Gärtner/in</h1>
+      <p>${jahr ? "Prüfungsjahr " + esc(String(jahr)) : "Alle Prüfungsjahre"} · Stand ${esc(heute)}</p>
+
+      <h2>Kennzahlen</h2>
+      <table class="bw-table bw-zeugnis"><tbody>
+        ${kennzahl(zahl(belegt.length), "Belegte Prüfungstermine")}
+        ${kennzahl(zahl(schnittPl), "Ø Prüflinge je Termin")}
+        ${kennzahl(gesamtQuote == null ? "—" : zahl(gesamtQuote) + " %", "Bestehensquote gesamt")}
+        ${kennzahl(zahl(konflikte.length), "Prüfer-Doppelbelegungen")}
+        ${kennzahl(zahl(ohneAusschuss), "Belegte Termine ohne Ausschuss")}
+      </tbody></table>
+
+      <h2>Bestehensquote je Fachrichtung</h2>
+      <table class="bw-table">
+        <thead><tr><th>Fachrichtung</th><th style="text-align:right">Prüflinge</th><th style="text-align:right">bewertet</th><th style="text-align:right">bestanden</th><th style="text-align:right">Quote</th><th style="text-align:right">Ø Note</th></tr></thead>
+        <tbody>${quoten.length ? quoten.map((r) => `<tr><td>${esc(r.beruf)}</td><td style="text-align:right">${zahl(r.gesamt)}</td><td style="text-align:right">${zahl(r.bewertet)}</td><td style="text-align:right">${zahl(r.bestanden)}</td><td style="text-align:right">${r.quote == null ? "—" : zahl(r.quote) + " %"}</td><td style="text-align:right">${r.schnitt == null ? "—" : formatNote(r.schnitt)}</td></tr>`).join("") : '<tr><td colspan="6">Keine Daten.</td></tr>'}</tbody>
+      </table>
+
+      <h2>Auslastung je Prüfungstermin</h2>
+      <table class="bw-table">
+        <thead><tr><th>Termin</th><th>Datum</th><th>Fachrichtung</th><th style="text-align:right">Prüflinge</th><th style="text-align:right">Ausschuss</th></tr></thead>
+        <tbody>${auslast.length ? auslast.map((t) => `<tr><td>${esc(t.titel || "—")}</td><td>${t.datum ? esc(new Date(t.datum).toLocaleDateString("de-DE")) : "—"}</td><td>${esc(t.beruf || "—")}</td><td style="text-align:right">${zahl(t.prueflinge)}</td><td style="text-align:right">${zahl(t.ausschuss)}</td></tr>`).join("") : '<tr><td colspan="5">Keine Daten.</td></tr>'}</tbody>
+      </table>
+
+      <h2>Prüfer-Einsätze</h2>
+      <table class="bw-table">
+        <thead><tr><th>Prüfer:in</th><th>Organisation</th><th style="text-align:right">Einsätze</th><th style="text-align:right">Tage</th><th style="text-align:right">zugesagt</th><th style="text-align:right">offen</th></tr></thead>
+        <tbody>${einsaetze.length ? einsaetze.map((r) => `<tr><td>${esc(r.name)}</td><td>${esc(r.organisation || "—")}</td><td style="text-align:right">${zahl(r.einsaetze)}</td><td style="text-align:right">${zahl(r.tage)}</td><td style="text-align:right">${zahl(r.zugesagt)}</td><td style="text-align:right">${zahl(r.offen)}</td></tr>`).join("") : '<tr><td colspan="6">Keine Daten.</td></tr>'}</tbody>
+      </table>
+      <p class="bw-klein bw-leise">Erstellt mit der Ausbildungsberatung-Suite — Regierungspräsidium Freiburg</p>`;
+    window.print();
   });
 }
 

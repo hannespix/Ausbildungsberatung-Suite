@@ -249,6 +249,11 @@ Chromium-getestet (Balken, Hervorhebung, Mobile 390px).
 zugesagt/offen je Prüfer:in) für eine faire Lastverteilung — aus der Planung
 abgeleitet, mit Prüfungsjahr-Filter und CSV-Export (`prueferEinsaetze`).
 Chromium-getestet (31 Prüfer:innen, Diagramm, CSV, Mobile 390px).
+✅ **Druckbarer Auswertungsbericht**: ein Knopf „Bericht drucken" fasst
+Kennzahlen, Bestehensquoten je Fachrichtung, Auslastung je Termin und
+Prüfer-Einsätze in einem druckbaren Dokument zusammen (folgt dem
+Prüfungsjahr-Filter) — für Dokumentation/Jahresbericht. Chromium-getestet
+(alle Abschnitte, Jahr im Titel, Mobile 390px).
 Offen: Stichtagsauswertung.
 
 ### M11 — Barrierefreiheit & Feinschliff

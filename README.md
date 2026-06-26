@@ -65,7 +65,8 @@ im aktuellen Landes-Corporate-Design Baden-Württemberg
 - **Auswertungen** — Auslastung je Termin (mit Balkendiagramm „Prüflinge je
   Prüfungstermin"), Bestehensquoten je Fachrichtung, **Prüfer-Einsätze** (Last
   je Prüfer:in) und Prüfer-Doppelbelegungen; CI-konforme Diagramme,
-  Prüfungsjahr-Filter, CSV-Export.
+  Prüfungsjahr-Filter, CSV-Export und **druckbarer Auswertungsbericht**
+  (Jahresbericht).
 - **Adress- & Telefonliste** — konsolidiert Betriebe und Prüfer:innen, druckbar
   und als **CSV-/vCard-Export** (Outlook/Telefon).
 - **Outlook-/Kalender-Export** — **ICS-Export** der Prüfungstage (offline, kein
