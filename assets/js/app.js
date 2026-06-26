@@ -835,6 +835,10 @@ async function renderPlanung() {
       if (!prid) { meldung("Bitte eine:n Prüfer:in wählen.", "fehler"); return; }
       const rolle = document.getElementById("rolle-wahl").value || null;
       try {
+        if (termin.datum && await store.istAbwesend(prid, termin.datum)) {
+          const datum = new Date(termin.datum).toLocaleDateString("de-DE");
+          if (!confirm(`Diese:r Prüfer:in ist am ${datum} als abwesend hinterlegt. Trotzdem zuteilen?`)) return;
+        }
         await store.prueferZuteilen(id, prid, rolle);
         meldung("Prüfer:in zugeteilt.");
         planZeichnen();
