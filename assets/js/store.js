@@ -66,6 +66,16 @@ export async function oeffnen() {
     );
     ALTER TABLE pruefer_zuteilungen ADD COLUMN IF NOT EXISTS status text DEFAULT 'offen';
   `);
+  // Abwesenheiten je Prüfer:in (einzelne Tage) — die Auto-Planung besetzt an
+  // diesen Tagen keinen Ausschuss mit dieser Person.
+  await _pg.exec(`
+    CREATE TABLE IF NOT EXISTS pruefer_abwesenheit (
+      id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      pruefer_id bigint NOT NULL,
+      datum date NOT NULL,
+      UNIQUE (pruefer_id, datum)
+    );
+  `);
   // Bewertung je Prüfling nach dem Galabau-Sammelbewertungsbogen:
   // 5 praktische Bereiche (p1..p5) + 4 Kenntnisbereiche (k1..k4) als Dezimalnoten,
   // dazu die berechneten Schnitte und das Gesamtergebnis.
@@ -181,7 +191,10 @@ export async function loeschen(key, id) {
     await _pg.query(`DELETE FROM zuteilungen WHERE pruefling_id = $1`, [id]);
     await _pg.query(`DELETE FROM bewertungen WHERE pruefling_id = $1`, [id]);
   }
-  if (key === "pruefer")    await _pg.query(`DELETE FROM pruefer_zuteilungen WHERE pruefer_id = $1`, [id]);
+  if (key === "pruefer") {
+    await _pg.query(`DELETE FROM pruefer_zuteilungen WHERE pruefer_id = $1`, [id]);
+    await _pg.query(`DELETE FROM pruefer_abwesenheit WHERE pruefer_id = $1`, [id]);
+  }
   if (key === "pruefungen") {
     await _pg.query(`DELETE FROM zuteilungen WHERE pruefung_id = $1`, [id]);
     await _pg.query(`DELETE FROM pruefer_zuteilungen WHERE pruefung_id = $1`, [id]);
@@ -321,6 +334,38 @@ export async function entfernePrueferZuteilung(zuteilungId) {
   await _pg.query(`DELETE FROM pruefer_zuteilungen WHERE id = $1`, [zuteilungId]);
 }
 
+/** Datum (Date oder String) auf "YYYY-MM-DD" normalisieren. */
+function isoDatum(d) {
+  if (d instanceof Date && !isNaN(d)) {
+    return String(d.getFullYear()) + "-" +
+      String(d.getMonth() + 1).padStart(2, "0") + "-" +
+      String(d.getDate()).padStart(2, "0");
+  }
+  return String(d || "").slice(0, 10);
+}
+
+/** Abwesenheitstage einer Prüferin/eines Prüfers. */
+export async function abwesenheitenFuer(prueferId) {
+  const r = await _pg.query(
+    `SELECT id, datum FROM pruefer_abwesenheit WHERE pruefer_id = $1 ORDER BY datum`, [prueferId]
+  );
+  return r.rows;
+}
+
+/** Einen Abwesenheitstag setzen (idempotent). */
+export async function abwesenheitSetzen(prueferId, datum) {
+  if (!datum) return;
+  await _pg.query(
+    `INSERT INTO pruefer_abwesenheit (pruefer_id, datum) VALUES ($1, $2)
+       ON CONFLICT (pruefer_id, datum) DO NOTHING`, [prueferId, datum]
+  );
+}
+
+/** Einen Abwesenheitstag entfernen. */
+export async function abwesenheitEntfernen(id) {
+  await _pg.query(`DELETE FROM pruefer_abwesenheit WHERE id = $1`, [id]);
+}
+
 /** Zusage-Status einer Prüfer-Zuteilung setzen (offen/angefragt/zugesagt/abgesagt). */
 export async function setzePrueferStatus(zuteilungId, status) {
   await _pg.query(`UPDATE pruefer_zuteilungen SET status = $2 WHERE id = $1`, [zuteilungId, status]);
@@ -386,27 +431,36 @@ export async function planungAutomatisch(kapazitaet = 12) {
   await _pg.exec(`TRUNCATE zuteilungen RESTART IDENTITY; TRUNCATE pruefer_zuteilungen RESTART IDENTITY;`);
 
   const pruefer = (await _pg.query(`SELECT id FROM pruefer ORDER BY nachname, vorname`)).rows;
+  // Abwesenheiten je Tag: an diesen Tagen wird die Person nicht eingeteilt.
+  const abwesend = new Map(); // "YYYY-MM-DD" -> Set(pruefer_id)
+  (await _pg.query(`SELECT pruefer_id, datum FROM pruefer_abwesenheit`)).rows.forEach((r) => {
+    const k = isoDatum(r.datum);
+    if (!abwesend.has(k)) abwesend.set(k, new Set());
+    abwesend.get(k).add(r.pruefer_id);
+  });
   let prCursor = 0;
   // Belegung je Prüfungstag: verhindert Doppelbelegung einer Prüferin/eines
   // Prüfers am selben Datum (auch fachrichtungsübergreifend).
   const tagBelegung = new Map();
   const naechstePruefer = (n, datum) => {
     const tagSet = tagBelegung.get(datum) || new Set();
+    const abw = abwesend.get(datum) || new Set();
     const out = [], imAusschuss = new Set();
-    // 1. Durchgang: bevorzugt am selben Tag noch freie Prüfer:innen.
+    // 1. Durchgang: bevorzugt am selben Tag noch freie, nicht abwesende Prüfer:innen.
     let versuche = 0;
     while (out.length < n && pruefer.length && versuche < pruefer.length) {
       const pr = pruefer[prCursor++ % pruefer.length];
       versuche++;
-      if (imAusschuss.has(pr.id) || tagSet.has(pr.id)) continue;
+      if (imAusschuss.has(pr.id) || tagSet.has(pr.id) || abw.has(pr.id)) continue;
       out.push(pr.id); imAusschuss.add(pr.id);
     }
-    // 2. Durchgang: notfalls auffüllen (Konflikt in Kauf nehmen statt leer lassen).
+    // 2. Durchgang: notfalls auffüllen (Tageskonflikt in Kauf nehmen) — Abwesende
+    // bleiben aber ausgeschlossen.
     versuche = 0;
     while (out.length < n && pruefer.length && versuche < pruefer.length * 2) {
       const pr = pruefer[prCursor++ % pruefer.length];
       versuche++;
-      if (imAusschuss.has(pr.id)) continue;
+      if (imAusschuss.has(pr.id) || abw.has(pr.id)) continue;
       out.push(pr.id); imAusschuss.add(pr.id);
     }
     out.forEach((id) => tagSet.add(id));
@@ -471,7 +525,7 @@ export async function planungAutomatisch(kapazitaet = 12) {
           slot: _addMinuten(beginn, k * ZEITRASTER_MINUTEN), reihenfolge: k + 1,
         });
       }
-      const ausschuss = naechstePruefer(ROLLEN.length, termin.datum || ("g" + g));
+      const ausschuss = naechstePruefer(ROLLEN.length, termin.datum ? isoDatum(termin.datum) : ("g" + g));
       ausschuss.forEach((prId, i) =>
         pzRows.push({ pruefung_id: termin.id, pruefer_id: prId, rolle: ROLLEN[i] || "Beisitz", status: "offen" })
       );
@@ -766,6 +820,7 @@ const SICHERUNG_TABELLEN = {
   prueflinge: null, betriebe: null, pruefer: null, pruefungen: null,
   zuteilungen: ["pruefung_id", "pruefling_id", "slot", "reihenfolge"],
   pruefer_zuteilungen: ["pruefung_id", "pruefer_id", "rolle", "status"],
+  pruefer_abwesenheit: ["pruefer_id", "datum"],
   bewertungen: ["pruefling_id", "p1", "p2", "p3", "p4", "p5", "k1", "k2", "k3", "k4",
                 "praxis", "kenntnis", "gesamt", "bestanden", "bemerkung", "pk_schriftlich", "pk_bestimmung"],
 };

@@ -261,9 +261,12 @@ function zeileHtml(ent, row, query, phase) {
   const akte = ent.key === "prueflinge"
     ? `<a class="bw-iconbtn" href="#/pruefling/${row.id}" aria-label="Akte von ${esc((row.vorname || "") + " " + (row.nachname || ""))} öffnen" title="Akte öffnen">📋</a>`
     : "";
+  const abw = ent.key === "pruefer"
+    ? `<button class="bw-iconbtn" type="button" data-abwesenheit="${row.id}" aria-label="Abwesenheiten von ${esc((row.vorname || "") + " " + (row.nachname || ""))}" title="Abwesenheiten">📅</button>`
+    : "";
   return `<tr>${tds}${fortschrittTd}
     <td class="bw-actions">
-      ${akte}
+      ${akte}${abw}
       <button class="bw-iconbtn" type="button" data-edit="${row.id}" aria-label="${esc(ent.singular)} bearbeiten" title="Bearbeiten">✎</button>
       <button class="bw-iconbtn" type="button" data-del="${row.id}" aria-label="${esc(ent.singular)} löschen" title="Löschen">🗑</button>
     </td></tr>`;
@@ -399,6 +402,12 @@ async function renderListe(key) {
   document.getElementById("zeilen").addEventListener("click", async (ev) => {
     const editId = ev.target.closest("[data-edit]")?.getAttribute("data-edit");
     const delId = ev.target.closest("[data-del]")?.getAttribute("data-del");
+    const abwId = ev.target.closest("[data-abwesenheit]")?.getAttribute("data-abwesenheit");
+    if (abwId) {
+      const rec = await store.holen("pruefer", Number(abwId));
+      abwesenheitDialog(Number(abwId), rec ? `${rec.vorname || ""} ${rec.nachname || ""}`.trim() : "Prüfer:in");
+      return;
+    }
     if (editId) {
       const rec = await store.holen(key, Number(editId));
       formularOeffnen(key, rec, zeichne);
@@ -1765,6 +1774,64 @@ function csvAutoMap(header) {
     map[f.name] = idx; // -1 = nicht zugeordnet
   });
   return map;
+}
+
+/* ---------------------------------------------- Prüfer-Abwesenheiten (Dialog) */
+
+async function abwesenheitDialog(prueferId, name) {
+  const alt = document.getElementById("dialog");
+  if (alt) alt.remove();
+  const dlg = document.createElement("dialog");
+  dlg.className = "bw-dialog";
+  dlg.id = "dialog";
+  dlg.innerHTML = `
+    <form method="dialog" id="abw-form" novalidate>
+      <h2 style="margin-top:0">Abwesenheiten — ${esc(name)}</h2>
+      <p class="bw-klein bw-leise">Tage eintragen, an denen ${esc(name)} nicht als Prüfer:in verfügbar ist. Die automatische Prüfungsplanung besetzt an diesen Tagen keinen Ausschuss mit dieser Person.</p>
+      <div class="bw-toolbar">
+        <div class="bw-field" style="margin:0">
+          <label for="abw-datum" class="bw-skip-link">Datum</label>
+          <input id="abw-datum" type="date" aria-label="Abwesenheitstag">
+        </div>
+        <button type="button" class="bw-btn bw-btn--sekundaer" id="abw-add">Tag hinzufügen</button>
+      </div>
+      <div class="bw-tablewrap" style="margin-top:var(--bw-space-2)">
+        <table class="bw-table"><tbody id="abw-liste"></tbody></table>
+      </div>
+      <p id="abw-leer" class="bw-leise bw-klein" hidden>Keine Abwesenheiten eingetragen.</p>
+      <div class="bw-dialog__aktionen">
+        <button type="button" class="bw-btn" id="abw-fertig">Fertig</button>
+      </div>
+    </form>`;
+  document.body.appendChild(dlg);
+
+  const listeEl = dlg.querySelector("#abw-liste");
+  const zeichne = async () => {
+    const tage = await store.abwesenheitenFuer(prueferId);
+    listeEl.innerHTML = tage.map((t) => `
+      <tr>
+        <td>${esc(new Date(t.datum).toLocaleDateString("de-DE"))}</td>
+        <td class="bw-actions"><button class="bw-iconbtn" type="button" data-del-abw="${t.id}" title="Entfernen" aria-label="Tag entfernen">🗑</button></td>
+      </tr>`).join("");
+    dlg.querySelector("#abw-leer").hidden = tage.length > 0;
+  };
+
+  dlg.querySelector("#abw-add").addEventListener("click", async () => {
+    const d = dlg.querySelector("#abw-datum").value;
+    if (!d) { meldung("Bitte ein Datum wählen.", "fehler"); return; }
+    try { await store.abwesenheitSetzen(prueferId, d); dlg.querySelector("#abw-datum").value = ""; zeichne(); }
+    catch (e) { console.error(e); meldung("Konnte nicht speichern: " + e.message, "fehler"); }
+  });
+  listeEl.addEventListener("click", async (ev) => {
+    const id = ev.target.closest("[data-del-abw]")?.getAttribute("data-del-abw");
+    if (!id) return;
+    await store.abwesenheitEntfernen(Number(id));
+    zeichne();
+  });
+  dlg.querySelector("#abw-fertig").addEventListener("click", () => dlg.close());
+  dlg.addEventListener("close", () => dlg.remove());
+  await zeichne();
+  dlg.showModal();
 }
 
 function csvImportDialog(nachher) {
