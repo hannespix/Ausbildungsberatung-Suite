@@ -237,6 +237,14 @@ Druck nur bei vorhandener Bewertung. Smoke-getestet (Chromium).
   Gesamtnote tragen zusätzlich die Wortstufe (z. B. „2,4 (gut)") — amtsüblich
   auf der Urkunde. `store.wortStufe()`. Chromium-getestet (gut/sehr gut/
   ausreichend/ungenügend, alle drei Schnitte).
+- ✅ **Ergebnis-Mitteilung bei Nichtbestehen**: ein Prüfungszeugnis erhält nur,
+  wer bestanden hat — bei Nichtbestehen druckt dasselbe Dokument sachlich eine
+  „Mitteilung über das Prüfungsergebnis" (statt eines irreführenden „Zeugnisses")
+  inkl. **Grund** (aus den Bereichsnoten abgeleitet, wie Akte/Niederschrift). Der
+  Knopf in der Akte heißt dann „Ergebnis-Mitteilung drucken"; die Zeugnisse-Seite
+  weist darauf hin. Kein Rechtstext, nur sachliche Ergebnisdarstellung.
+  Chromium-getestet (bestanden → Prüfungszeugnis; Sperrfach → Mitteilung mit
+  Grund, korrekte H1; Mobile 390px).
 - Offen: konfigurierbarer Zeugnistext je Beruf.
 
 ### M7 — Import / Export
