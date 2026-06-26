@@ -303,6 +303,8 @@ function zeileHtml(ent, row, query, phase) {
   const fortschrittTd = phase !== undefined ? `<td>${fortschrittTag(phase)}</td>` : "";
   const akte = ent.key === "prueflinge"
     ? `<a class="bw-iconbtn" href="#/pruefling/${row.id}" aria-label="Akte von ${esc((row.vorname || "") + " " + (row.nachname || ""))} öffnen" title="Akte öffnen">📋</a>`
+    : ent.key === "betriebe"
+    ? `<a class="bw-iconbtn" href="#/betrieb/${row.id}" aria-label="Betrieb ${esc(row.name || "")} öffnen" title="Betrieb öffnen">📋</a>`
     : "";
   const abw = ent.key === "pruefer"
     ? `<button class="bw-iconbtn" type="button" data-abwesenheit="${row.id}" aria-label="Abwesenheiten von ${esc((row.vorname || "") + " " + (row.nachname || ""))}" title="Abwesenheiten">📅</button>`
@@ -1806,6 +1808,68 @@ async function renderPrueflingAkte(id) {
   }));
 }
 
+/* --------------------------------------------------------- Betriebs-Akte */
+
+async function renderBetriebAkte(id) {
+  let a;
+  try { a = await store.betriebAkte(Number(id)); }
+  catch (e) { console.error(e); appEl().innerHTML = `<div class="bw-hinweis bw-hinweis--fehler">Betrieb konnte nicht geladen werden: ${esc(e.message)}</div>`; return; }
+  if (!a) { appEl().innerHTML = `<div class="bw-hinweis">Betrieb nicht gefunden. <a href="#/betriebe">Zur Liste</a></div>`; return; }
+
+  const b = a.betrieb;
+  const pl = a.prueflinge || [];
+  const bewertet = pl.filter((p) => p.gesamt != null);
+  const bestanden = pl.filter((p) => p.bestanden === true).length;
+  const adresse = [b.strasse, [b.plz, b.ort].filter(Boolean).join(" ")].filter(Boolean).join(", ");
+
+  appEl().innerHTML = `
+    <p class="bw-klein"><a href="#/betriebe">← Ausbildungsbetriebe</a></p>
+    <h1 style="margin-bottom:var(--bw-space-1)">${esc(b.name || "Betrieb")}</h1>
+    <p class="bw-unterzeile">Ausbildungsbetrieb — Kontakt und zugeordnete Prüflinge an einem Ort</p>
+
+    <div class="bw-toolbar" style="margin-bottom:var(--bw-space-3)">
+      <button class="bw-btn bw-btn--sekundaer" type="button" id="betrieb-bearbeiten">Stammdaten bearbeiten</button>
+    </div>
+
+    <div class="bw-flaechen">
+      <section class="bw-card" aria-labelledby="betrieb-stamm">
+        <h2 id="betrieb-stamm" style="margin-top:0">Kontakt</h2>
+        <table class="bw-table"><tbody>
+          <tr><th scope="row">Anschrift</th><td>${esc(adresse || "—")}</td></tr>
+          <tr><th scope="row">Ansprechpartner</th><td>${esc(b.ansprechpartner || "—")}</td></tr>
+          <tr><th scope="row">E-Mail</th><td>${b.email ? `<a href="mailto:${esc(b.email)}">${esc(b.email)}</a>` : "—"}</td></tr>
+          <tr><th scope="row">Telefon</th><td>${b.telefon ? `<a href="tel:${esc(String(b.telefon).replace(/[^\d+]/g, ""))}">${esc(b.telefon)}</a>` : "—"}</td></tr>
+          ${b.bemerkung ? `<tr><th scope="row">Bemerkung</th><td>${esc(b.bemerkung)}</td></tr>` : ""}
+        </tbody></table>
+      </section>
+
+      <section aria-labelledby="betrieb-pl">
+        <h2 id="betrieb-pl">Prüflinge (${zahl(pl.length)})</h2>
+        ${pl.length ? `
+          <p class="bw-klein bw-leise">${zahl(bewertet.length)} bewertet · ${zahl(bestanden)} bestanden</p>
+          <div class="bw-tablewrap">
+            <table class="bw-table">
+              <thead><tr><th>Name</th><th>Fachrichtung</th><th>Jahr</th><th>Fortschritt</th><th>Aktion</th></tr></thead>
+              <tbody>${pl.map((p) => `
+                <tr>
+                  <td>${esc((p.nachname || "") + ", " + (p.vorname || ""))}</td>
+                  <td>${esc(p.beruf || "—")}</td>
+                  <td>${esc(p.pruefungsjahr || "—")}</td>
+                  <td>${fortschrittTag(p.phase)}</td>
+                  <td class="bw-actions"><a class="bw-iconbtn" href="#/pruefling/${p.id}" title="Akte öffnen" aria-label="Akte öffnen">📋</a></td>
+                </tr>`).join("")}</tbody>
+            </table>
+          </div>`
+          : `<p class="bw-hinweis">Diesem Betrieb sind noch keine Prüflinge zugeordnet. In der <a href="#/prueflinge">Prüflingsliste</a> als Ausbildungsbetrieb „${esc(b.name || "")}" eintragen.</p>`}
+      </section>
+    </div>
+  `;
+
+  document.getElementById("betrieb-bearbeiten").addEventListener("click", () => {
+    formularOeffnen("betriebe", b, () => renderBetriebAkte(id));
+  });
+}
+
 /* --------------------------------------------------------- Auswertungen */
 
 async function renderAuswertungen(jahr = null) {
@@ -2584,6 +2648,7 @@ async function route() {
     else if (r === "kontakte") await renderKontakte();
     else if (r === "suche") await renderSuche();
     else if (r.startsWith("pruefling/")) await renderPrueflingAkte(r.slice("pruefling/".length));
+    else if (r.startsWith("betrieb/")) await renderBetriebAkte(r.slice("betrieb/".length));
     else if (ENTITAETEN[r]) await renderListe(r);
     else { location.hash = "#/"; return; }
   } catch (e) {

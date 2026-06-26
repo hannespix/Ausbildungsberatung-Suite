@@ -224,6 +224,14 @@ Auswahl): CSV mit Semikolon + BOM (Excel), vCard 3.0 je Kontakt (N/FN/ORG/TEL/
 EMAIL, Prüfer:innen mit TITLE). Offline per Datei-Download, in Outlook/Telefon
 importierbar. Smoke-getestet.
 
+### Betriebs-Akte (Betrieb ↔ Prüflinge) ✅
+Detailansicht je Ausbildungsbetrieb (`#/betrieb/<id>`, „📋" in der Betriebs-
+liste): Kontaktdaten (Anschrift, Ansprechpartner, klickbare Mail/Tel) und alle
+zugeordneten Prüflinge (über das Betriebsfeld verknüpft) mit Fachrichtung,
+Prüfungsjahr und abgeleitetem Fortschritt; jeder Prüfling öffnet seine eigene
+Akte, dazu „X bewertet · Y bestanden". `store.betriebAkte()`. Chromium-getestet
+(Verknüpfung, Prüfling-Sprung, Leerzustand, Mobile 390px).
+
 ### Nächste Prüfungstage — Terminvorschau ✅
 Die Übersicht zeigt die nächsten (heute oder später liegenden) Prüfungstage
 chronologisch (max. 5): Datum mit Wochentag, Bezeichnung, Fachrichtung,
