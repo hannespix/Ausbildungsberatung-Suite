@@ -1358,6 +1358,7 @@ async function renderNoten(pruefungId = null) {
       ${gefiltert && rows.some((r) => r.gesamt == null)
         ? `<button class="bw-btn bw-btn--gelb" type="button" id="reihen-btn">Reihen-Bewertung (${zahl(rows.filter((r) => r.gesamt == null).length)} offen)</button>`
         : ""}
+      <button class="bw-btn bw-btn--sekundaer" type="button" id="noten-vorlage" ${rows.length ? "" : "disabled"}>Bewertungsvorlage (CSV)</button>
       <button class="bw-btn bw-btn--sekundaer" type="button" id="noten-import">Noten importieren (CSV)</button>
       <button class="bw-btn bw-btn--sekundaer" type="button" id="noten-csv" ${bewertet ? "" : "disabled"}>Noten als CSV</button>
     </div>` : ""}
@@ -1409,6 +1410,18 @@ async function renderNoten(pruefungId = null) {
 
   document.getElementById("noten-import")?.addEventListener("click", () => {
     notenImportDialog(pruefungId, () => renderNoten(pruefungId));
+  });
+  document.getElementById("noten-vorlage")?.addEventListener("click", () => {
+    // Import-kompatible Leervorlage: Namen vorausgefüllt, 9 Notenspalten leer —
+    // in Excel ausfüllen und über „Noten importieren (CSV)" zurückspielen.
+    const kopf = ["Nachname", "Vorname", "Fachrichtung",
+      "Praxis I", "Praxis II", "Praxis III", "Praxis IV", "Praxis V",
+      "Kenntnis 1", "Kenntnis 2", "Kenntnis 3", "Kenntnis 4"];
+    const zeilen = rows.map((r) => [r.nachname || "", r.vorname || "", r.beruf || "", "", "", "", "", "", "", "", "", ""]);
+    const termin = gefiltert ? (termine.find((t) => String(t.id) === String(pruefungId)) || {}) : null;
+    const datei = "Bewertungsvorlage" + (termin && termin.titel ? "-" + termin.titel.replace(/[^\wäöüÄÖÜß-]+/g, "_") : "") + ".csv";
+    dateiDownload(datei, csvText(kopf, zeilen), "text/csv;charset=utf-8");
+    meldung(`Bewertungsvorlage exportiert: ${zahl(rows.length)} Prüflinge. In Excel ausfüllen und über „Noten importieren (CSV)" zurückspielen.`);
   });
   document.getElementById("noten-termin")?.addEventListener("change", (ev) => {
     const v = ev.target.value;
