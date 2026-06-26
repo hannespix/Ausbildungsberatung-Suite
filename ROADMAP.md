@@ -196,6 +196,14 @@ Bewerten-Dialog (9 Bereiche, Live-Ergebnis), Noten-Liste, Zeugnis. Smoke-geteste
   Bereichsnote mit Fußnote „* nach mündlicher Ergänzungsprüfung" — passend zum
   ausgewiesenen Kenntnis-Schnitt (keine widersprüchliche Bereichsnote mehr).
   Chromium-getestet (roh 5,0 → effektiv 4,0 im Zeugnis, Fußnote, Mobile 390px).
+- ✅ **Grund des Nichtbestehens sichtbar**: bei nicht bestandenen Prüflingen
+  zeigt die Prüflings-Akte eine „Grund"-Zeile und die druckbare Ergebnis-
+  Niederschrift einen Abschnitt „Begründung Nichtbestehen" (Sperrfach ≥ 5,5,
+  Schnitt/Gesamt ≥ 4,5, ≥ 2 Bereiche ≥ 4,5) — amtlich fürs Protokoll. Der Grund
+  wird aus den gespeicherten Bereichsnoten abgeleitet (inkl. mündlicher
+  Ergänzung), identisch zur Live-Vorschau im Bewerten-Dialog, ohne zusätzliche
+  Speicherung (`store.bewertungGruende`). Chromium-getestet (Sperrfach-Fall in
+  Akte und Niederschrift, bestandener ohne Grund-Zeile, Mobile 390px).
 - Offen: „eine einzige 6 → durchgefallen" explizit, weitere Fachrichtungen.
 
 ### M7 — Excel-/CSV-Import (teils ✅)

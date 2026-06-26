@@ -225,7 +225,9 @@ export async function zuteilungenFuer(pruefungId) {
 export async function terminErgebnisse(pruefungId) {
   const res = await _pg.query(
     `SELECT z.slot, p.nachname, p.vorname, p.betrieb,
-            b.praxis, b.kenntnis, b.gesamt, b.bestanden
+            b.praxis, b.kenntnis, b.gesamt, b.bestanden,
+            b.p1, b.p2, b.p3, b.p4, b.p5, b.k1, b.k2, b.k3, b.k4,
+            b.ergaenzung_bereich, b.ergaenzung_note
        FROM zuteilungen z JOIN prueflinge p ON p.id = z.pruefling_id
        LEFT JOIN bewertungen b ON b.pruefling_id = p.id
       WHERE z.pruefung_id = $1
@@ -654,6 +656,23 @@ export function gesamtGalabau(praxis, kenntnis) {
     bestanden = gruende.length === 0;
   }
   return { praxis: O, kenntnis: AA, gesamt: AB, bestanden, anzahl55, anzahl45, gruende };
+}
+
+/**
+ * Gründe des Nichtbestehens (oder []) zu einer gespeicherten Bewertungszeile:
+ * rekonstruiert die Bereichsnoten und wendet eine evtl. mündliche Ergänzung an,
+ * sodass der Grund überall identisch zur Live-Vorschau im Bewerten-Dialog ist.
+ * So muss der Grund nicht zusätzlich gespeichert werden (eine Quelle, kein
+ * Doppelstand). Felder p1..p5 / k1..k4 müssen in der Zeile enthalten sein.
+ */
+export function bewertungGruende(b) {
+  if (!b) return [];
+  const praxis = [b.p1, b.p2, b.p3, b.p4, b.p5];
+  const kenntnis = [b.k1, b.k2, b.k3, b.k4];
+  const kEff = (b.ergaenzung_bereich && b.ergaenzung_note != null)
+    ? ergaenzteKenntnis(kenntnis, b.ergaenzung_bereich, b.ergaenzung_note)
+    : kenntnis;
+  return gesamtGalabau(praxis, kEff).gruende;
 }
 
 /**
