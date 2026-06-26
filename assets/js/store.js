@@ -898,6 +898,29 @@ export async function auslastung(jahr = null) {
 }
 
 /**
+ * Bereitschaft je anstehendem Prüfungstag (heute oder später, chronologisch):
+ * bündelt die Vorbereitungs-Signale aus Planung, Zusagen und Zeitraster in einer
+ * Zeile — Prüflinge, Ausschussgröße, offene Zusagen, vergebene Uhrzeit-Slots.
+ * So ist auf der Übersicht sofort sichtbar, welche Tage noch Arbeit brauchen.
+ * @returns {Array<{id,titel,beruf,datum,prueflinge,ausschuss,zusagen_offen,mit_slot}>}
+ */
+export async function prueftagBereitschaft() {
+  const res = await _pg.query(
+    `SELECT pr.id, pr.titel, pr.beruf, pr.datum,
+            (SELECT count(*)::int FROM zuteilungen z WHERE z.pruefung_id = pr.id) AS prueflinge,
+            (SELECT count(*)::int FROM zuteilungen z WHERE z.pruefung_id = pr.id
+               AND z.slot IS NOT NULL AND btrim(z.slot) <> '') AS mit_slot,
+            (SELECT count(*)::int FROM pruefer_zuteilungen pz WHERE pz.pruefung_id = pr.id) AS ausschuss,
+            (SELECT count(*)::int FROM pruefer_zuteilungen pz WHERE pz.pruefung_id = pr.id
+               AND lower(coalesce(pz.status,'offen')) IN ('offen','angefragt')) AS zusagen_offen
+       FROM pruefungen pr
+      WHERE pr.datum IS NOT NULL AND pr.datum >= CURRENT_DATE
+      ORDER BY pr.datum, pr.zeit_von NULLS LAST, pr.id`
+  );
+  return res.rows;
+}
+
+/**
  * Doppelbelegungen: Prüfer:innen, die am selben Datum mehreren Terminen
  * zugeteilt sind. Solche Konflikte gilt es bei der Ausschuss-Besetzung zu
  * vermeiden; die Auto-Planung minimiert sie bereits aktiv.

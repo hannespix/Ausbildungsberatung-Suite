@@ -296,6 +296,9 @@ mark.bw-treffer { background: var(--bw-gelb); color: var(--bw-schwarz); padding:
 .bw-trefferliste li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.2em 0.8em;
   padding: var(--bw-space-2) 0; border-bottom: 1px solid var(--bw-linie); }
 .bw-trefferliste li > a { font-weight: 700; }
+/* Bereitschafts-Chips je Prüfungstag (Übersicht): umbruchfähig, mobil tauglich. */
+.bw-bereitschaft { display: flex; flex-wrap: wrap; gap: var(--bw-space-1) var(--bw-space-3);
+  margin-top: var(--bw-space-1); width: 100%; font-size: var(--bw-fs-klein); }
 
 /* ===================== Footer (schwarzer Streifen) =============== */
 .bw-footer {
