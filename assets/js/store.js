@@ -355,6 +355,49 @@ export async function gruppiert(key, spalte) {
   return res.rows;
 }
 
+/**
+ * Konsolidierte Adress-/Telefonliste über Betriebe und Prüfer:innen.
+ * DB-seitige, multitokenbasierte Fuzzy-Suche (Trigramm) über die jeweilige
+ * such_text-Spalte; leere Eingabe -> gesamte Liste.
+ */
+export async function kontakteSuche(query, { limit = 400 } = {}) {
+  const tokens = String(query || "")
+    .toLowerCase().replace(/ß/g, "ss")
+    .normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .split(/\s+/).filter(Boolean);
+
+  const quelle = `(
+      SELECT 'Betrieb'::text AS typ,
+             name AS bezeichnung,
+             coalesce(ort, '') AS zusatz,
+             coalesce(ansprechpartner, '') AS person,
+             telefon, email, such_text
+        FROM betriebe
+      UNION ALL
+      SELECT 'Prüfer:in'::text AS typ,
+             (nachname || ', ' || coalesce(vorname, '')) AS bezeichnung,
+             coalesce(organisation, '') AS zusatz,
+             coalesce(funktion, '') AS person,
+             telefon, email, such_text
+        FROM pruefer
+    ) AS k`;
+
+  if (!tokens.length) {
+    const r = await _pg.query(`SELECT * FROM ${quelle} ORDER BY typ, bezeichnung LIMIT ${Number(limit)}`);
+    return r.rows;
+  }
+  const bedingungen = tokens
+    .map((_, i) => `(such_text LIKE '%' || $${i + 1} || '%' OR word_similarity($${i + 1}, such_text) >= 0.3)`)
+    .join(" AND ");
+  const score = tokens.map((_, i) => `word_similarity($${i + 1}, such_text)`).join(" + ");
+  const r = await _pg.query(
+    `SELECT *, (${score}) AS relevanz FROM ${quelle}
+      WHERE ${bedingungen} ORDER BY relevanz DESC, bezeichnung LIMIT ${Number(limit)}`,
+    tokens
+  );
+  return r.rows;
+}
+
 /** Distinkte, nicht-leere Werte einer Spalte (für Vorschlagslisten/datalist). */
 export async function werteFuer(key, feld) {
   const e = ent(key);
