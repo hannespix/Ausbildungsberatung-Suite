@@ -1934,6 +1934,16 @@ async function formularOeffnen(key, rec, nachher) {
         }
       }
     }
+    // Format prüfen (modellgetriebene Muster, z. B. PLZ, Prüfungsjahr)
+    for (const f of ent.felder) {
+      if (!f.muster) continue;
+      const wertM = form.elements[f.name].value.trim();
+      if (wertM && !new RegExp(f.muster).test(wertM)) {
+        form.elements[f.name].focus();
+        meldung(f.musterText || `„${f.label}" hat ein ungültiges Format.`, "fehler");
+        return;
+      }
+    }
     const daten = {};
     for (const f of ent.felder) daten[f.name] = form.elements[f.name].value;
 

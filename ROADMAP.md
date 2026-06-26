@@ -40,7 +40,10 @@ E-Mail-Format-Validierung mit deutscher Meldung; Dublettenwarnung (bestätigbar)
 - ✅ **CSV-Export & Druck jeder Liste**: „CSV exportieren" und „Liste drucken"
   in allen Stammdaten-Listen — folgt der aktuellen Suche und Sortierung,
   Prüflinge inkl. abgeleiteter Fortschritt-Spalte. Smoke-getestet (inkl. Mobile).
-- Offen: Berufe-Lookup, PLZ-Format, Inline-Bearbeitung.
+- ✅ **Format-Validierung** (modellgetrieben): PLZ 5-stellig, Prüfungsjahr
+  4-stellig — mit deutscher Meldung, leere Nicht-Pflichtfelder bleiben erlaubt.
+  Über `muster`/`musterText` je Feld erweiterbar. Smoke-getestet.
+- Offen: Berufe-Lookup, Inline-Bearbeitung.
 
 ### Globale Schnellsuche ✅
 Eigene Ansicht (`#/suche`, über die Header-Lupe erreichbar): durchsucht
