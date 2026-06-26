@@ -718,15 +718,25 @@ export async function setzeBewertung(prueflingId, praxis, kenntnis, bemerkung = 
   return g;
 }
 
-/** Alle Prüflinge mit (optionaler) Bewertung, fachlich sortiert. */
-export async function bewertungenListe() {
+/**
+ * Alle Prüflinge mit (optionaler) Bewertung. Ohne Argument fachlich (Name)
+ * sortiert; mit pruefungId nur die diesem Termin zugeteilten Prüflinge in
+ * Uhrzeit-/Slot-Reihenfolge (Schnellerfassung am Prüfungstag). Verknüpft
+ * Planung und Noten.
+ */
+export async function bewertungenListe(pruefungId = null) {
   const res = await _pg.query(
     `SELECT p.id AS pruefling_id, p.nachname, p.vorname, p.beruf,
             b.p1,b.p2,b.p3,b.p4,b.p5, b.k1,b.k2,b.k3,b.k4,
             b.praxis, b.kenntnis, b.gesamt, b.bestanden, b.bemerkung,
-            b.pk_schriftlich, b.pk_bestimmung, b.ergaenzung_bereich, b.ergaenzung_note
-       FROM prueflinge p LEFT JOIN bewertungen b ON b.pruefling_id = p.id
-      ORDER BY p.nachname, p.vorname`
+            b.pk_schriftlich, b.pk_bestimmung, b.ergaenzung_bereich, b.ergaenzung_note,
+            z.slot
+       FROM prueflinge p
+       LEFT JOIN bewertungen b ON b.pruefling_id = p.id
+       LEFT JOIN zuteilungen z ON z.pruefling_id = p.id AND z.pruefung_id = $1::int
+      WHERE ($1::int IS NULL OR z.pruefung_id = $1::int)
+      ORDER BY z.slot NULLS LAST, p.nachname, p.vorname`,
+    [pruefungId]
   );
   return res.rows;
 }

@@ -145,6 +145,13 @@ Bewerten-Dialog (9 Bereiche, Live-Ergebnis), Noten-Liste, Zeugnis. Smoke-geteste
   der Datensicherung enthalten. Über die Zulassung entscheidet der
   Prüfungsausschuss (keine Automatik). `store.ergaenzteKenntnis()`, unit- und
   Chromium-getestet (Kenntnis 4,2 → 4,0; Persistenz; Mobile 390px).
+- ✅ **Noten je Prüfungstag erfassen**: die Notenliste lässt sich nach
+  Prüfungstermin filtern — dann erscheinen nur dessen zugeteilte Prüflinge in
+  Uhrzeit-/Slot-Reihenfolge mit Uhrzeit-Spalte und Zähler „X von Y bewertet".
+  Bewerten aus der gefilterten Ansicht behält den Termin. So arbeitet der
+  Ausschuss am Prüfungstag genau seine Liste ab (Planung ↔ Noten).
+  `bewertungenListe(pruefungId)`, SQL- und Chromium-getestet (155 → 12,
+  Slot-Reihenfolge, Filter bleibt nach Speichern, Mobile 390px).
 - Offen: „eine einzige 6 → durchgefallen" explizit, weitere Fachrichtungen.
 
 ### M7 — Excel-/CSV-Import (teils ✅)
