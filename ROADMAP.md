@@ -65,6 +65,13 @@ beim Löschen aufgeräumt. Smoke-getestet (Chromium).
 tintensparend) mit Kopf, Prüflingen inkl. Slots und Ausschuss; über den
 Druckdialog auch als PDF. Smoke-getestet (Chromium, `window.print` gestubbt).
 
+### M3d — Ergebnis-Niederschrift je Termin ✅
+„Ergebnis-Niederschrift" in der Planung: druckbares Protokoll je Prüfungstag,
+das Planung und Noten verbindet — alle zugeteilten Prüflinge in Slot-Reihenfolge
+mit Praxis-/Kenntnis-Schnitt, Gesamtnote und Ergebnis, dazu Kennzahlen
+(bewertet/bestanden), Ausschuss mit Unterschriftenspalte und Ort/Datum.
+`store.terminErgebnisse(id)`. Smoke-getestet (inkl. Mobile).
+
 ### M4 — Prüfer-Organisation
 Ausschuss-Zusammenstellung (Vorsitz/Beisitz/Lehrkraft), ausgewogene Zuteilung,
 Einladungs-/Bestätigungsstatus ✅ (Prüfer-Plan).
