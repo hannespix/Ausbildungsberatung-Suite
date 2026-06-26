@@ -51,8 +51,13 @@ tintensparend) mit Kopf, Prüflingen inkl. Slots und Ausschuss; über den
 Druckdialog auch als PDF. Smoke-getestet (Chromium, `window.print` gestubbt).
 
 ### M4 — Prüfer-Organisation
-Verfügbarkeiten, Ausschuss-Zusammenstellung (Vorsitz/Beisitz/Lehrkraft),
-ausgewogene Zuteilung, Einladungs-/Bestätigungsstatus.
+Ausschuss-Zusammenstellung (Vorsitz/Beisitz/Lehrkraft), ausgewogene Zuteilung,
+Einladungs-/Bestätigungsstatus ✅ (Prüfer-Plan).
+- ✅ **Konfliktfreie Ausschuss-Besetzung**: die Auto-Planung vermeidet aktiv
+  Doppelbelegungen am selben Prüfungstag (datums-bewusst, mit Auffüllung statt
+  leerem Ausschuss); verbleibende Doppelbelegungen werden in den Auswertungen
+  als „Prüfer-Doppelbelegungen" aufgelistet (`prueferKonflikte`). Smoke-getestet.
+- Offen: gepflegte Prüfer-Verfügbarkeiten (Abwesenheiten) als Eingabe.
 
 ### M5 — Notenberechnung ✅
 Neue Ansicht „Noten": Gesamtbewertung je Prüfling, Bewerten-Dialog mit

@@ -353,14 +353,30 @@ export async function planungAutomatisch(kapazitaet = 12) {
 
   const pruefer = (await _pg.query(`SELECT id FROM pruefer ORDER BY nachname, vorname`)).rows;
   let prCursor = 0;
-  const naechstePruefer = (n, ausgeschlossen) => {
-    const out = [];
+  // Belegung je Prüfungstag: verhindert Doppelbelegung einer Prüferin/eines
+  // Prüfers am selben Datum (auch fachrichtungsübergreifend).
+  const tagBelegung = new Map();
+  const naechstePruefer = (n, datum) => {
+    const tagSet = tagBelegung.get(datum) || new Set();
+    const out = [], imAusschuss = new Set();
+    // 1. Durchgang: bevorzugt am selben Tag noch freie Prüfer:innen.
     let versuche = 0;
+    while (out.length < n && pruefer.length && versuche < pruefer.length) {
+      const pr = pruefer[prCursor++ % pruefer.length];
+      versuche++;
+      if (imAusschuss.has(pr.id) || tagSet.has(pr.id)) continue;
+      out.push(pr.id); imAusschuss.add(pr.id);
+    }
+    // 2. Durchgang: notfalls auffüllen (Konflikt in Kauf nehmen statt leer lassen).
+    versuche = 0;
     while (out.length < n && pruefer.length && versuche < pruefer.length * 2) {
       const pr = pruefer[prCursor++ % pruefer.length];
       versuche++;
-      if (!ausgeschlossen.has(pr.id)) { out.push(pr.id); ausgeschlossen.add(pr.id); }
+      if (imAusschuss.has(pr.id)) continue;
+      out.push(pr.id); imAusschuss.add(pr.id);
     }
+    out.forEach((id) => tagSet.add(id));
+    tagBelegung.set(datum, tagSet);
     return out;
   };
 
@@ -384,7 +400,7 @@ export async function planungAutomatisch(kapazitaet = 12) {
 
     const needed = Math.ceil(pl.length / cap);
     let termine = (await _pg.query(
-      `SELECT id, zeit_von FROM pruefungen WHERE beruf = $1 ORDER BY datum, id`, [beruf]
+      `SELECT id, zeit_von, datum FROM pruefungen WHERE beruf = $1 ORDER BY datum, id`, [beruf]
     )).rows;
 
     if (termine.length < needed) {
@@ -404,7 +420,7 @@ export async function planungAutomatisch(kapazitaet = 12) {
         });
       }
       await bulkInsert("pruefungen", ["titel", "beruf", "datum", "zeit_von", "zeit_bis", "ort", "raum"], neu);
-      termine = (await _pg.query(`SELECT id, zeit_von FROM pruefungen WHERE beruf = $1 ORDER BY datum, id`, [beruf])).rows;
+      termine = (await _pg.query(`SELECT id, zeit_von, datum FROM pruefungen WHERE beruf = $1 ORDER BY datum, id`, [beruf])).rows;
     }
     summeTermine += needed;
 
@@ -421,7 +437,7 @@ export async function planungAutomatisch(kapazitaet = 12) {
           slot: _addMinuten(beginn, k * ZEITRASTER_MINUTEN), reihenfolge: k + 1,
         });
       }
-      const ausschuss = naechstePruefer(ROLLEN.length, new Set());
+      const ausschuss = naechstePruefer(ROLLEN.length, termin.datum || ("g" + g));
       ausschuss.forEach((prId, i) =>
         pzRows.push({ pruefung_id: termin.id, pruefer_id: prId, rolle: ROLLEN[i] || "Beisitz", status: "offen" })
       );
@@ -649,6 +665,27 @@ export async function auslastung() {
             (SELECT count(*)::int FROM pruefer_zuteilungen pz WHERE pz.pruefung_id = pr.id) AS ausschuss
        FROM pruefungen pr
       ORDER BY pr.datum NULLS LAST, pr.zeit_von NULLS LAST, pr.id`
+  );
+  return res.rows;
+}
+
+/**
+ * Doppelbelegungen: Prüfer:innen, die am selben Datum mehreren Terminen
+ * zugeteilt sind. Solche Konflikte gilt es bei der Ausschuss-Besetzung zu
+ * vermeiden; die Auto-Planung minimiert sie bereits aktiv.
+ * @returns {Array<{pruefer_id, name, datum, anzahl, termine}>}
+ */
+export async function prueferKonflikte() {
+  const res = await _pg.query(
+    `SELECT pz.pruefer_id, pr.datum,
+            count(*)::int AS anzahl,
+            string_agg(pr.titel, ' / ' ORDER BY pr.zeit_von NULLS LAST, pr.titel) AS termine,
+            (SELECT pp.nachname || ', ' || coalesce(pp.vorname,'') FROM pruefer pp WHERE pp.id = pz.pruefer_id) AS name
+       FROM pruefer_zuteilungen pz JOIN pruefungen pr ON pr.id = pz.pruefung_id
+      WHERE pr.datum IS NOT NULL
+      GROUP BY pz.pruefer_id, pr.datum
+     HAVING count(*) > 1
+      ORDER BY pr.datum, name`
   );
   return res.rows;
 }
