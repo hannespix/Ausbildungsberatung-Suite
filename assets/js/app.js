@@ -1166,6 +1166,20 @@ function notenDialog(row, nachher) {
         </div>
       </div>
 
+      <div class="bw-hinweis" style="margin-top:var(--bw-space-2)">
+        <p class="bw-klein bw-leise" style="margin:0 0 var(--bw-space-2)">Mündliche Ergänzungsprüfung (optional, ein Kenntnisbereich): die Bereichsnote wird zu (2 × schriftlich + 1 × mündlich) ÷ 3 gewichtet und fließt so in Schnitt und Gesamtnote ein. Über die Zulassung entscheidet der Prüfungsausschuss.</p>
+        <div class="bw-dialog__felder">
+          <div class="bw-field">
+            <label for="erg_bereich">Bereich</label>
+            <select id="erg_bereich" name="erg_bereich">
+              <option value="">— keine —</option>
+              ${GALABAU_BEREICHE.kenntnis.map((b, i) => `<option value="k${i + 1}"${row.ergaenzung_bereich === "k" + (i + 1) ? " selected" : ""}>${esc(b)}</option>`).join("")}
+            </select>
+          </div>
+          ${noteFeld("erg_note", "mündliche Note", row.ergaenzung_note)}
+        </div>
+      </div>
+
       <p id="noten-preview" class="bw-hinweis" aria-live="polite"></p>
       <div class="bw-field">
         <label for="f_bem">Bemerkung</label>
@@ -1182,8 +1196,16 @@ function notenDialog(row, nachher) {
   const preview = dlg.querySelector("#noten-preview");
   const lese = (pre, n) => Array.from({ length: n }, (_, i) => form.elements[pre + (i + 1)].value);
 
+  const kenntnisEffektiv = () => {
+    const kArr = lese("k", 4);
+    const ergB = form.elements["erg_bereich"].value;
+    const ergN = form.elements["erg_note"].value;
+    return (ergB && ergN.trim() !== "") ? store.ergaenzteKenntnis(kArr, ergB, ergN) : kArr;
+  };
+
   const vorschau = () => {
-    const g = store.gesamtGalabau(lese("p", 5), lese("k", 4));
+    const ergAktiv = form.elements["erg_bereich"].value && form.elements["erg_note"].value.trim() !== "";
+    const g = store.gesamtGalabau(lese("p", 5), kenntnisEffektiv());
     if (g.gesamt == null) {
       preview.className = "bw-hinweis";
       preview.textContent = "Alle 9 Bereiche ausfüllen, dann werden Gesamtnote und Ergebnis berechnet.";
@@ -1191,10 +1213,11 @@ function notenDialog(row, nachher) {
     }
     preview.className = "bw-hinweis " + (g.bestanden ? "bw-hinweis--erfolg" : "bw-hinweis--fehler");
     preview.textContent =
-      `Praxis ${formatNote(g.praxis)} · Kenntnis ${formatNote(g.kenntnis)} → Gesamtnote ${formatNote(g.gesamt)} — ` +
+      `Praxis ${formatNote(g.praxis)} · Kenntnis ${formatNote(g.kenntnis)}${ergAktiv ? " (mit mündl. Ergänzung)" : ""} → Gesamtnote ${formatNote(g.gesamt)} — ` +
       (g.bestanden ? "bestanden" : "nicht bestanden" + (g.gruende.length ? " (" + g.gruende.join("; ") + ")" : ""));
   };
   form.querySelectorAll("[data-note]").forEach((el) => el.addEventListener("input", vorschau));
+  form.elements["erg_bereich"].addEventListener("change", vorschau);
 
   // Pflanzenkenntnisse-Teilnoten -> berechnet automatisch die Note in k2.
   const pkBerechnen = () => {
@@ -1224,7 +1247,8 @@ function notenDialog(row, nachher) {
     }
     try {
       const g = await store.setzeBewertung(row.pruefling_id, lese("p", 5), lese("k", 4), form.elements["bemerkung"].value,
-        { pk_schriftlich: form.elements["pk_s"].value, pk_bestimmung: form.elements["pk_b"].value });
+        { pk_schriftlich: form.elements["pk_s"].value, pk_bestimmung: form.elements["pk_b"].value,
+          ergaenzung_bereich: form.elements["erg_bereich"].value || null, ergaenzung_note: form.elements["erg_note"].value });
       meldung(g.gesamt != null
         ? `Gespeichert: Gesamtnote ${formatNote(g.gesamt)} — ${g.bestanden ? "bestanden" : "nicht bestanden"}.`
         : "Bewertung gespeichert (unvollständig).");

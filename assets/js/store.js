@@ -103,6 +103,8 @@ export async function oeffnen() {
     ALTER TABLE bewertungen ADD COLUMN IF NOT EXISTS bestanden boolean;
     ALTER TABLE bewertungen ADD COLUMN IF NOT EXISTS pk_schriftlich numeric;
     ALTER TABLE bewertungen ADD COLUMN IF NOT EXISTS pk_bestimmung numeric;
+    ALTER TABLE bewertungen ADD COLUMN IF NOT EXISTS ergaenzung_bereich text;
+    ALTER TABLE bewertungen ADD COLUMN IF NOT EXISTS ergaenzung_note numeric;
   `);
   return { pg: _pg, modus: _modus };
 }
@@ -657,28 +659,54 @@ export function pflanzenkenntnisNote(schriftlich, bestimmung) {
   return trunc1((2 * s + b) / 3);
 }
 
+const _ERG_INDEX = { k1: 0, k2: 1, k3: 2, k4: 3 };
+
+/**
+ * Wendet eine mündliche Ergänzungsprüfung auf EINEN Kenntnisbereich an: die
+ * Bereichsnote wird zu TRUNC((2·schriftlich + 1·mündlich)/3, 1) gewichtet
+ * (schriftlich zählt doppelt). Gibt ein neues Notenarray zurück; ungültige oder
+ * unvollständige Eingaben lassen das Array unverändert. Ob eine Ergänzung
+ * zulässig ist, entscheidet der Prüfungsausschuss — hier wird nur gerechnet.
+ */
+export function ergaenzteKenntnis(kenntnis, bereichKey, muendlich) {
+  const K = kenntnis.map(zahlOderNull);
+  const idx = _ERG_INDEX[bereichKey];
+  const m = zahlOderNull(muendlich);
+  if (idx === undefined || m === null || K[idx] === null) return K;
+  const out = K.slice();
+  out[idx] = trunc1((2 * K[idx] + m) / 3);
+  return out;
+}
+
 /**
  * Setzt/aktualisiert die Galabau-Bewertung eines Prüflings.
  * @param extra optional { pk_schriftlich, pk_bestimmung } — Teilnoten der
  *              Pflanzenkenntnisse (nur zur Nachvollziehbarkeit gespeichert).
  */
 export async function setzeBewertung(prueflingId, praxis, kenntnis, bemerkung = null, extra = {}) {
-  const g = gesamtGalabau(praxis, kenntnis);
+  const ergN = zahlOderNull(extra && extra.ergaenzung_note);
+  // Bereich nur merken, wenn auch eine mündliche Note vorliegt (saubere Daten).
+  const ergB = (extra && extra.ergaenzung_bereich && ergN !== null) ? extra.ergaenzung_bereich : null;
+  // Mündliche Ergänzung fließt nur in die abgeleiteten Werte (Schnitt/Gesamt/
+  // Ergebnis) ein; die schriftlichen Bereichsnoten k1..k4 bleiben dokumentiert.
+  const kEff = (ergB && ergN !== null) ? ergaenzteKenntnis(kenntnis, ergB, ergN) : kenntnis;
+  const g = gesamtGalabau(praxis, kEff);
   const P = praxis.map(zahlOderNull);
   const K = kenntnis.map(zahlOderNull);
   const pkS = zahlOderNull(extra && extra.pk_schriftlich);
   const pkB = zahlOderNull(extra && extra.pk_bestimmung);
   await _pg.query(
     `INSERT INTO bewertungen
-       (pruefling_id, p1,p2,p3,p4,p5, k1,k2,k3,k4, praxis,kenntnis,gesamt,bestanden, bemerkung, pk_schriftlich, pk_bestimmung)
-       VALUES ($1, $2,$3,$4,$5,$6, $7,$8,$9,$10, $11,$12,$13,$14, $15, $16, $17)
+       (pruefling_id, p1,p2,p3,p4,p5, k1,k2,k3,k4, praxis,kenntnis,gesamt,bestanden, bemerkung, pk_schriftlich, pk_bestimmung, ergaenzung_bereich, ergaenzung_note)
+       VALUES ($1, $2,$3,$4,$5,$6, $7,$8,$9,$10, $11,$12,$13,$14, $15, $16, $17, $18, $19)
        ON CONFLICT (pruefling_id) DO UPDATE SET
          p1=EXCLUDED.p1,p2=EXCLUDED.p2,p3=EXCLUDED.p3,p4=EXCLUDED.p4,p5=EXCLUDED.p5,
          k1=EXCLUDED.k1,k2=EXCLUDED.k2,k3=EXCLUDED.k3,k4=EXCLUDED.k4,
          praxis=EXCLUDED.praxis,kenntnis=EXCLUDED.kenntnis,gesamt=EXCLUDED.gesamt,
          bestanden=EXCLUDED.bestanden,bemerkung=EXCLUDED.bemerkung,
-         pk_schriftlich=EXCLUDED.pk_schriftlich,pk_bestimmung=EXCLUDED.pk_bestimmung`,
-    [prueflingId, ...P, ...K, g.praxis, g.kenntnis, g.gesamt, g.bestanden, bemerkung || null, pkS, pkB]
+         pk_schriftlich=EXCLUDED.pk_schriftlich,pk_bestimmung=EXCLUDED.pk_bestimmung,
+         ergaenzung_bereich=EXCLUDED.ergaenzung_bereich,ergaenzung_note=EXCLUDED.ergaenzung_note`,
+    [prueflingId, ...P, ...K, g.praxis, g.kenntnis, g.gesamt, g.bestanden, bemerkung || null, pkS, pkB, ergB, ergN]
   );
   // Bewertung treibt automatisch den Status des Prüflings (eine Aktion, alle
   // Ansichten aktuell) — ein bewusst zurückgezogener Status bleibt erhalten.
@@ -696,7 +724,7 @@ export async function bewertungenListe() {
     `SELECT p.id AS pruefling_id, p.nachname, p.vorname, p.beruf,
             b.p1,b.p2,b.p3,b.p4,b.p5, b.k1,b.k2,b.k3,b.k4,
             b.praxis, b.kenntnis, b.gesamt, b.bestanden, b.bemerkung,
-            b.pk_schriftlich, b.pk_bestimmung
+            b.pk_schriftlich, b.pk_bestimmung, b.ergaenzung_bereich, b.ergaenzung_note
        FROM prueflinge p LEFT JOIN bewertungen b ON b.pruefling_id = p.id
       ORDER BY p.nachname, p.vorname`
   );
@@ -849,7 +877,8 @@ const SICHERUNG_TABELLEN = {
   pruefer_zuteilungen: ["pruefung_id", "pruefer_id", "rolle", "status"],
   pruefer_abwesenheit: ["pruefer_id", "datum"],
   bewertungen: ["pruefling_id", "p1", "p2", "p3", "p4", "p5", "k1", "k2", "k3", "k4",
-                "praxis", "kenntnis", "gesamt", "bestanden", "bemerkung", "pk_schriftlich", "pk_bestimmung"],
+                "praxis", "kenntnis", "gesamt", "bestanden", "bemerkung", "pk_schriftlich", "pk_bestimmung",
+                "ergaenzung_bereich", "ergaenzung_note"],
 };
 function sicherungSpalten(tab) {
   return SICHERUNG_TABELLEN[tab] || ENTITAETEN[tab].felder.map((f) => f.name);

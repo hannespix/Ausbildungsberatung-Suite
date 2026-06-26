@@ -52,8 +52,9 @@ im aktuellen Landes-Corporate-Design Baden-Württemberg
 - **Notenberechnung (Gärtner/Galabau)** — offizielles Sammelbewertungs-Schema:
   5 praktische Bereiche + 4 Kenntnisbereiche, **Gesamtnote = Praxis · 0,6 +
   Kenntnis · 0,4** (auf 1 Stelle abgeschnitten), Bestehensregeln (Schnitt/Gesamt
-  < 4,5; Sperrfach; max. ein Bereich ≥ 4,5), Pflanzenkenntnisse als Teilnote;
-  Live-Vorschau und Notenverteilungs-Diagramm.
+  < 4,5; Sperrfach; max. ein Bereich ≥ 4,5), Pflanzenkenntnisse als Teilnote
+  und optionale **mündliche Ergänzungsprüfung** ((2 × schriftlich + 1 × mündlich)
+  ÷ 3 in einem Kenntnisbereich); Live-Vorschau und Notenverteilungs-Diagramm.
 - **Zeugnisse** — druckbares Prüfungszeugnis je Prüfling sowie **Serien-Druck**
   aller bewerteten Zeugnisse (Druck/PDF).
 - **Auswertungen** — Auslastung je Termin, Bestehensquoten je Fachrichtung,
