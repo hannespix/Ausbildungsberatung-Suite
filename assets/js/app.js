@@ -66,7 +66,7 @@ function navAufbauen() {
   const route = aktiveRoute();
   const punkte = [{ key: "uebersicht", label: "Übersicht" }]
     .concat(NAV_REIHENFOLGE.map((k) => ({ key: k, label: ENTITAETEN[k].plural })))
-    .concat([{ key: "planung", label: "Planung" }, { key: "noten", label: "Noten" }, { key: "zeugnisse", label: "Zeugnisse" }]);
+    .concat([{ key: "planung", label: "Planung" }, { key: "noten", label: "Noten" }, { key: "zeugnisse", label: "Zeugnisse" }, { key: "kontakte", label: "Adressliste" }]);
   ul.innerHTML = punkte.map((p) => {
     const aktiv = p.key === route ? ' aria-current="page"' : "";
     return `<li><a href="#/${p.key === "uebersicht" ? "" : p.key}"${aktiv}>${esc(p.label)}</a></li>`;
@@ -645,6 +645,99 @@ async function zeugnisDrucken(prueflingId) {
   window.print();
 }
 
+/* --------------------------------------------------------- Adressliste */
+
+function telLink(tel, q) {
+  if (!tel) return "";
+  const rein = String(tel).replace(/[^\d+]/g, "");
+  return `<a href="tel:${esc(rein)}">${hl(tel, q)}</a>`;
+}
+function mailLink(mail, q) {
+  if (!mail) return "";
+  return `<a href="mailto:${esc(mail)}">${hl(mail, q)}</a>`;
+}
+
+async function renderKontakte() {
+  let letzte = [];
+
+  appEl().innerHTML = `
+    <h1>Adress- &amp; Telefonliste</h1>
+    <p class="bw-unterzeile">Betriebe und Prüfer:innen — durchsuchbar und druckbar</p>
+    <div class="bw-toolbar">
+      <div class="bw-search">
+        <label for="modulsuche" class="bw-skip-link">Kontakte durchsuchen</label>
+        <input id="modulsuche" type="search" placeholder="Suchen… (Name, Ort, Telefon, E-Mail)"
+               aria-label="Kontakte durchsuchen" autocomplete="off">
+        <button type="button" id="suche-btn">Suchen</button>
+      </div>
+      <button class="bw-btn bw-btn--sekundaer" type="button" id="drucken-btn">Liste drucken</button>
+    </div>
+
+    <div aria-live="polite">
+      <table class="bw-table">
+        <thead><tr><th>Typ</th><th>Name</th><th>Organisation / Ort</th><th>Funktion / Ansprechpartner</th><th>Telefon</th><th>E-Mail</th></tr></thead>
+        <tbody id="zeilen"></tbody>
+      </table>
+      <p id="leer" class="bw-hinweis" hidden></p>
+    </div>
+  `;
+
+  const eingabe = document.getElementById("modulsuche");
+  const zeichne = async () => {
+    const q = eingabe.value;
+    let rows;
+    try { rows = await store.kontakteSuche(q); }
+    catch (e) { console.error(e); meldung("Suche fehlgeschlagen: " + e.message, "fehler"); return; }
+    letzte = rows;
+    document.getElementById("zeilen").innerHTML = rows.map((r) => `
+      <tr>
+        <td>${esc(r.typ)}</td>
+        <td>${hl(r.bezeichnung, q)}</td>
+        <td>${hl(r.zusatz || "", q)}</td>
+        <td>${hl(r.person || "", q)}</td>
+        <td>${telLink(r.telefon, q)}</td>
+        <td>${mailLink(r.email, q)}</td>
+      </tr>`).join("");
+    const leer = document.getElementById("leer");
+    if (!rows.length) {
+      leer.hidden = false;
+      leer.textContent = q
+        ? `Keine Treffer für „${q}".`
+        : "Noch keine Betriebe oder Prüfer:innen erfasst.";
+    } else { leer.hidden = true; }
+  };
+
+  eingabe.addEventListener("input", debounce(zeichne, 180));
+  document.getElementById("suche-btn").addEventListener("click", zeichne);
+  document.getElementById("drucken-btn").addEventListener("click", () => kontakteDrucken(letzte));
+
+  zeichne();
+}
+
+/** Druckbare Adress- und Telefonliste (aktuelle Auswahl). */
+function kontakteDrucken(rows) {
+  const root = druckbereich();
+  root.innerHTML = `
+    <h1>Adress- und Telefonliste</h1>
+    <table class="bw-table">
+      <thead><tr><th>Typ</th><th>Name</th><th>Organisation / Ort</th><th>Funktion / Ansprechpartner</th><th>Telefon</th><th>E-Mail</th></tr></thead>
+      <tbody>
+        ${rows.map((r) => `
+          <tr>
+            <td>${esc(r.typ)}</td>
+            <td>${esc(r.bezeichnung)}</td>
+            <td>${esc(r.zusatz || "")}</td>
+            <td>${esc(r.person || "")}</td>
+            <td>${esc(r.telefon || "")}</td>
+            <td>${esc(r.email || "")}</td>
+          </tr>`).join("")}
+      </tbody>
+    </table>
+    <p class="bw-klein bw-leise">Erstellt mit der Ausbildungsberatung-Suite — Regierungspräsidium Freiburg</p>
+  `;
+  window.print();
+}
+
 /* ------------------------------------------------------------- CRUD-Dialog */
 
 function feldHtml(f, value, refOptionen) {
@@ -773,6 +866,7 @@ async function route() {
     else if (r === "planung") await renderPlanung();
     else if (r === "noten") await renderNoten();
     else if (r === "zeugnisse") await renderZeugnisse();
+    else if (r === "kontakte") await renderKontakte();
     else if (ENTITAETEN[r]) await renderListe(r);
     else { location.hash = "#/"; return; }
   } catch (e) {

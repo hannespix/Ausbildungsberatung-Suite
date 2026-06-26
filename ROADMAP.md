@@ -92,9 +92,13 @@ CSV/Excel; Format für nachgelagerte Systeme (z. B. Listen, Seriendruck).
 **ICS-Export** der Prüfungstage (Kalendereinträge/Einladungen), vCard-Export der
 Adress-/Telefonliste, `mailto:`-Vorlagen — ohne externe Requests (kein Graph-API).
 
-### M9 — Adress- & Telefonliste
-Konsolidierte, druck- und exportierbare Kontaktliste (Betriebe, Prüfer:innen,
-Ansprechpartner) mit Schnellsuche und Telefon-/E-Mail-Aktionen.
+### M9 — Adress- & Telefonliste ✅
+Neue Ansicht „Adressliste": konsolidiert Betriebe und Prüfer:innen, DB-seitige
+globale Fuzzy-Suche (UNION + Trigramm) mit Treffermarkierung, Telefon-/E-Mail als
+`tel:`/`mailto:`-Aktionen, druckbare Liste. Smoke-getestet (Chromium).
+
+### M9b — Kontakte-Export (offen)
+CSV-/vCard-Export der Adressliste.
 
 ### M10 — Auswertungen & Dashboard
 Kennzahlen (Bestehensquoten, Auslastung je Tag/Beruf), CI-konforme Diagramme,
