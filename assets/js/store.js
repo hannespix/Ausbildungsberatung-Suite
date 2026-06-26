@@ -309,6 +309,44 @@ export async function anfrageStellen(pruefungId) {
  * legt fehlende Termine automatisch an und besetzt je Termin einen Ausschuss
  * (Vorsitz + 2 Beisitz) aus dem Prüfer-Pool (Last ausgeglichen).
  */
+/** Addiert Minuten auf eine "HH:MM"-Zeit (24-h, ohne Datum). */
+function _addMinuten(hhmm, minuten) {
+  const teile = String(hhmm || "08:00").split(":");
+  const h = parseInt(teile[0], 10) || 0;
+  const m = parseInt(teile[1], 10) || 0;
+  const total = h * 60 + m + Math.round(minuten);
+  const hh = Math.floor(total / 60) % 24;
+  const mm = ((total % 60) + 60) % 60;
+  return String(hh).padStart(2, "0") + ":" + String(mm).padStart(2, "0");
+}
+
+const ZEITRASTER_MINUTEN = 20; // Standard-Taktung je Prüfling
+
+/**
+ * Vergibt fortlaufende Uhrzeit-Slots an alle Prüflinge eines Termins (in der
+ * vorhandenen Reihenfolge). Verbindet Planung und Tagesablauf: aus einer Aktion
+ * entsteht der komplette Zeitplan des Prüfungstags.
+ * @returns {{anzahl:number, beginn:string, minuten:number}}
+ */
+export async function zeitrasterVergeben(pruefungId, start = null, minuten = ZEITRASTER_MINUTEN) {
+  const t = (await _pg.query(`SELECT zeit_von FROM pruefungen WHERE id = $1`, [pruefungId])).rows[0];
+  const beginn = start || (t && t.zeit_von) || "08:00";
+  const step = Math.max(1, Number(minuten) || ZEITRASTER_MINUTEN);
+  const rows = (await _pg.query(
+    `SELECT id FROM zuteilungen WHERE pruefung_id = $1 ORDER BY reihenfolge, slot NULLS LAST, id`,
+    [pruefungId]
+  )).rows;
+  for (let i = 0; i < rows.length; i++) {
+    await _pg.query(`UPDATE zuteilungen SET slot = $2 WHERE id = $1`, [rows[i].id, _addMinuten(beginn, i * step)]);
+  }
+  return { anzahl: rows.length, beginn, minuten: step };
+}
+
+/** Löscht die Uhrzeit-Slots eines Termins (Reihenfolge bleibt erhalten). */
+export async function zeitrasterLoeschen(pruefungId) {
+  await _pg.query(`UPDATE zuteilungen SET slot = NULL WHERE pruefung_id = $1`, [pruefungId]);
+}
+
 export async function planungAutomatisch(kapazitaet = 12) {
   const cap = Math.max(1, Number(kapazitaet) || 12);
   await _pg.exec(`TRUNCATE zuteilungen RESTART IDENTITY; TRUNCATE pruefer_zuteilungen RESTART IDENTITY;`);
@@ -346,7 +384,7 @@ export async function planungAutomatisch(kapazitaet = 12) {
 
     const needed = Math.ceil(pl.length / cap);
     let termine = (await _pg.query(
-      `SELECT id FROM pruefungen WHERE beruf = $1 ORDER BY datum, id`, [beruf]
+      `SELECT id, zeit_von FROM pruefungen WHERE beruf = $1 ORDER BY datum, id`, [beruf]
     )).rows;
 
     if (termine.length < needed) {
@@ -366,7 +404,7 @@ export async function planungAutomatisch(kapazitaet = 12) {
         });
       }
       await bulkInsert("pruefungen", ["titel", "beruf", "datum", "zeit_von", "zeit_bis", "ort", "raum"], neu);
-      termine = (await _pg.query(`SELECT id FROM pruefungen WHERE beruf = $1 ORDER BY datum, id`, [beruf])).rows;
+      termine = (await _pg.query(`SELECT id, zeit_von FROM pruefungen WHERE beruf = $1 ORDER BY datum, id`, [beruf])).rows;
     }
     summeTermine += needed;
 
@@ -376,8 +414,12 @@ export async function planungAutomatisch(kapazitaet = 12) {
     for (let g = 0; g < needed; g++) {
       const size = base + (g < extra ? 1 : 0);
       const termin = termine[g];
+      const beginn = termin.zeit_von || "08:00";
       for (let k = 0; k < size; k++, idx++) {
-        zRows.push({ pruefung_id: termin.id, pruefling_id: pl[idx].id, slot: null, reihenfolge: k + 1 });
+        zRows.push({
+          pruefung_id: termin.id, pruefling_id: pl[idx].id,
+          slot: _addMinuten(beginn, k * ZEITRASTER_MINUTEN), reihenfolge: k + 1,
+        });
       }
       const ausschuss = naechstePruefer(ROLLEN.length, new Set());
       ausschuss.forEach((prId, i) =>

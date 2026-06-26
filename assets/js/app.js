@@ -133,7 +133,7 @@ async function renderUebersicht() {
     <section aria-labelledby="autoplan-h" style="margin-top:var(--bw-space-4)">
       <h2 id="autoplan-h">Automatische Prüfungsplanung</h2>
       <div class="bw-card">
-        <p class="bw-klein bw-leise">Verteilt alle Prüflinge je Fachrichtung gleichmäßig auf passend viele Prüfungstermine (Kapazität je Tag), nach PLZ geclustert, legt fehlende Termine an und besetzt je Termin einen Ausschuss. Ergebnis im <a href="#/planungsliste">Prüfer-Plan</a>.</p>
+        <p class="bw-klein bw-leise">Verteilt alle Prüflinge je Fachrichtung gleichmäßig auf passend viele Prüfungstermine (Kapazität je Tag), nach PLZ geclustert, legt fehlende Termine an, vergibt Uhrzeiten (20-Minuten-Takt) und besetzt je Termin einen Ausschuss. Ergebnis im <a href="#/planungsliste">Prüfer-Plan</a> und in der <a href="#/planung">Planung</a>.</p>
         <div class="bw-toolbar" style="margin-top:var(--bw-space-2)">
           <button class="bw-btn bw-btn--gelb" type="button" id="autoplan-btn">Jetzt automatisch planen</button>
         </div>
@@ -385,6 +385,20 @@ async function renderPlanung() {
       </div>
 
       <h2>Zugeteilte Prüflinge (${zahl(zugeteilt.length)})</h2>
+      <div class="bw-toolbar" style="margin-bottom:var(--bw-space-2)"${zugeteilt.length ? "" : " hidden"}>
+        <div class="bw-field" style="margin:0">
+          <label for="raster-start" class="bw-skip-link">Beginn</label>
+          <input id="raster-start" type="time" value="${esc(termin.zeit_von || "08:00")}" aria-label="Beginn des Zeitrasters">
+        </div>
+        <div class="bw-field" style="margin:0">
+          <label for="raster-takt" class="bw-skip-link">Minuten je Prüfling</label>
+          <input id="raster-takt" type="number" min="1" max="120" value="20" inputmode="numeric"
+                 aria-label="Minuten je Prüfling" style="width:6rem">
+        </div>
+        <button class="bw-btn bw-btn--sekundaer" type="button" id="raster-btn">Zeitraster erzeugen</button>
+        <button class="bw-btn bw-btn--sekundaer" type="button" id="raster-loeschen">Uhrzeiten löschen</button>
+        <span class="bw-klein bw-leise"> — vergibt fortlaufende Uhrzeiten in Reihenfolge.</span>
+      </div>
       <table class="bw-table">
         <thead><tr><th>Uhrzeit</th><th>Name</th><th>Beruf</th><th>Betrieb</th><th>Aktion</th></tr></thead>
         <tbody>
@@ -497,6 +511,24 @@ async function renderPlanung() {
       if (!rid) return;
       await store.entferneZuteilung(Number(rid));
       meldung("Zuteilung entfernt.");
+      planZeichnen();
+    });
+
+    document.getElementById("raster-btn")?.addEventListener("click", async () => {
+      const start = document.getElementById("raster-start").value || null;
+      const takt = parseInt(document.getElementById("raster-takt").value, 10) || 20;
+      try {
+        const r = await store.zeitrasterVergeben(id, start, takt);
+        meldung(r.anzahl
+          ? `Zeitraster vergeben: ${zahl(r.anzahl)} Prüflinge ab ${r.beginn} Uhr im ${zahl(r.minuten)}-Minuten-Takt.`
+          : "Keine zugeteilten Prüflinge für ein Zeitraster.");
+        planZeichnen();
+      } catch (e) { console.error(e); meldung("Zeitraster fehlgeschlagen: " + e.message, "fehler"); }
+    });
+
+    document.getElementById("raster-loeschen")?.addEventListener("click", async () => {
+      await store.zeitrasterLoeschen(id);
+      meldung("Uhrzeiten entfernt.");
       planZeichnen();
     });
 
