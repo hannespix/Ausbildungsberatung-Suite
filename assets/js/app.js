@@ -211,6 +211,41 @@ function terminLabel(t) {
   return `${t.titel} — ${datum}${t.ort ? " · " + t.ort : ""}`;
 }
 
+/** Baut einen druckbaren Tagesablauf (nur beim Drucken sichtbar) und druckt. */
+function tagesablaufDrucken(termin, zugeteilt, prueferZug) {
+  let root = document.getElementById("druckbereich");
+  if (!root) {
+    root = document.createElement("div");
+    root.className = "bw-druck";
+    root.id = "druckbereich";
+    document.body.appendChild(root);
+  }
+  const datum = termin.datum ? new Date(termin.datum).toLocaleDateString("de-DE") : "—";
+  const kopf = [
+    datum,
+    termin.zeit_von ? esc(termin.zeit_von) + (termin.zeit_bis ? "–" + esc(termin.zeit_bis) : "") : "",
+    termin.ort ? esc(termin.ort) + (termin.raum ? ", " + esc(termin.raum) : "") : "",
+    termin.beruf ? esc(termin.beruf) : "",
+  ].filter(Boolean).join(" · ");
+
+  root.innerHTML = `
+    <h1>Tagesablauf — ${esc(termin.titel)}</h1>
+    <p>${kopf}</p>
+    <h2>Prüflinge (${zahl(zugeteilt.length)})</h2>
+    <table class="bw-table">
+      <thead><tr><th>Uhrzeit</th><th>Name</th><th>Beruf</th><th>Betrieb</th></tr></thead>
+      <tbody>${zugeteilt.map((z) => `<tr><td>${esc(z.slot || "—")}</td><td>${esc((z.nachname || "") + ", " + (z.vorname || ""))}</td><td>${esc(z.beruf || "")}</td><td>${esc(z.betrieb || "")}</td></tr>`).join("")}</tbody>
+    </table>
+    <h2>Ausschuss (${zahl(prueferZug.length)})</h2>
+    <table class="bw-table">
+      <thead><tr><th>Rolle</th><th>Name</th><th>Organisation</th></tr></thead>
+      <tbody>${prueferZug.map((p) => `<tr><td>${esc(p.rolle || "—")}</td><td>${esc((p.nachname || "") + ", " + (p.vorname || ""))}</td><td>${esc(p.organisation || "")}</td></tr>`).join("")}</tbody>
+    </table>
+    <p class="bw-klein bw-leise">Erstellt mit der Ausbildungsberatung-Suite — Regierungspräsidium Freiburg</p>
+  `;
+  window.print();
+}
+
 async function renderPlanung() {
   const termine = await store.liste("pruefungen");
   if (!termine.length) {
@@ -245,14 +280,18 @@ async function renderPlanung() {
     const ROLLEN = (ENTITAETEN.pruefer.felder.find((f) => f.name === "funktion") || {}).optionen || [];
 
     document.getElementById("plan").innerHTML = `
-      <div class="bw-card" style="margin-bottom:var(--bw-space-3)">
-        <strong>${esc(termin.titel)}</strong>
-        <div class="bw-klein bw-leise">
-          ${termin.datum ? esc(new Date(termin.datum).toLocaleDateString("de-DE")) : "ohne Datum"}
-          ${termin.zeit_von ? " · " + esc(termin.zeit_von) + (termin.zeit_bis ? "–" + esc(termin.zeit_bis) : "") : ""}
-          ${termin.ort ? " · " + esc(termin.ort) : ""}${termin.raum ? ", " + esc(termin.raum) : ""}
-          ${termin.beruf ? " · " + esc(termin.beruf) : ""}
+      <div class="bw-card bw-toolbar" style="margin-bottom:var(--bw-space-3)">
+        <div>
+          <strong>${esc(termin.titel)}</strong>
+          <div class="bw-klein bw-leise">
+            ${termin.datum ? esc(new Date(termin.datum).toLocaleDateString("de-DE")) : "ohne Datum"}
+            ${termin.zeit_von ? " · " + esc(termin.zeit_von) + (termin.zeit_bis ? "–" + esc(termin.zeit_bis) : "") : ""}
+            ${termin.ort ? " · " + esc(termin.ort) : ""}${termin.raum ? ", " + esc(termin.raum) : ""}
+            ${termin.beruf ? " · " + esc(termin.beruf) : ""}
+          </div>
         </div>
+        <button class="bw-btn bw-btn--sekundaer" type="button" id="drucken-btn"
+                ${zugeteilt.length || prueferZug.length ? "" : "disabled"}>Tagesablauf drucken</button>
       </div>
 
       <h2>Zugeteilte Prüflinge (${zahl(zugeteilt.length)})</h2>
@@ -371,6 +410,10 @@ async function renderPlanung() {
       await store.entfernePrueferZuteilung(Number(rid));
       meldung("Prüfer-Zuteilung entfernt.");
       planZeichnen();
+    });
+
+    document.getElementById("drucken-btn")?.addEventListener("click", () => {
+      tagesablaufDrucken(termin, zugeteilt, prueferZug);
     });
   }
 
