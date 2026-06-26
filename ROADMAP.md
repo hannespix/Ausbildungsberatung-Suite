@@ -32,8 +32,12 @@ E-Mail-Format-Validierung mit deutscher Meldung; Dublettenwarnung (bestätigbar)
 
 ## Geplant (Loop-Backlog — Reihenfolge flexibel)
 
-### M2b — Weitere Stammdaten-Politur (offen)
-Berufe-Lookup, PLZ-Format, Inline-Bearbeitung, Sortierung per Spaltenkopf.
+### M2b — Weitere Stammdaten-Politur (teils ✅)
+- ✅ **Sortierung per Spaltenkopf** in allen Listen: Klick (oder Tastatur) auf
+  einen Spaltenkopf sortiert auf-/absteigend, typbewusst (Text de-locale,
+  Zahlen, Datum; leere Werte ans Ende), `aria-sort` gesetzt, mit Suche
+  kombinierbar. Smoke-getestet (inkl. Mobile).
+- Offen: Berufe-Lookup, PLZ-Format, Inline-Bearbeitung.
 
 ### Globale Schnellsuche ✅
 Eigene Ansicht (`#/suche`, über die Header-Lupe erreichbar): durchsucht
