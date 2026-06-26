@@ -161,7 +161,7 @@ input, select, textarea { font: inherit; width: 100%; padding: 0.5em 0.65em; bac
 /* ===================== Tabellen =================================== */
 .bw-table { width: 100%; border-collapse: collapse; font-size: var(--bw-fs-klein); }
 .bw-table th, .bw-table td { text-align: left; padding: 0.55em 0.75em; border-bottom: 1px solid var(--bw-linie); }
-.bw-table thead th { background: var(--bw-schwarz); color: var(--bw-weiss); position: sticky; top: 0; }
+.bw-table thead th { background: var(--bw-schwarz); color: var(--bw-weiss); position: sticky; top: 0; z-index: 1; }
 .bw-table tbody tr:nth-child(even) { background: var(--bw-grau-50); }
 .bw-table tbody tr:hover { background: var(--bw-grau-100); }
 .bw-table .bw-highlight { background: var(--bw-gelb); color: var(--bw-schwarz); font-weight: 700; }
@@ -214,6 +214,7 @@ input, select, textarea { font: inherit; width: 100%; padding: 0.5em 0.65em; bac
     background: var(--bw-weiss); border-bottom: var(--bw-border);
     padding: var(--bw-space-2) var(--bw-rand);
     display: none;
+    z-index: 50;                 /* über der sticky Tabellen-Kopfzeile */
   }
   .bw-nav__panel[data-open="true"] { display: block; }
   .bw-nav__links { flex-direction: column; gap: 0; }
