@@ -869,7 +869,9 @@ async function renderNoten() {
 }
 
 function noteFeld(id, label, value) {
-  const v = value == null ? "" : String(value).replace(".", ",");
+  // type="number" erwartet Punkt-Dezimaltrenner; ein Komma würde der Browser
+  // verwerfen (Feld bliebe leer). Anzeige lokalisiert der Browser selbst.
+  const v = value == null ? "" : String(value).replace(",", ".");
   return `<div class="bw-field">
     <label for="${id}">${esc(label)}</label>
     <input id="${id}" name="${id}" type="number" min="1" max="6" step="0.1" inputmode="decimal"
@@ -897,6 +899,13 @@ function notenDialog(row, nachher) {
       <h3>Kenntnisprüfung</h3>
       <div class="bw-dialog__felder">
         ${GALABAU_BEREICHE.kenntnis.map((b, i) => noteFeld("k" + (i + 1), b, K[i])).join("")}
+      </div>
+      <div class="bw-hinweis" style="margin-top:var(--bw-space-2)">
+        <p class="bw-klein bw-leise" style="margin:0 0 var(--bw-space-2)">Pflanzenkenntnisse aus Teilnoten berechnen: (2 × schriftliche PK + 1 × Pflanzenbestimmung) ÷ 3. Leer lassen, um die Note oben direkt einzutragen.</p>
+        <div class="bw-dialog__felder">
+          ${noteFeld("pk_s", "schriftliche Pflanzenkenntnisse", row.pk_schriftlich)}
+          ${noteFeld("pk_b", "Pflanzenbestimmung", row.pk_bestimmung)}
+        </div>
       </div>
 
       <p id="noten-preview" class="bw-hinweis" aria-live="polite"></p>
@@ -928,6 +937,16 @@ function notenDialog(row, nachher) {
       (g.bestanden ? "bestanden" : "nicht bestanden" + (g.gruende.length ? " (" + g.gruende.join("; ") + ")" : ""));
   };
   form.querySelectorAll("[data-note]").forEach((el) => el.addEventListener("input", vorschau));
+
+  // Pflanzenkenntnisse-Teilnoten -> berechnet automatisch die Note in k2.
+  const pkBerechnen = () => {
+    // type="number" akzeptiert nur Punkt-Dezimaltrenner (kein Komma).
+    const note = store.pflanzenkenntnisNote(form.elements["pk_s"].value, form.elements["pk_b"].value);
+    if (note != null) form.elements["k2"].value = note.toFixed(1);
+    vorschau();
+  };
+  form.elements["pk_s"].addEventListener("input", pkBerechnen);
+  form.elements["pk_b"].addEventListener("input", pkBerechnen);
   vorschau();
 
   dlg.querySelector("#abbrechen").addEventListener("click", () => dlg.close());
@@ -946,7 +965,8 @@ function notenDialog(row, nachher) {
       }
     }
     try {
-      const g = await store.setzeBewertung(row.pruefling_id, lese("p", 5), lese("k", 4), form.elements["bemerkung"].value);
+      const g = await store.setzeBewertung(row.pruefling_id, lese("p", 5), lese("k", 4), form.elements["bemerkung"].value,
+        { pk_schriftlich: form.elements["pk_s"].value, pk_bestimmung: form.elements["pk_b"].value });
       meldung(g.gesamt != null
         ? `Gespeichert: Gesamtnote ${formatNote(g.gesamt)} — ${g.bestanden ? "bestanden" : "nicht bestanden"}.`
         : "Bewertung gespeichert (unvollständig).");

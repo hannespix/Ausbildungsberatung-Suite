@@ -91,6 +91,8 @@ export async function oeffnen() {
     ALTER TABLE bewertungen ADD COLUMN IF NOT EXISTS kenntnis numeric;
     ALTER TABLE bewertungen ADD COLUMN IF NOT EXISTS gesamt numeric;
     ALTER TABLE bewertungen ADD COLUMN IF NOT EXISTS bestanden boolean;
+    ALTER TABLE bewertungen ADD COLUMN IF NOT EXISTS pk_schriftlich numeric;
+    ALTER TABLE bewertungen ADD COLUMN IF NOT EXISTS pk_bestimmung numeric;
   `);
   return { pg: _pg, modus: _modus };
 }
@@ -559,21 +561,38 @@ export function gesamtGalabau(praxis, kenntnis) {
   return { praxis: O, kenntnis: AA, gesamt: AB, bestanden, anzahl55, anzahl45, gruende };
 }
 
-/** Setzt/aktualisiert die Galabau-Bewertung eines Prüflings. */
-export async function setzeBewertung(prueflingId, praxis, kenntnis, bemerkung = null) {
+/**
+ * Pflanzenkenntnisse-Teilnote nach offiziellem Schlüssel:
+ * TRUNC((2·schriftliche PK + 1·Pflanzenbestimmung)/3, 1). Null, wenn unvollständig.
+ */
+export function pflanzenkenntnisNote(schriftlich, bestimmung) {
+  const s = zahlOderNull(schriftlich), b = zahlOderNull(bestimmung);
+  if (s === null || b === null) return null;
+  return trunc1((2 * s + b) / 3);
+}
+
+/**
+ * Setzt/aktualisiert die Galabau-Bewertung eines Prüflings.
+ * @param extra optional { pk_schriftlich, pk_bestimmung } — Teilnoten der
+ *              Pflanzenkenntnisse (nur zur Nachvollziehbarkeit gespeichert).
+ */
+export async function setzeBewertung(prueflingId, praxis, kenntnis, bemerkung = null, extra = {}) {
   const g = gesamtGalabau(praxis, kenntnis);
   const P = praxis.map(zahlOderNull);
   const K = kenntnis.map(zahlOderNull);
+  const pkS = zahlOderNull(extra && extra.pk_schriftlich);
+  const pkB = zahlOderNull(extra && extra.pk_bestimmung);
   await _pg.query(
     `INSERT INTO bewertungen
-       (pruefling_id, p1,p2,p3,p4,p5, k1,k2,k3,k4, praxis,kenntnis,gesamt,bestanden, bemerkung)
-       VALUES ($1, $2,$3,$4,$5,$6, $7,$8,$9,$10, $11,$12,$13,$14, $15)
+       (pruefling_id, p1,p2,p3,p4,p5, k1,k2,k3,k4, praxis,kenntnis,gesamt,bestanden, bemerkung, pk_schriftlich, pk_bestimmung)
+       VALUES ($1, $2,$3,$4,$5,$6, $7,$8,$9,$10, $11,$12,$13,$14, $15, $16, $17)
        ON CONFLICT (pruefling_id) DO UPDATE SET
          p1=EXCLUDED.p1,p2=EXCLUDED.p2,p3=EXCLUDED.p3,p4=EXCLUDED.p4,p5=EXCLUDED.p5,
          k1=EXCLUDED.k1,k2=EXCLUDED.k2,k3=EXCLUDED.k3,k4=EXCLUDED.k4,
          praxis=EXCLUDED.praxis,kenntnis=EXCLUDED.kenntnis,gesamt=EXCLUDED.gesamt,
-         bestanden=EXCLUDED.bestanden,bemerkung=EXCLUDED.bemerkung`,
-    [prueflingId, ...P, ...K, g.praxis, g.kenntnis, g.gesamt, g.bestanden, bemerkung || null]
+         bestanden=EXCLUDED.bestanden,bemerkung=EXCLUDED.bemerkung,
+         pk_schriftlich=EXCLUDED.pk_schriftlich,pk_bestimmung=EXCLUDED.pk_bestimmung`,
+    [prueflingId, ...P, ...K, g.praxis, g.kenntnis, g.gesamt, g.bestanden, bemerkung || null, pkS, pkB]
   );
   // Bewertung treibt automatisch den Status des Prüflings (eine Aktion, alle
   // Ansichten aktuell) — ein bewusst zurückgezogener Status bleibt erhalten.
@@ -590,7 +609,8 @@ export async function bewertungenListe() {
   const res = await _pg.query(
     `SELECT p.id AS pruefling_id, p.nachname, p.vorname, p.beruf,
             b.p1,b.p2,b.p3,b.p4,b.p5, b.k1,b.k2,b.k3,b.k4,
-            b.praxis, b.kenntnis, b.gesamt, b.bestanden, b.bemerkung
+            b.praxis, b.kenntnis, b.gesamt, b.bestanden, b.bemerkung,
+            b.pk_schriftlich, b.pk_bestimmung
        FROM prueflinge p LEFT JOIN bewertungen b ON b.pruefling_id = p.id
       ORDER BY p.nachname, p.vorname`
   );
@@ -700,7 +720,7 @@ const SICHERUNG_TABELLEN = {
   zuteilungen: ["pruefung_id", "pruefling_id", "slot", "reihenfolge"],
   pruefer_zuteilungen: ["pruefung_id", "pruefer_id", "rolle", "status"],
   bewertungen: ["pruefling_id", "p1", "p2", "p3", "p4", "p5", "k1", "k2", "k3", "k4",
-                "praxis", "kenntnis", "gesamt", "bestanden", "bemerkung"],
+                "praxis", "kenntnis", "gesamt", "bestanden", "bemerkung", "pk_schriftlich", "pk_bestimmung"],
 };
 function sicherungSpalten(tab) {
   return SICHERUNG_TABELLEN[tab] || ENTITAETEN[tab].felder.map((f) => f.name);
