@@ -5,7 +5,7 @@
 // Design ausschließlich über bw-theme.css (--bw-*-Tokens), Texte deutsch.
 
 import * as store from "./store.js";
-import { ENTITAETEN, NAV_REIHENFOLGE } from "./model.js";
+import { ENTITAETEN, NAV_REIHENFOLGE, GALABAU_BEREICHE } from "./model.js";
 
 let DB_MODUS = null;
 const appEl = () => document.getElementById("app");
@@ -84,7 +84,7 @@ async function renderUebersicht() {
 
   appEl().innerHTML = `
     <h1>Übersicht</h1>
-    <p class="bw-unterzeile">Prüfungsplanung, Azubi-Verwaltung und Organisation der Ausbildungsberatung</p>
+    <p class="bw-unterzeile">Abschlussprüfung Gärtner/in — Planung, Verwaltung, Notenberechnung und Zeugnis</p>
 
     <section aria-labelledby="kennzahlen-h">
       <h2 id="kennzahlen-h">Kennzahlen</h2>
@@ -434,45 +434,49 @@ function formatNote(n) {
   return Number(n).toLocaleString("de-DE", { minimumFractionDigits: 1, maximumFractionDigits: 2 });
 }
 
-function bewertungBadge(r) {
-  if (r.note == null) return '<span class="bw-leise">offen</span>';
-  const klasse = r.note <= 4.4 ? "bw-status-do" : "bw-status-dont";
-  return `<span class="${klasse}">${esc(r.note_wort || "")}</span>`;
+function ergebnisBadge(bestanden) {
+  if (bestanden === true || bestanden === "t" || bestanden === "true")
+    return '<span class="bw-status-do">bestanden</span>';
+  if (bestanden === false || bestanden === "f" || bestanden === "false")
+    return '<span class="bw-status-dont">nicht bestanden</span>';
+  return '<span class="bw-leise">offen</span>';
 }
 
 async function renderNoten() {
   const rows = await store.bewertungenListe();
   const verteilung = await store.notenVerteilung();
-  const bewertet = rows.filter((r) => r.note != null).length;
+  const bewertet = rows.filter((r) => r.gesamt != null).length;
 
   appEl().innerHTML = `
     <h1>Noten</h1>
-    <p class="bw-unterzeile">Gesamtbewertung je Prüfling nach dem linearen Punkteschlüssel (Dezimalnote)</p>
+    <p class="bw-unterzeile">Galabau-Sammelbewertung: 5 praktische + 4 Kenntnisbereiche → Gesamtnote</p>
 
-    <table class="bw-table">
-      <thead><tr><th>Name</th><th>Beruf</th><th>Punkte</th><th>Note</th><th>Bewertung</th><th>Aktion</th></tr></thead>
-      <tbody id="noten-koerper">
-        ${rows.map((r) => `
-          <tr>
-            <td>${esc((r.nachname || "") + ", " + (r.vorname || ""))}</td>
-            <td>${esc(r.beruf || "")}</td>
-            <td>${r.punkte != null ? zahl(r.punkte) + " / " + zahl(r.max_punkte || 100) : "—"}</td>
-            <td>${formatNote(r.note)}</td>
-            <td>${bewertungBadge(r)}</td>
-            <td class="bw-actions">
-              <button class="bw-btn bw-btn--sekundaer" type="button" data-bewerten="${r.pruefling_id}">${r.note != null ? "Ändern" : "Bewerten"}</button>
-            </td>
-          </tr>`).join("")}
-      </tbody>
-    </table>
+    <div class="bw-tablewrap">
+      <table class="bw-table">
+        <thead><tr><th>Name</th><th>Fachrichtung</th><th>Praxis</th><th>Kenntnis</th><th>Gesamtnote</th><th>Ergebnis</th><th>Aktion</th></tr></thead>
+        <tbody id="noten-koerper">
+          ${rows.map((r) => `
+            <tr>
+              <td>${esc((r.nachname || "") + ", " + (r.vorname || ""))}</td>
+              <td>${esc(r.beruf || "")}</td>
+              <td>${formatNote(r.praxis)}</td>
+              <td>${formatNote(r.kenntnis)}</td>
+              <td><strong>${formatNote(r.gesamt)}</strong></td>
+              <td>${ergebnisBadge(r.bestanden)}</td>
+              <td class="bw-actions">
+                <button class="bw-btn bw-btn--sekundaer" type="button" data-bewerten="${r.pruefling_id}">${r.gesamt != null ? "Ändern" : "Bewerten"}</button>
+              </td>
+            </tr>`).join("")}
+        </tbody>
+      </table>
+    </div>
     <p class="bw-hinweis"${rows.length ? " hidden" : ""}>Noch keine Prüflinge vorhanden — zuerst unter <a href="#/prueflinge">Prüflinge</a> anlegen.</p>
 
-    <h2 style="margin-top:var(--bw-space-4)">Notenverteilung</h2>
+    <h2 style="margin-top:var(--bw-space-4)">Verteilung der Gesamtnoten</h2>
     <div id="noten-diagramm" class="bw-card"></div>
     <p class="bw-klein bw-leise" style="margin-top:var(--bw-space-2)">
-      Linearer Schlüssel: Note = 6 − 5 · (Punkte / Maximalpunktzahl), 1,0–6,0. Wortstufen:
-      1,0–1,4 sehr gut · 1,5–2,4 gut · 2,5–3,4 befriedigend · 3,5–4,4 ausreichend · 4,5–5,4 mangelhaft · 5,5–6,0 ungenügend.
-      Gewichtung der Prüfungsbereiche und Bestehensregeln (Gärtner-Gesamtschema) folgen.
+      Galabau: Gesamtnote = Praxis-Schnitt · 0,6 + Kenntnis-Schnitt · 0,4 (auf 1 Stelle abgeschnitten).
+      Nicht bestanden, wenn Praxis, Kenntnis oder Gesamt ≥ 4,5, ein Bereich ≥ 5,5 (Sperrfach) oder ≥ 2 Bereiche ≥ 4,5.
     </p>
   `;
 
@@ -481,7 +485,7 @@ async function renderNoten() {
     window.bwChart.bars(
       document.getElementById("noten-diagramm"),
       verteilung.map((v) => ({ label: v.label, value: v.wert, highlight: v.wert === maxWert && maxWert > 0 })),
-      { titel: "Notenverteilung", max: Math.max(1, maxWert) }
+      { titel: "Verteilung der Gesamtnoten", max: Math.max(1, maxWert) }
     );
   } else {
     document.getElementById("noten-diagramm").innerHTML = '<p class="bw-leise">Noch keine Bewertungen erfasst.</p>';
@@ -495,29 +499,37 @@ async function renderNoten() {
   });
 }
 
+function noteFeld(id, label, value) {
+  const v = value == null ? "" : String(value).replace(".", ",");
+  return `<div class="bw-field">
+    <label for="${id}">${esc(label)}</label>
+    <input id="${id}" name="${id}" type="number" min="1" max="6" step="0.1" inputmode="decimal"
+           value="${esc(v)}" placeholder="1,0–6,0" data-note>
+  </div>`;
+}
+
 function notenDialog(row, nachher) {
   const alt = document.getElementById("dialog");
   if (alt) alt.remove();
   const dlg = document.createElement("dialog");
-  dlg.className = "bw-dialog";
+  dlg.className = "bw-dialog bw-dialog--breit";
   dlg.id = "dialog";
-  const maxAkt = row.max_punkte || 100;
+  const P = [row.p1, row.p2, row.p3, row.p4, row.p5];
+  const K = [row.k1, row.k2, row.k3, row.k4];
   dlg.innerHTML = `
     <form method="dialog" id="noten-form" novalidate>
       <h2 style="margin-top:0">Bewertung — ${esc((row.vorname || "") + " " + (row.nachname || ""))}</h2>
+      <p class="bw-klein bw-leise">Notenwerte 1,0–6,0 je Bereich. Gesamtnote und Ergebnis werden automatisch berechnet.</p>
+
+      <h3>Praktische Prüfung</h3>
       <div class="bw-dialog__felder">
-        <div class="bw-field">
-          <label for="f_max">Maximalpunktzahl</label>
-          <select id="f_max" name="max">
-            ${store.MAX_PUNKTZAHLEN.map((m) => `<option value="${m}"${m === maxAkt ? " selected" : ""}>${m}</option>`).join("")}
-          </select>
-        </div>
-        <div class="bw-field">
-          <label for="f_punkte">Erreichte Punkte <span aria-hidden="true">*</span></label>
-          <input id="f_punkte" name="punkte" type="number" min="0" max="${maxAkt}" step="1" inputmode="numeric"
-                 value="${row.punkte != null ? esc(String(row.punkte)) : ""}" required>
-        </div>
+        ${GALABAU_BEREICHE.praxis.map((b, i) => noteFeld("p" + (i + 1), `${roem(i + 1)}. ${b}`, P[i])).join("")}
       </div>
+      <h3>Kenntnisprüfung</h3>
+      <div class="bw-dialog__felder">
+        ${GALABAU_BEREICHE.kenntnis.map((b, i) => noteFeld("k" + (i + 1), b, K[i])).join("")}
+      </div>
+
       <p id="noten-preview" class="bw-hinweis" aria-live="polite"></p>
       <div class="bw-field">
         <label for="f_bem">Bemerkung</label>
@@ -531,45 +543,54 @@ function notenDialog(row, nachher) {
   document.body.appendChild(dlg);
 
   const form = dlg.querySelector("#noten-form");
-  const punkteEl = form.elements["punkte"];
-  const maxEl = form.elements["max"];
   const preview = dlg.querySelector("#noten-preview");
+  const lese = (pre, n) => Array.from({ length: n }, (_, i) => form.elements[pre + (i + 1)].value);
+
   const vorschau = () => {
-    const v = punkteEl.value.trim();
-    const max = Number(maxEl.value);
-    punkteEl.max = String(max);
-    if (v === "") { preview.hidden = true; return; }
-    const r = store.noteAusPunkten(v, max);
-    preview.hidden = false;
-    preview.className = "bw-hinweis " + (r.ausreichend ? "bw-hinweis--erfolg" : "bw-hinweis--fehler");
-    preview.textContent = `${r.punkte} / ${r.max} Punkte → Note ${formatNote(r.note)} (${r.wort})`;
+    const g = store.gesamtGalabau(lese("p", 5), lese("k", 4));
+    if (g.gesamt == null) {
+      preview.className = "bw-hinweis";
+      preview.textContent = "Alle 9 Bereiche ausfüllen, dann werden Gesamtnote und Ergebnis berechnet.";
+      return;
+    }
+    preview.className = "bw-hinweis " + (g.bestanden ? "bw-hinweis--erfolg" : "bw-hinweis--fehler");
+    preview.textContent =
+      `Praxis ${formatNote(g.praxis)} · Kenntnis ${formatNote(g.kenntnis)} → Gesamtnote ${formatNote(g.gesamt)} — ` +
+      (g.bestanden ? "bestanden" : "nicht bestanden" + (g.gruende.length ? " (" + g.gruende.join("; ") + ")" : ""));
   };
-  punkteEl.addEventListener("input", vorschau);
-  maxEl.addEventListener("change", vorschau);
+  form.querySelectorAll("[data-note]").forEach((el) => el.addEventListener("input", vorschau));
   vorschau();
 
   dlg.querySelector("#abbrechen").addEventListener("click", () => dlg.close());
   dlg.addEventListener("close", () => dlg.remove());
   form.addEventListener("submit", async (ev) => {
     ev.preventDefault();
-    const v = punkteEl.value.trim();
-    const max = Number(maxEl.value);
-    if (v === "" || isNaN(Number(v)) || Number(v) < 0 || Number(v) > max) {
-      punkteEl.focus();
-      meldung(`Bitte Punkte zwischen 0 und ${max} eingeben.`, "fehler");
-      return;
+    // Wertebereich prüfen
+    for (const el of form.querySelectorAll("[data-note]")) {
+      const v = el.value.trim();
+      if (v === "") continue;
+      const n = Number(v.replace(",", "."));
+      if (!Number.isFinite(n) || n < 1 || n > 6) {
+        el.focus();
+        meldung("Notenwerte müssen zwischen 1,0 und 6,0 liegen.", "fehler");
+        return;
+      }
     }
     try {
-      const r = await store.setzeBewertung(row.pruefling_id, Number(v), max, form.elements["bemerkung"].value);
-      meldung(`Bewertung gespeichert: Note ${formatNote(r.note)} (${r.wort}).`);
+      const g = await store.setzeBewertung(row.pruefling_id, lese("p", 5), lese("k", 4), form.elements["bemerkung"].value);
+      meldung(g.gesamt != null
+        ? `Gespeichert: Gesamtnote ${formatNote(g.gesamt)} — ${g.bestanden ? "bestanden" : "nicht bestanden"}.`
+        : "Bewertung gespeichert (unvollständig).");
       dlg.close();
       if (nachher) nachher();
     } catch (e) { console.error(e); meldung("Speichern fehlgeschlagen: " + e.message, "fehler"); }
   });
 
   dlg.showModal();
-  punkteEl.focus();
+  form.elements["p1"].focus();
 }
+
+function roem(n) { return ["", "I", "II", "III", "IV", "V"][n] || String(n); }
 
 /* --------------------------------------------------------------- Zeugnisse */
 
@@ -579,22 +600,24 @@ async function renderZeugnisse() {
   appEl().innerHTML = `
     <h1>Zeugnisse</h1>
     <p class="bw-unterzeile">Prüfungszeugnis je Prüfling drucken (oder als PDF speichern)</p>
+    <div class="bw-tablewrap">
     <table class="bw-table">
-      <thead><tr><th>Name</th><th>Beruf</th><th>Note</th><th>Bewertung</th><th>Aktion</th></tr></thead>
+      <thead><tr><th>Name</th><th>Fachrichtung</th><th>Gesamtnote</th><th>Ergebnis</th><th>Aktion</th></tr></thead>
       <tbody id="zeugnis-koerper">
         ${rows.map((r) => `
           <tr>
             <td>${esc((r.nachname || "") + ", " + (r.vorname || ""))}</td>
             <td>${esc(r.beruf || "")}</td>
-            <td>${formatNote(r.note)}</td>
-            <td>${bewertungBadge(r)}</td>
+            <td>${formatNote(r.gesamt)}</td>
+            <td>${ergebnisBadge(r.bestanden)}</td>
             <td class="bw-actions">
               <button class="bw-btn bw-btn--sekundaer" type="button" data-zeugnis="${r.pruefling_id}"
-                      ${r.note != null ? "" : "disabled title=\"Erst unter Noten bewerten\""}>Zeugnis drucken</button>
+                      ${r.gesamt != null ? "" : "disabled title=\"Erst unter Noten bewerten\""}>Zeugnis drucken</button>
             </td>
           </tr>`).join("")}
       </tbody>
     </table>
+    </div>
     <p class="bw-hinweis"${rows.length ? " hidden" : ""}>Noch keine Prüflinge vorhanden — zuerst unter <a href="#/prueflinge">Prüflinge</a> anlegen.</p>
     <p class="bw-klein bw-leise" style="margin-top:var(--bw-space-2)">Ein Zeugnis kann erst gedruckt werden, wenn unter <a href="#/noten">Noten</a> eine Bewertung erfasst ist.</p>
   `;
@@ -611,30 +634,45 @@ async function renderZeugnisse() {
 async function zeugnisDrucken(prueflingId) {
   const d = await store.zeugnisDaten(prueflingId);
   if (!d) { meldung("Prüfling nicht gefunden.", "fehler"); return; }
-  const note = d.punkte != null ? store.noteAusPunkten(d.punkte, d.max_punkte || 100) : null;
   const heute = new Date().toLocaleDateString("de-DE");
   const geb = d.geburtsdatum ? new Date(d.geburtsdatum).toLocaleDateString("de-DE") : "";
   const terminZeile = d.termin
     ? `${d.termin.datum ? new Date(d.termin.datum).toLocaleDateString("de-DE") : ""}${d.termin.ort ? " in " + esc(d.termin.ort) : ""}`
     : "—";
+  const P = [d.p1, d.p2, d.p3, d.p4, d.p5];
+  const K = [d.k1, d.k2, d.k3, d.k4];
+  const bereichZeile = (label, note) =>
+    `<tr><td>${esc(label)}</td><td style="text-align:right">${formatNote(note)}</td></tr>`;
 
   const root = druckbereich();
   root.innerHTML = `
     <h1>Prüfungszeugnis</h1>
-    <p>über die praktische Abschlussprüfung</p>
+    <p>über die Abschlussprüfung im Ausbildungsberuf Gärtner/in${d.beruf ? " — Fachrichtung " + esc(d.beruf) : ""}</p>
     <table class="bw-table bw-zeugnis">
       <tbody>
         <tr><th scope="row">Name</th><td>${esc((d.vorname || "") + " " + (d.nachname || ""))}</td></tr>
         ${geb ? `<tr><th scope="row">geboren am</th><td>${esc(geb)}</td></tr>` : ""}
-        <tr><th scope="row">Ausbildungsberuf</th><td>${esc(d.beruf || "—")}</td></tr>
         <tr><th scope="row">Ausbildungsbetrieb</th><td>${esc(d.betrieb || "—")}</td></tr>
         <tr><th scope="row">Prüfungstermin</th><td>${terminZeile}</td></tr>
-        <tr><th scope="row">Ergebnis</th><td>${note
-          ? `${zahl(note.punkte)} von ${zahl(note.max)} Punkten — Note ${formatNote(note.note)} (${esc(note.wort)})`
-          : "—"}</td></tr>
-        <tr><th scope="row">Bewertung</th><td><strong>${note ? esc(note.wort) : "—"}</strong></td></tr>
       </tbody>
     </table>
+
+    <h2>Praktische Prüfung</h2>
+    <table class="bw-table"><tbody>
+      ${GALABAU_BEREICHE.praxis.map((b, i) => bereichZeile(roem(i + 1) + ". " + b, P[i])).join("")}
+      <tr><th scope="row">Praxis-Schnitt</th><td style="text-align:right"><strong>${formatNote(d.praxis)}</strong></td></tr>
+    </tbody></table>
+
+    <h2>Kenntnisprüfung</h2>
+    <table class="bw-table"><tbody>
+      ${GALABAU_BEREICHE.kenntnis.map((b, i) => bereichZeile(b, K[i])).join("")}
+      <tr><th scope="row">Kenntnis-Schnitt</th><td style="text-align:right"><strong>${formatNote(d.kenntnis)}</strong></td></tr>
+    </tbody></table>
+
+    <table class="bw-table bw-zeugnis"><tbody>
+      <tr><th scope="row">Gesamtnote</th><td><strong>${formatNote(d.gesamt)}</strong></td></tr>
+      <tr><th scope="row">Ergebnis</th><td><strong>${d.bestanden === true ? "bestanden" : d.bestanden === false ? "nicht bestanden" : "—"}</strong></td></tr>
+    </tbody></table>
     <p>Freiburg, den ${esc(heute)}</p>
     <div class="bw-druck__unterschriften">
       <span>Vorsitz des Prüfungsausschusses</span>

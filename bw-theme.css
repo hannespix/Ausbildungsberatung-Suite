@@ -312,7 +312,12 @@ mark.bw-treffer { background: var(--bw-gelb); color: var(--bw-schwarz); padding:
   background: var(--bw-weiss); color: var(--bw-text);
 }
 .bw-dialog::backdrop { background: rgba(42, 38, 35, 0.45); }
+.bw-dialog--breit { max-width: 56rem; }
+.bw-dialog h3 { font-size: var(--bw-fs-h3); margin: var(--bw-space-3) 0 var(--bw-space-1); }
 .bw-dialog__felder { display: grid; grid-template-columns: 1fr 1fr; gap: 0 var(--bw-space-3); }
+
+/* Breite Tabellen am Smartphone horizontal scrollbar machen */
+.bw-tablewrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .bw-dialog__felder .bw-field:has(textarea) { grid-column: 1 / -1; }
 .bw-dialog__aktionen { display: flex; justify-content: flex-end; gap: var(--bw-space-2); margin-top: var(--bw-space-2); }
 
@@ -344,4 +349,11 @@ mark.bw-treffer { background: var(--bw-gelb); color: var(--bw-schwarz); padding:
   .bw-header { flex-wrap: wrap; }
   .bw-logo { height: 36px; }
   .bw-dialog__felder { grid-template-columns: 1fr; }
+  /* Datentabellen horizontal scrollbar statt überlaufend */
+  main .bw-table { display: block; overflow-x: auto; white-space: nowrap; }
+  /* Druck-Zeugnistabellen normal umbrechen lassen */
+  .bw-druck .bw-table { white-space: normal; }
+  /* Toolbar (Suche + Aktion) gestapelt, Buttons volle Breite */
+  .bw-toolbar { align-items: stretch; }
+  .bw-toolbar > .bw-btn { width: 100%; }
 }
