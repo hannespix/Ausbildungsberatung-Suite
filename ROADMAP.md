@@ -248,6 +248,13 @@ mit 1–10 Azubis, passende Prüfer:innen und Prüfungstermine je Fachrichtung;
   Ausfüllen am Prüfungstag — die ausgefüllten Werte werden später unter „Noten"
   erfasst. Knopf in der Planung je Termin. Chromium-Smoke (12 Seiten, Mobile
   390px ohne Overflow, Galabau-Mathe).
+- ✅ **Prüfungstag-Mappe (Sammeldruck)**: ein Knopf erzeugt die komplette
+  Durchführungs-Mappe in einem Druck — Tagesablauf, je Prüfling ein leerer
+  Bewertungsbogen und die Ergebnis-Niederschrift (je Abschnitt eine Seite). Eine
+  Aktion bedient die ganze Durchführung; die Einzeldrucke bleiben für den
+  granularen Bedarf erhalten. Druck-Bausteine zu `…Html()`-Funktionen
+  zusammengeführt (keine Duplikation). Chromium-Smoke (14 Seiten, Einzeldrucke
+  weiterhin getrennt, Mobile 390px, Galabau-Mathe).
 - ✅ **Prüfer-Plan & Zusage-Workflow**: je Termin Ausschuss informieren
   (E-Mail/mailto), Status offen→angefragt→zugesagt/abgesagt in einer Übersicht.
 - ✅ **Automatischer Prüfungs-Fortschritt**: je Prüfling eine abgeleitete Phase

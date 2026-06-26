@@ -43,7 +43,8 @@ im aktuellen Landes-Corporate-Design Baden-Württemberg
 - **Durchführung** — druckbarer **Tagesablauf** (für GaLaBau inkl. festem
   Prüfungstag-Ablauf), leere **Bewertungsbögen** je Prüfling (Sammelbewertungs-
   bogen zum handschriftlichen Ausfüllen) und **Ergebnis-Niederschrift** je Termin
-  mit Noten, Ausschuss und Unterschriftenspalte.
+  mit Noten, Ausschuss und Unterschriftenspalte. Die **Prüfungstag-Mappe** druckt
+  alles zusammen in einem Rutsch (Tagesablauf + alle Bögen + Niederschrift).
 - **Prüflings-Einladungen** — druckbares **Einladungsschreiben** je Prüfling mit
   persönlichem Prüfungstermin (Datum, Uhrzeit-Slot, Ort, Raum) und
   Mitbringliste; einzeln aus der Akte oder als **Serien-Druck** aller
