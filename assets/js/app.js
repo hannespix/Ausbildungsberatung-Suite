@@ -66,7 +66,7 @@ function navAufbauen() {
   const route = aktiveRoute();
   const punkte = [{ key: "uebersicht", label: "Übersicht" }]
     .concat(NAV_REIHENFOLGE.map((k) => ({ key: k, label: ENTITAETEN[k].plural })))
-    .concat([{ key: "planung", label: "Planung" }, { key: "noten", label: "Noten" }]);
+    .concat([{ key: "planung", label: "Planung" }, { key: "noten", label: "Noten" }, { key: "zeugnisse", label: "Zeugnisse" }]);
   ul.innerHTML = punkte.map((p) => {
     const aktiv = p.key === route ? ' aria-current="page"' : "";
     return `<li><a href="#/${p.key === "uebersicht" ? "" : p.key}"${aktiv}>${esc(p.label)}</a></li>`;
@@ -211,8 +211,8 @@ function terminLabel(t) {
   return `${t.titel} — ${datum}${t.ort ? " · " + t.ort : ""}`;
 }
 
-/** Baut einen druckbaren Tagesablauf (nur beim Drucken sichtbar) und druckt. */
-function tagesablaufDrucken(termin, zugeteilt, prueferZug) {
+/** Liefert (und erzeugt bei Bedarf) den nur beim Drucken sichtbaren Bereich. */
+function druckbereich() {
   let root = document.getElementById("druckbereich");
   if (!root) {
     root = document.createElement("div");
@@ -220,6 +220,12 @@ function tagesablaufDrucken(termin, zugeteilt, prueferZug) {
     root.id = "druckbereich";
     document.body.appendChild(root);
   }
+  return root;
+}
+
+/** Baut einen druckbaren Tagesablauf (nur beim Drucken sichtbar) und druckt. */
+function tagesablaufDrucken(termin, zugeteilt, prueferZug) {
+  const root = druckbereich();
   const datum = termin.datum ? new Date(termin.datum).toLocaleDateString("de-DE") : "—";
   const kopf = [
     datum,
@@ -545,6 +551,80 @@ function notenDialog(row, nachher) {
   punkteEl.focus();
 }
 
+/* --------------------------------------------------------------- Zeugnisse */
+
+async function renderZeugnisse() {
+  const rows = await store.bewertungenListe();
+
+  appEl().innerHTML = `
+    <h1>Zeugnisse</h1>
+    <p class="bw-unterzeile">Prüfungszeugnis je Prüfling drucken (oder als PDF speichern)</p>
+    <table class="bw-table">
+      <thead><tr><th>Name</th><th>Beruf</th><th>Note</th><th>Status</th><th>Aktion</th></tr></thead>
+      <tbody id="zeugnis-koerper">
+        ${rows.map((r) => `
+          <tr>
+            <td>${esc((r.nachname || "") + ", " + (r.vorname || ""))}</td>
+            <td>${esc(r.beruf || "")}</td>
+            <td>${r.note != null ? esc(String(r.note)) : "—"}</td>
+            <td>${statusBadge(r.status)}</td>
+            <td class="bw-actions">
+              <button class="bw-btn bw-btn--sekundaer" type="button" data-zeugnis="${r.pruefling_id}"
+                      ${r.note != null ? "" : "disabled title=\"Erst unter Noten bewerten\""}>Zeugnis drucken</button>
+            </td>
+          </tr>`).join("")}
+      </tbody>
+    </table>
+    <p class="bw-hinweis"${rows.length ? " hidden" : ""}>Noch keine Prüflinge vorhanden — zuerst unter <a href="#/prueflinge">Prüflinge</a> anlegen.</p>
+    <p class="bw-klein bw-leise" style="margin-top:var(--bw-space-2)">Ein Zeugnis kann erst gedruckt werden, wenn unter <a href="#/noten">Noten</a> eine Bewertung erfasst ist.</p>
+  `;
+
+  document.getElementById("zeugnis-koerper").addEventListener("click", async (ev) => {
+    const pid = ev.target.closest("[data-zeugnis]")?.getAttribute("data-zeugnis");
+    if (!pid) return;
+    try { await zeugnisDrucken(Number(pid)); }
+    catch (e) { console.error(e); meldung("Zeugnis konnte nicht erstellt werden: " + e.message, "fehler"); }
+  });
+}
+
+/** Baut ein druckbares Prüfungszeugnis und ruft den Druckdialog auf. */
+async function zeugnisDrucken(prueflingId) {
+  const d = await store.zeugnisDaten(prueflingId);
+  if (!d) { meldung("Prüfling nicht gefunden.", "fehler"); return; }
+  const note = d.punkte != null ? store.noteAusPunkten(d.punkte) : null;
+  const heute = new Date().toLocaleDateString("de-DE");
+  const geb = d.geburtsdatum ? new Date(d.geburtsdatum).toLocaleDateString("de-DE") : "";
+  const terminZeile = d.termin
+    ? `${d.termin.datum ? new Date(d.termin.datum).toLocaleDateString("de-DE") : ""}${d.termin.ort ? " in " + esc(d.termin.ort) : ""}`
+    : "—";
+
+  const root = druckbereich();
+  root.innerHTML = `
+    <h1>Prüfungszeugnis</h1>
+    <p>über die praktische Abschlussprüfung</p>
+    <table class="bw-table bw-zeugnis">
+      <tbody>
+        <tr><th scope="row">Name</th><td>${esc((d.vorname || "") + " " + (d.nachname || ""))}</td></tr>
+        ${geb ? `<tr><th scope="row">geboren am</th><td>${esc(geb)}</td></tr>` : ""}
+        <tr><th scope="row">Ausbildungsberuf</th><td>${esc(d.beruf || "—")}</td></tr>
+        <tr><th scope="row">Ausbildungsbetrieb</th><td>${esc(d.betrieb || "—")}</td></tr>
+        <tr><th scope="row">Prüfungstermin</th><td>${terminZeile}</td></tr>
+        <tr><th scope="row">Ergebnis</th><td>${note
+          ? `${zahl(note.punkte)} von 100 Punkten — Note ${note.note} (${esc(note.bezeichnung)})`
+          : "—"}</td></tr>
+        <tr><th scope="row">Prüfung</th><td><strong>${d.status === "bestanden" ? "bestanden" : d.status === "nicht bestanden" ? "nicht bestanden" : "—"}</strong></td></tr>
+      </tbody>
+    </table>
+    <p>Freiburg, den ${esc(heute)}</p>
+    <div class="bw-druck__unterschriften">
+      <span>Vorsitz des Prüfungsausschusses</span>
+      <span>Beisitz</span>
+    </div>
+    <p class="bw-klein bw-leise">Erstellt mit der Ausbildungsberatung-Suite — Regierungspräsidium Freiburg</p>
+  `;
+  window.print();
+}
+
 /* ------------------------------------------------------------- CRUD-Dialog */
 
 function feldHtml(f, value, refOptionen) {
@@ -672,6 +752,7 @@ async function route() {
     if (r === "uebersicht") await renderUebersicht();
     else if (r === "planung") await renderPlanung();
     else if (r === "noten") await renderNoten();
+    else if (r === "zeugnisse") await renderZeugnisse();
     else if (ENTITAETEN[r]) await renderListe(r);
     else { location.hash = "#/"; return; }
   } catch (e) {
