@@ -30,7 +30,8 @@ im aktuellen Landes-Corporate-Design Baden-Württemberg
   Prüfungstermine anlegen/bearbeiten/löschen; Betriebs-Vorschlagsliste,
   E-Mail-Validierung, Dublettenwarnung, **Spalten-Sortierung**, Filter nach
   **Fortschritt-Phase** samt **Sammel-Zulassung** der Angemeldeten und
-  **CSV-Import** von Prüflingen (mit Spaltenzuordnung und Dublettenschutz).
+  **CSV-Import** für alle Stammdaten (Prüflinge, Betriebe, Prüfer:innen,
+  Termine) mit automatischer Spaltenzuordnung und Dublettenschutz.
 - **Globale Schnellsuche** — durchsucht Prüflinge, Betriebe, Prüfer:innen und
   Termine zugleich, DB-seitig (Trigramm, tippfehler-/diakritikatolerant), mit
   Treffermarkierung und Direktsprung zum Datensatz.
