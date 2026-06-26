@@ -1121,6 +1121,11 @@ async function renderPlanung() {
           const datum = new Date(termin.datum).toLocaleDateString("de-DE");
           if (!confirm(`Diese:r Prüfer:in ist am ${datum} als abwesend hinterlegt. Trotzdem zuteilen?`)) return;
         }
+        const pkonflikte = await store.prueferTerminkonflikte(prid, id);
+        if (pkonflikte.length) {
+          const liste = pkonflikte.map((k) => `„${k.titel}"`).join(", ");
+          if (!confirm(`Diese:r Prüfer:in ist am selben Tag bereits einem anderen Termin zugeteilt (${liste}) — Doppelbelegung. Trotzdem zuteilen?`)) return;
+        }
         await store.prueferZuteilen(id, prid, rolle);
         meldung("Prüfer:in zugeteilt.");
         planZeichnen();

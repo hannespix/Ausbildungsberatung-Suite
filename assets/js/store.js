@@ -303,6 +303,25 @@ export async function terminkonflikte(prueflingId, pruefungId) {
   return res.rows;
 }
 
+/**
+ * Doppelbelegung beim Ausschuss: andere Termine am selben Tag, denen diese:r
+ * Prüfer:in bereits zugeteilt ist (für die Warnung beim manuellen Zuteilen,
+ * analog zu terminkonflikte für Prüflinge). Leer, wenn der Termin kein Datum hat.
+ */
+export async function prueferTerminkonflikte(prueferId, pruefungId) {
+  const res = await _pg.query(
+    `SELECT pr.titel, pr.datum
+       FROM pruefer_zuteilungen pz
+       JOIN pruefungen pr ON pr.id = pz.pruefung_id
+      WHERE pz.pruefer_id = $1
+        AND pz.pruefung_id <> $2
+        AND pr.datum IS NOT NULL
+        AND pr.datum = (SELECT datum FROM pruefungen WHERE id = $2)`,
+    [prueferId, pruefungId]
+  );
+  return res.rows;
+}
+
 /** Einem Prüfungstermin zugeteilte Prüfer:innen (mit Rolle), sortiert. */
 export async function prueferFuer(pruefungId) {
   const res = await _pg.query(
