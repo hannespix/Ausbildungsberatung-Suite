@@ -336,7 +336,8 @@ async function renderListe(key) {
           <option value="">Alle Phasen</option>
           ${store.FORTSCHRITT_STUFEN.map((s) => `<option value="${s.key}"${s.key === phaseFilter ? " selected" : ""}>${esc(s.label)}</option>`).join("")}
         </select>
-      </div>` : ""}
+      </div>
+      <button class="bw-btn bw-btn--sekundaer" type="button" id="zulassen-alle" hidden></button>` : ""}
       ${key === "prueflinge" ? '<button class="bw-btn bw-btn--sekundaer" type="button" id="csv-btn">CSV importieren</button>' : ""}
       <button class="bw-btn bw-btn--sekundaer" type="button" id="csv-export-btn">CSV exportieren</button>
       <button class="bw-btn bw-btn--sekundaer" type="button" id="drucken-btn">Liste drucken</button>
@@ -390,11 +391,28 @@ async function renderListe(key) {
     } else {
       leer.hidden = true;
     }
+    // Sammel-Zulassung nur sinnvoll, wenn nach „Angemeldet" gefiltert wird.
+    const zb = document.getElementById("zulassen-alle");
+    if (zb) {
+      const zeig = phaseFilter === "angemeldet" && rows.length > 0;
+      zb.hidden = !zeig;
+      if (zeig) zb.textContent = `Angezeigte zulassen (${zahl(rows.length)})`;
+    }
   };
 
   eingabe.addEventListener("input", debounce(zeichne, 180));
   document.getElementById("suche-btn").addEventListener("click", zeichne);
   document.getElementById("phase-filter")?.addEventListener("change", (ev) => { phaseFilter = ev.target.value; zeichne(); });
+  document.getElementById("zulassen-alle")?.addEventListener("click", async () => {
+    const ids = aktuelleRows.map((r) => r.id);
+    if (!ids.length) return;
+    if (!confirm(`${ids.length} angezeigte:n Prüfling(e) zulassen (Status „zugelassen")?`)) return;
+    try {
+      const n = await store.setzeStatusViele(ids, "zugelassen");
+      meldung(`${zahl(n)} Prüfling(e) zugelassen.`);
+      zeichne();
+    } catch (e) { console.error(e); meldung("Zulassen fehlgeschlagen: " + e.message, "fehler"); }
+  });
   document.getElementById("neu-btn").addEventListener("click", () => formularOeffnen(key, null, zeichne));
   document.getElementById("csv-btn")?.addEventListener("click", () => csvImportDialog(zeichne));
 

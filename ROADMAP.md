@@ -211,6 +211,11 @@ Prüflinge. Nur Punkte mit Bedarf werden gezeigt; sonst „Alles erledigt".
 (Deep-Link `#/prueflinge?phase=…`). Die Prüflingsliste hat zudem einen
 eigenen Fortschritt-Filter (mit Such-/Sortier-/Export-Zusammenspiel). Verbindet
 Übersicht und Stammdaten. Chromium-getestet (Deep-Link, Teilmenge, Mobile).
+✅ **Sammel-Zulassung**: ist die Prüflingsliste nach „Angemeldet" gefiltert,
+erscheint „Angezeigte zulassen (N)" — setzt den Status aller angezeigten
+Prüflinge in einem Schritt auf „zugelassen" (Zurückgezogene bleiben
+unangetastet). So wandert die Zulassung mit einem Klick durch den Funnel.
+`store.setzeStatusViele()`. Chromium-getestet (35 → 0 angemeldet per Klick).
 ✅ **Datenqualität sichtbar**: Prüflinge ohne Fachrichtung (die sich nicht
 automatisch einplanen lassen) erscheinen als Hinweis und verlinken in die
 Stammdaten; die automatische Planung meldet zusätzlich, wie viele Prüflinge
