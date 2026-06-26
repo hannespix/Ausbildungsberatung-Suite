@@ -983,23 +983,42 @@ export async function sicherungEinspielen(daten) {
  * (ohne Namen) ignoriert.
  * @returns {{angelegt:number, uebersprungen:number}}
  */
-export async function prueflingeImportieren(saetze, { dubletten = "ueberspringen" } = {}) {
-  const vorhanden = new Set((await _pg.query(
-    `SELECT lower(btrim(nachname)) || '|' || lower(btrim(coalesce(vorname,''))) AS k FROM prueflinge`
-  )).rows.map((r) => r.k));
+/**
+ * Generischer CSV-/Datensatz-Import für eine beliebige Stammdaten-Entität.
+ * Dublettenschutz über die im Modell hinterlegten `dublette`-Felder; leere
+ * Datensätze (kein Dublettenfeld gefüllt) werden übersprungen.
+ * @returns {{angelegt:number, uebersprungen:number}}
+ */
+export async function datensaetzeImportieren(key, saetze, { dubletten = "ueberspringen" } = {}) {
+  const e = ent(key); // wirft bei unbekannter Entität (schützt die Tabellen-Interpolation)
+  const dub = e.dublette || [];
+  const schluessel = (obj) => dub.map((f) => String(obj[f] || "").trim().toLowerCase()).join("|");
+  let vorhanden = new Set();
+  if (dub.length) {
+    const expr = dub.map((f) => `lower(btrim(coalesce(${f}::text,'')))`).join(" || '|' || ");
+    vorhanden = new Set((await _pg.query(`SELECT ${expr} AS k FROM ${e.key}`)).rows.map((r) => r.k));
+  }
   let angelegt = 0, uebersprungen = 0;
   const neu = [];
   for (const s of saetze || []) {
-    const nn = String(s.nachname || "").trim();
-    const vn = String(s.vorname || "").trim();
-    if (!nn && !vn) { uebersprungen++; continue; }
-    const k = nn.toLowerCase() + "|" + vn.toLowerCase();
-    if (dubletten === "ueberspringen" && vorhanden.has(k)) { uebersprungen++; continue; }
-    vorhanden.add(k);
+    const hatInhalt = dub.length
+      ? dub.some((f) => String(s[f] || "").trim())
+      : Object.values(s).some((v) => String(v || "").trim());
+    if (!hatInhalt) { uebersprungen++; continue; }
+    if (dub.length) {
+      const k = schluessel(s);
+      if (dubletten === "ueberspringen" && vorhanden.has(k)) { uebersprungen++; continue; }
+      vorhanden.add(k);
+    }
     neu.push(s);
   }
-  for (const s of neu) { await anlegen("prueflinge", s); angelegt++; }
+  for (const s of neu) { await anlegen(key, s); angelegt++; }
   return { angelegt, uebersprungen };
+}
+
+/** Rückwärtskompatibel: Prüflings-Import über den generischen Importer. */
+export async function prueflingeImportieren(saetze, opts = {}) {
+  return datensaetzeImportieren("prueflinge", saetze, opts);
 }
 
 /**

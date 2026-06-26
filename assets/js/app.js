@@ -363,7 +363,7 @@ async function renderListe(key) {
         </select>
       </div>
       <button class="bw-btn bw-btn--sekundaer" type="button" id="zulassen-alle" hidden></button>` : ""}
-      ${key === "prueflinge" ? '<button class="bw-btn bw-btn--sekundaer" type="button" id="csv-btn">CSV importieren</button>' : ""}
+      <button class="bw-btn bw-btn--sekundaer" type="button" id="csv-btn">CSV importieren</button>
       <button class="bw-btn bw-btn--sekundaer" type="button" id="csv-export-btn">CSV exportieren</button>
       <button class="bw-btn bw-btn--sekundaer" type="button" id="drucken-btn">Liste drucken</button>
       <button class="bw-btn bw-btn--gelb" type="button" id="neu-btn">＋ Neuer Eintrag</button>
@@ -439,7 +439,7 @@ async function renderListe(key) {
     } catch (e) { console.error(e); meldung("Zulassen fehlgeschlagen: " + e.message, "fehler"); }
   });
   document.getElementById("neu-btn").addEventListener("click", () => formularOeffnen(key, null, zeichne));
-  document.getElementById("csv-btn")?.addEventListener("click", () => csvImportDialog(zeichne));
+  document.getElementById("csv-btn")?.addEventListener("click", () => csvImportDialog(key, zeichne));
 
   // Spalten der aktuellen Liste (sichtbare Felder + ggf. Fortschritt) für Export/Druck.
   const exportKopf = () => spalten.map((f) => f.label).concat(zeigtFortschritt ? ["Fortschritt"] : []);
@@ -2225,24 +2225,45 @@ function csvParse(text) {
   return zeilen.filter((z) => z.some((f) => String(f).trim() !== ""));
 }
 
-const CSV_FELDER = [
-  { name: "nachname",     label: "Nachname",     syn: ["nachname", "name", "familienname", "lastname"] },
-  { name: "vorname",      label: "Vorname",      syn: ["vorname", "firstname", "rufname"] },
-  { name: "geburtsdatum", label: "Geburtsdatum", syn: ["geburtsdatum", "geboren", "geb", "geburtstag", "birthdate"] },
-  { name: "beruf",        label: "Fachrichtung", syn: ["beruf", "fachrichtung", "ausbildungsberuf"] },
-  { name: "betrieb",      label: "Ausbildungsbetrieb", syn: ["betrieb", "ausbildungsbetrieb", "firma", "unternehmen", "ausbildungsstaette"] },
-  { name: "pruefungsjahr",label: "Prüfungsjahr", syn: ["pruefungsjahr", "jahr", "pruefjahr"] },
-  { name: "email",        label: "E-Mail",       syn: ["email", "mail", "emailadresse"] },
-  { name: "telefon",      label: "Telefon",      syn: ["telefon", "tel", "telefonnummer", "handy", "mobil"] },
-];
+// Zusätzliche Spalten-Synonyme je Feldname (für die automatische Zuordnung).
+const CSV_SYN = {
+  nachname: ["nachname", "name", "familienname", "lastname"],
+  vorname: ["vorname", "firstname", "rufname"],
+  name: ["name", "firma", "unternehmen", "bezeichnung", "betrieb"],
+  geburtsdatum: ["geburtsdatum", "geboren", "geb", "geburtstag", "birthdate"],
+  beruf: ["beruf", "fachrichtung", "ausbildungsberuf"],
+  betrieb: ["betrieb", "ausbildungsbetrieb", "firma", "unternehmen", "ausbildungsstaette"],
+  pruefungsjahr: ["pruefungsjahr", "jahr", "pruefjahr"],
+  email: ["email", "mail", "emailadresse", "epost"],
+  telefon: ["telefon", "tel", "telefonnummer", "handy", "mobil"],
+  organisation: ["organisation", "firma", "betrieb", "institution"],
+  funktion: ["funktion", "rolle"],
+  strasse: ["strasse", "strassenr", "adresse", "anschrift"],
+  plz: ["plz", "postleitzahl"],
+  ort: ["ort", "stadt", "gemeinde"],
+  ansprechpartner: ["ansprechpartner", "kontakt", "ansprechperson"],
+  titel: ["titel", "bezeichnung"],
+  datum: ["datum", "tag", "date"],
+};
+
+/** Importierbare Felder einer Entität (alle außer Freitext), je mit Synonymen. */
+function csvFelder(key) {
+  return ENTITAETEN[key].felder
+    .filter((f) => f.input !== "textarea")
+    .map((f) => ({
+      name: f.name,
+      label: f.label,
+      syn: Array.from(new Set([csvNorm(f.name), csvNorm(f.label), ...(CSV_SYN[f.name] || []).map(csvNorm)])).filter(Boolean),
+    }));
+}
 
 function csvNorm(s) {
   return String(s || "").toLowerCase().replace(/ä/g, "a").replace(/ö/g, "o").replace(/ü/g, "u").replace(/ß/g, "ss").replace(/[^a-z0-9]/g, "");
 }
-function csvAutoMap(header) {
+function csvAutoMap(header, felder) {
   const norm = header.map(csvNorm);
   const map = {};
-  CSV_FELDER.forEach((f) => {
+  felder.forEach((f) => {
     let idx = norm.findIndex((h) => f.syn.includes(h));
     if (idx < 0) idx = norm.findIndex((h) => h && f.syn.some((s) => h.includes(s)));
     map[f.name] = idx; // -1 = nicht zugeordnet
@@ -2308,7 +2329,10 @@ async function abwesenheitDialog(prueferId, name) {
   dlg.showModal();
 }
 
-function csvImportDialog(nachher) {
+function csvImportDialog(key, nachher) {
+  const ent = ENTITAETEN[key];
+  const FELDER = csvFelder(key);
+  const dub = ent.dublette || [];
   const alt = document.getElementById("dialog");
   if (alt) alt.remove();
   const dlg = document.createElement("dialog");
@@ -2316,7 +2340,7 @@ function csvImportDialog(nachher) {
   dlg.id = "dialog";
   dlg.innerHTML = `
     <form method="dialog" id="csv-form" novalidate>
-      <h2 style="margin-top:0">Prüflinge aus CSV importieren</h2>
+      <h2 style="margin-top:0">${esc(ent.plural)} aus CSV importieren</h2>
       <p class="bw-klein bw-leise">CSV-Datei wählen (Excel: „Speichern unter → CSV"). Erste Zeile = Spaltenüberschriften.
         Trennzeichen <code>;</code> oder <code>,</code> werden automatisch erkannt.</p>
       <div class="bw-field">
@@ -2343,17 +2367,19 @@ function csvImportDialog(nachher) {
   const mappingEl = dlg.querySelector("#csv-mapping");
   const infoEl = dlg.querySelector("#csv-info");
 
+  // Pflicht: mindestens ein Dublettenfeld zugeordnet (z. B. Name / Bezeichnung).
+  const dubLabel = dub.map((d) => (FELDER.find((f) => f.name === d) || {}).label || d).join(" oder ");
   function aktualisiere() {
     const map = {};
-    CSV_FELDER.forEach((f) => { map[f.name] = Number(form.elements["map_" + f.name].value); });
-    const namensSpalte = map.nachname >= 0 || map.vorname >= 0;
-    form.elements["csv-import"].disabled = !(namensSpalte && daten.length);
-    infoEl.textContent = `${daten.length} Datensätze erkannt${namensSpalte ? "" : " — bitte mindestens Nach- oder Vorname zuordnen"}.`;
+    FELDER.forEach((f) => { map[f.name] = Number(form.elements["map_" + f.name].value); });
+    const schluesselOk = dub.length ? dub.some((d) => map[d] >= 0) : FELDER.some((f) => map[f.name] >= 0);
+    form.elements["csv-import"].disabled = !(schluesselOk && daten.length);
+    infoEl.textContent = `${daten.length} Datensätze erkannt${schluesselOk ? "" : ` — bitte mindestens ${dubLabel} zuordnen`}.`;
     // Vorschau (erste 5)
     dlg.querySelector("#csv-vorschau-kopf").innerHTML =
-      "<tr>" + CSV_FELDER.map((f) => `<th>${esc(f.label)}</th>`).join("") + "</tr>";
+      "<tr>" + FELDER.map((f) => `<th>${esc(f.label)}</th>`).join("") + "</tr>";
     dlg.querySelector("#csv-vorschau").innerHTML = daten.slice(0, 5).map((z) =>
-      "<tr>" + CSV_FELDER.map((f) => `<td>${esc(map[f.name] >= 0 ? (z[map[f.name]] || "") : "")}</td>`).join("") + "</tr>"
+      "<tr>" + FELDER.map((f) => `<td>${esc(map[f.name] >= 0 ? (z[map[f.name]] || "") : "")}</td>`).join("") + "</tr>"
     ).join("");
     return map;
   }
@@ -2365,8 +2391,8 @@ function csvImportDialog(nachher) {
       const zeilen = csvParse(await datei.text());
       if (zeilen.length < 2) { meldung("CSV enthält keine Datenzeilen (Kopfzeile + mindestens eine Zeile nötig).", "fehler"); return; }
       header = zeilen[0]; daten = zeilen.slice(1);
-      const map = csvAutoMap(header);
-      mappingEl.innerHTML = CSV_FELDER.map((f) => `
+      const map = csvAutoMap(header, FELDER);
+      mappingEl.innerHTML = FELDER.map((f) => `
         <div class="bw-field">
           <label for="map_${f.name}">${esc(f.label)}</label>
           <select id="map_${f.name}" name="map_${f.name}">
@@ -2387,12 +2413,12 @@ function csvImportDialog(nachher) {
     const map = aktualisiere();
     const saetze = daten.map((z) => {
       const s = {};
-      CSV_FELDER.forEach((f) => { if (map[f.name] >= 0) s[f.name] = (z[map[f.name]] || "").trim(); });
+      FELDER.forEach((f) => { if (map[f.name] >= 0) s[f.name] = (z[map[f.name]] || "").trim(); });
       return s;
     });
     try {
-      const r = await store.prueflingeImportieren(saetze);
-      meldung(`Import: ${zahl(r.angelegt)} Prüflinge angelegt, ${zahl(r.uebersprungen)} übersprungen (Dublette/leer).`);
+      const r = await store.datensaetzeImportieren(key, saetze);
+      meldung(`Import: ${zahl(r.angelegt)} ${esc(ent.plural)} angelegt, ${zahl(r.uebersprungen)} übersprungen (Dublette/leer).`);
       dlg.close();
       if (nachher) nachher();
     } catch (e) { console.error(e); meldung("Import fehlgeschlagen: " + e.message, "fehler"); }

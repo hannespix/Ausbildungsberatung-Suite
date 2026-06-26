@@ -176,8 +176,14 @@ Bewerten-Dialog (9 Bereiche, Live-Ergebnis), Noten-Liste, Zeugnis. Smoke-geteste
   Anführungszeichen, Umlaute), automatische Spaltenzuordnung (überschreibbar),
   Vorschau und Dublettenschutz (Nach-/Vorname). Button in der Prüflingsliste.
   Smoke-getestet (inkl. quoted Feld mit Komma, Dublette, leere Zeile).
-- Offen: SheetJS lokal vendoren für `.xlsx/.xlsm`-Sammelbögen (Punktedaten),
-  CSV-Import auch für Betriebe/Prüfer:innen.
+- ✅ **CSV-Import für alle Stammdaten**: der Import ist jetzt modellgetrieben und
+  für Prüflinge, Betriebe, Prüfer:innen und Termine verfügbar („CSV importieren"
+  in jeder Stammdaten-Liste). Felder + automatische Spaltenzuordnung entstehen
+  aus dem Entitätsmodell (mit Synonymtabelle), Dublettenschutz über die
+  `dublette`-Felder der Entität. Generische `store.datensaetzeImportieren(key,…)`.
+  Chromium-getestet (Betriebe + Prüfer, Auto-Mapping, Komma-/Semikolon-CSV,
+  Dubletten-Re-Import, Mobile 390px).
+- Offen: SheetJS lokal vendoren für `.xlsx/.xlsm`-Sammelbögen (Punktedaten).
 
 ### M6 — Zeugnis-Erstellung ✅
 Neue Ansicht „Zeugnisse": druckbares Prüfungszeugnis je Prüfling aus Stammdaten
