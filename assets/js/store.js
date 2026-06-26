@@ -899,7 +899,9 @@ export async function pruefungsjahre() {
 }
 
 /**
- * Auslastung je Prüfungstermin: zugeteilte Prüflinge und Ausschussgröße.
+ * Auslastung je Prüfungstermin: zugeteilte Prüflinge, Ausschussgröße sowie das
+ * Ergebnis (bewertet/bestanden) am Tag — verbindet Planung und Noten in einer
+ * Übersicht je Prüfungstag.
  * @param jahr optional — nur Termine dieses Kalenderjahres (aus dem Datum).
  */
 export async function auslastung(jahr = null) {
@@ -907,7 +909,11 @@ export async function auslastung(jahr = null) {
   const res = await _pg.query(
     `SELECT pr.id, pr.titel, pr.beruf, pr.datum, pr.zeit_von, pr.ort,
             (SELECT count(*)::int FROM zuteilungen z      WHERE z.pruefung_id  = pr.id) AS prueflinge,
-            (SELECT count(*)::int FROM pruefer_zuteilungen pz WHERE pz.pruefung_id = pr.id) AS ausschuss
+            (SELECT count(*)::int FROM pruefer_zuteilungen pz WHERE pz.pruefung_id = pr.id) AS ausschuss,
+            (SELECT count(*)::int FROM zuteilungen z JOIN bewertungen b ON b.pruefling_id = z.pruefling_id
+              WHERE z.pruefung_id = pr.id AND b.gesamt IS NOT NULL) AS bewertet,
+            (SELECT count(*)::int FROM zuteilungen z JOIN bewertungen b ON b.pruefling_id = z.pruefling_id
+              WHERE z.pruefung_id = pr.id AND b.bestanden IS TRUE) AS bestanden
        FROM pruefungen pr
       WHERE ($1::int IS NULL OR extract(year FROM pr.datum)::int = $1)
       ORDER BY pr.datum NULLS LAST, pr.zeit_von NULLS LAST, pr.id`,

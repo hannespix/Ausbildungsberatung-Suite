@@ -369,6 +369,12 @@ trägt das Jahr im Dateinamen. Smoke-getestet.
 (CI-konform, stärkste Auslastung gelb hervorgehoben) über der Auslastungs-
 tabelle — über/unterbelegte Tage auf einen Blick, folgt dem Prüfungsjahr-Filter.
 Chromium-getestet (Balken, Hervorhebung, Mobile 390px).
+✅ **Ergebnis je Prüfungstag**: die Auslastungs-Tabelle („Auslastung & Ergebnis
+je Prüfungstermin") zeigt zusätzlich **bewertet x/n** und **bestanden** je Tag —
+verbindet Planung und Noten in einer Übersicht (Jahr-Filter, CSV und Bericht
+enthalten). `auslastung()` um die Ergebniszahlen erweitert (kein neuer
+Abschnitt, vorhandene Tabelle angereichert). Chromium-getestet (3 Prüflinge,
+2 bewertet/1 bestanden → „2/3", Spalten, Bericht, Mobile 390px).
 ✅ **Prüfer-Einsätze**: neue Sektion mit Diagramm + Tabelle (Einsätze, Tage,
 zugesagt/offen je Prüfer:in) für eine faire Lastverteilung — aus der Planung
 abgeleitet, mit Prüfungsjahr-Filter und CSV-Export (`prueferEinsaetze`).
