@@ -116,8 +116,11 @@ Neue Ansicht „Adressliste": konsolidiert Betriebe und Prüfer:innen, DB-seitig
 globale Fuzzy-Suche (UNION + Trigramm) mit Treffermarkierung, Telefon-/E-Mail als
 `tel:`/`mailto:`-Aktionen, druckbare Liste. Smoke-getestet (Chromium).
 
-### M9b — Kontakte-Export (offen)
-CSV-/vCard-Export der Adressliste.
+### M9b — Kontakte-Export ✅
+CSV- und vCard-Export der Adressliste (jeweils die aktuelle, ggf. gefilterte
+Auswahl): CSV mit Semikolon + BOM (Excel), vCard 3.0 je Kontakt (N/FN/ORG/TEL/
+EMAIL, Prüfer:innen mit TITLE). Offline per Datei-Download, in Outlook/Telefon
+importierbar. Smoke-getestet.
 
 ### M10 — Auswertungen & Dashboard ✅
 Neue Ansicht „Auswertungen": Kennzahlen (belegte Termine, Ø Prüflinge/Termin,
