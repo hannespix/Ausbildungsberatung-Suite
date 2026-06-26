@@ -1733,7 +1733,9 @@ async function renderPrueflingAkte(id) {
         <table class="bw-table"><tbody>
           <tr><th scope="row">Beruf</th><td>${esc(p.beruf || "—")}</td></tr>
           <tr><th scope="row">Geburtsdatum</th><td>${esc(geb)}</td></tr>
-          <tr><th scope="row">Ausbildungsbetrieb</th><td>${esc(p.betrieb || "—")}</td></tr>
+          <tr><th scope="row">Ausbildungsbetrieb</th><td>${p.betrieb
+            ? (a.betriebId ? `<a href="#/betrieb/${a.betriebId}">${esc(p.betrieb)}</a>` : esc(p.betrieb))
+            : "—"}</td></tr>
           <tr><th scope="row">Prüfungsjahr</th><td>${esc(p.pruefungsjahr || "—")}</td></tr>
           <tr><th scope="row">E-Mail</th><td>${p.email ? `<a href="mailto:${esc(p.email)}">${esc(p.email)}</a>` : "—"}</td></tr>
           <tr><th scope="row">Telefon</th><td>${p.telefon ? `<a href="tel:${esc(String(p.telefon).replace(/[^\d+]/g, ""))}">${esc(p.telefon)}</a>` : "—"}</td></tr>
