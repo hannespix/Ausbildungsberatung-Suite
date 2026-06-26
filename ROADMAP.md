@@ -315,6 +315,11 @@ mit 1–10 Azubis, passende Prüfer:innen und Prüfungstermine je Fachrichtung;
   granularen Bedarf erhalten. Druck-Bausteine zu `…Html()`-Funktionen
   zusammengeführt (keine Duplikation). Chromium-Smoke (14 Seiten, Einzeldrucke
   weiterhin getrennt, Mobile 390px, Galabau-Mathe).
+- ✅ **Aufgeräumte Planungs-Toolbar**: die Mappe bleibt der sichtbare
+  Hauptknopf; Tagesablauf, Bewertungsbögen, Niederschrift und ICS-Export
+  liegen in einer aufklappbaren Gruppe „Einzeldokumente & Export" (natives
+  `<details>`, barrierefrei, `.bw-disclosure`). Reduziert die Knopf-Flut ohne
+  Funktionsverlust. Chromium-getestet (Auf-/Zuklappen, alle Drucke, Mobile 390px).
 - ✅ **Prüfer-Plan & Zusage-Workflow**: je Termin Ausschuss informieren
   (E-Mail/mailto), Status offen→angefragt→zugesagt/abgesagt in einer Übersicht.
 - ✅ **Automatischer Prüfungs-Fortschritt**: je Prüfling eine abgeleitete Phase

@@ -802,16 +802,21 @@ async function renderPlanung() {
           </div>
         </div>
         <div class="bw-toolbar" style="margin:0">
-          <button class="bw-btn bw-btn--sekundaer" type="button" id="ics-termin"
-                  ${termin.datum ? "" : "disabled title=\"Termin ohne Datum\""}>Termin als .ics</button>
-          <button class="bw-btn bw-btn--sekundaer" type="button" id="drucken-btn"
-                  ${zugeteilt.length || prueferZug.length ? "" : "disabled"}>Tagesablauf drucken</button>
-          <button class="bw-btn bw-btn--sekundaer" type="button" id="boegen-btn"
-                  ${zugeteilt.length ? "" : "disabled title=\"Keine Prüflinge zugeteilt\""}>Bewertungsbögen drucken</button>
-          <button class="bw-btn bw-btn--sekundaer" type="button" id="niederschrift-btn"
-                  ${zugeteilt.length ? "" : "disabled title=\"Keine Prüflinge zugeteilt\""}>Ergebnis-Niederschrift</button>
           <button class="bw-btn bw-btn--gelb" type="button" id="mappe-btn"
                   ${zugeteilt.length ? "" : "disabled title=\"Keine Prüflinge zugeteilt\""}>Prüfungstag-Mappe drucken</button>
+          <details class="bw-disclosure">
+            <summary class="bw-btn bw-btn--sekundaer">Einzeldokumente &amp; Export</summary>
+            <div class="bw-disclosure__panel">
+              <button class="bw-btn bw-btn--sekundaer" type="button" id="drucken-btn"
+                      ${zugeteilt.length || prueferZug.length ? "" : "disabled"}>Tagesablauf drucken</button>
+              <button class="bw-btn bw-btn--sekundaer" type="button" id="boegen-btn"
+                      ${zugeteilt.length ? "" : "disabled title=\"Keine Prüflinge zugeteilt\""}>Bewertungsbögen drucken</button>
+              <button class="bw-btn bw-btn--sekundaer" type="button" id="niederschrift-btn"
+                      ${zugeteilt.length ? "" : "disabled title=\"Keine Prüflinge zugeteilt\""}>Ergebnis-Niederschrift</button>
+              <button class="bw-btn bw-btn--sekundaer" type="button" id="ics-termin"
+                      ${termin.datum ? "" : "disabled title=\"Termin ohne Datum\""}>Termin als .ics</button>
+            </div>
+          </details>
         </div>
       </div>
 
