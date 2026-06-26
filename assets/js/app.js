@@ -1551,7 +1551,7 @@ async function renderZeugnisse(pruefungId = null) {
 
   appEl().innerHTML = `
     <h1>Zeugnisse</h1>
-    <p class="bw-unterzeile">Prüfungszeugnis je Prüfling drucken (oder als PDF speichern)</p>
+    <p class="bw-unterzeile">Prüfungszeugnis je Prüfling drucken (bei Nichtbestehen eine sachliche Ergebnis-Mitteilung) — oder als PDF speichern</p>
     <div class="bw-toolbar">
       ${termine.length ? `
       <div class="bw-field" style="max-width:36rem;flex:1 1 22rem;margin:0">
@@ -1622,8 +1622,14 @@ function zeugnisHtml(d) {
     ? store.ergaenzteKenntnis(K, d.ergaenzung_bereich, d.ergaenzung_note) : K;
   const bereichZeile = (label, note) =>
     `<tr><td>${esc(label)}</td><td style="text-align:right">${formatNote(note)}</td></tr>`;
+  // Ein Prüfungszeugnis erhält nur, wer bestanden hat. Bei Nichtbestehen wird
+  // sachlich eine „Mitteilung über das Prüfungsergebnis" gedruckt — mit dem
+  // Grund (aus den Bereichsnoten abgeleitet, wie in Akte/Niederschrift).
+  const nichtBestanden = d.bestanden === false;
+  const gruende = nichtBestanden ? store.bewertungGruende(d) : [];
+  const titel = nichtBestanden ? "Mitteilung über das Prüfungsergebnis" : "Prüfungszeugnis";
   return `
-    <h1>Prüfungszeugnis</h1>
+    <h1>${titel}</h1>
     <p>über die Abschlussprüfung im Ausbildungsberuf Gärtner/in${d.beruf ? " — Fachrichtung " + esc(d.beruf) : ""}</p>
     <table class="bw-table bw-zeugnis">
       <tbody>
@@ -1650,6 +1656,7 @@ function zeugnisHtml(d) {
     <table class="bw-table bw-zeugnis"><tbody>
       <tr><th scope="row">Gesamtnote</th><td><strong>${noteMitWort(d.gesamt)}</strong></td></tr>
       <tr><th scope="row">Ergebnis</th><td><strong>${d.bestanden === true ? "bestanden" : d.bestanden === false ? "nicht bestanden" : "—"}</strong></td></tr>
+      ${nichtBestanden && gruende.length ? `<tr><th scope="row">Grund</th><td>${gruende.map(esc).join("; ")}</td></tr>` : ""}
     </tbody></table>
     <p>Freiburg, den ${esc(heute)}</p>
     <div class="bw-druck__unterschriften">
@@ -1843,7 +1850,7 @@ async function renderPrueflingAkte(id) {
     <div class="bw-toolbar" style="margin-bottom:var(--bw-space-3)">
       <button class="bw-btn bw-btn--gelb" type="button" id="akte-bewerten">${bewertet ? "Note ändern" : "Bewerten"}</button>
       <button class="bw-btn bw-btn--sekundaer" type="button" id="akte-einladung" ${a.termine.length ? "" : "disabled title=\"Erst einem Termin zuteilen\""}>Einladung drucken</button>
-      <button class="bw-btn bw-btn--sekundaer" type="button" id="akte-zeugnis" ${bewertet ? "" : "disabled title=\"Erst bewerten\""}>Zeugnis drucken</button>
+      <button class="bw-btn bw-btn--sekundaer" type="button" id="akte-zeugnis" ${bewertet ? "" : "disabled title=\"Erst bewerten\""}>${bewertet && b && b.bestanden === false ? "Ergebnis-Mitteilung drucken" : "Zeugnis drucken"}</button>
       <button class="bw-btn bw-btn--sekundaer" type="button" id="akte-bearbeiten">Stammdaten bearbeiten</button>
       ${zurueckgezogen
         ? '<button class="bw-btn bw-btn--sekundaer" type="button" id="akte-reaktivieren">Reaktivieren</button>'
