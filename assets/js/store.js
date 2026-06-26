@@ -873,6 +873,34 @@ export async function prueferAbwesenheitsKonflikte() {
   return res.rows;
 }
 
+/**
+ * Einsatzübersicht je Prüfer:in: Anzahl Ausschuss-Zuteilungen (Einsätze),
+ * verschiedene Prüfungstage und Zusagestatus — für eine faire Lastverteilung.
+ * Optional auf ein Prüfungsjahr (Termin-Jahr) eingeschränkt. Nur Prüfer:innen
+ * mit mindestens einem Einsatz. Verknüpft Prüfer-Stammdaten und Planung.
+ * @returns {Array<{pruefer_id,name,organisation,einsaetze,tage,zugesagt,offen,abgesagt}>}
+ */
+export async function prueferEinsaetze(jahr = null) {
+  const res = await _pg.query(
+    `SELECT p.id AS pruefer_id,
+            (p.nachname || ', ' || coalesce(p.vorname,'')) AS name,
+            coalesce(p.organisation,'') AS organisation,
+            count(*)::int AS einsaetze,
+            count(DISTINCT pr.datum)::int AS tage,
+            count(*) FILTER (WHERE lower(coalesce(pz.status,'offen')) = 'zugesagt')::int AS zugesagt,
+            count(*) FILTER (WHERE lower(coalesce(pz.status,'offen')) IN ('offen','angefragt'))::int AS offen,
+            count(*) FILTER (WHERE lower(coalesce(pz.status,'offen')) = 'abgesagt')::int AS abgesagt
+       FROM pruefer_zuteilungen pz
+       JOIN pruefer p ON p.id = pz.pruefer_id
+       JOIN pruefungen pr ON pr.id = pz.pruefung_id
+      WHERE ($1::int IS NULL OR EXTRACT(YEAR FROM pr.datum)::int = $1::int)
+      GROUP BY p.id, name, organisation
+      ORDER BY einsaetze DESC, name`,
+    [jahr]
+  );
+  return res.rows;
+}
+
 /** Ist die Prüfer:in am gegebenen Datum als abwesend hinterlegt? */
 export async function istAbwesend(prueferId, datum) {
   if (!datum) return false;

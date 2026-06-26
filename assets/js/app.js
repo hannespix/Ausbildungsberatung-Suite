@@ -1705,6 +1705,7 @@ async function renderAuswertungen(jahr = null) {
   const auslast = await store.auslastung(jahr);
   const quoten = await store.quoteJeFachrichtung(jahr);
   const konflikte = await store.prueferKonflikte();
+  const einsaetze = await store.prueferEinsaetze(jahr);
 
   const belegt = auslast.filter((t) => t.prueflinge > 0);
   const summePl = belegt.reduce((s, t) => s + t.prueflinge, 0);
@@ -1733,6 +1734,16 @@ async function renderAuswertungen(jahr = null) {
       <td style="text-align:right">${r.schnitt == null ? "—" : formatNote(r.schnitt)}</td>
     </tr>`;
 
+  const einsatzZeile = (r) => `
+    <tr>
+      <td>${esc(r.name)}</td>
+      <td>${esc(r.organisation || "—")}</td>
+      <td style="text-align:right">${zahl(r.einsaetze)}</td>
+      <td style="text-align:right">${zahl(r.tage)}</td>
+      <td style="text-align:right">${zahl(r.zugesagt)}</td>
+      <td style="text-align:right">${r.offen ? '<span class="bw-status-dont">' + zahl(r.offen) + "</span>" : "0"}</td>
+    </tr>`;
+
   appEl().innerHTML = `
     <h1>Auswertungen</h1>
     <p class="bw-unterzeile">Auslastung der Prüfungstage und Bestehensquoten je Fachrichtung — automatisch aus den vorhandenen Daten</p>
@@ -1747,6 +1758,7 @@ async function renderAuswertungen(jahr = null) {
       </div>` : ""}
       <button class="bw-btn bw-btn--sekundaer" type="button" id="csv-quoten" ${quoten.length ? "" : "disabled"}>Quoten als CSV</button>
       <button class="bw-btn bw-btn--sekundaer" type="button" id="csv-auslastung" ${auslast.length ? "" : "disabled"}>Auslastung als CSV</button>
+      <button class="bw-btn bw-btn--sekundaer" type="button" id="csv-einsaetze" ${einsaetze.length ? "" : "disabled"}>Prüfer-Einsätze als CSV</button>
     </div>
 
     <div class="bw-flaechen bw-stat-grid">
@@ -1804,6 +1816,22 @@ async function renderAuswertungen(jahr = null) {
         </table>
       </div>
     </section>
+
+    <section aria-labelledby="einsatz-h" style="margin-top:var(--bw-space-4)">
+      <h2 id="einsatz-h">Prüfer-Einsätze</h2>
+      <p class="bw-klein bw-leise">Ausschuss-Zuteilungen je Prüfer:in — für eine faire Lastverteilung. Aus der <a href="#/planung">Planung</a> abgeleitet.</p>
+      <div id="einsatz-diagramm" class="bw-card"></div>
+      <ul class="bw-legend"${einsaetze.length ? "" : " hidden"}>
+        <li><span class="swatch" style="background:var(--bw-cat-1)"></span> Einsätze je Prüfer:in</li>
+        <li><span class="swatch" style="background:var(--bw-gelb);outline:1.5px solid var(--bw-schwarz)"></span> meiste Einsätze</li>
+      </ul>
+      <div class="bw-tablewrap" style="margin-top:var(--bw-space-2)">
+        <table class="bw-table">
+          <thead><tr><th>Prüfer:in</th><th>Organisation</th><th style="text-align:right">Einsätze</th><th style="text-align:right">Tage</th><th style="text-align:right">zugesagt</th><th style="text-align:right">offen</th></tr></thead>
+          <tbody>${einsaetze.length ? einsaetze.map(einsatzZeile).join("") : '<tr><td colspan="6" class="bw-leise">Noch keine Ausschuss-Zuteilungen. Erst unter <a href="#/planung">Planung</a> besetzen.</td></tr>'}</tbody>
+        </table>
+      </div>
+    </section>
   `;
 
   const mitQuote = quoten.filter((r) => r.quote != null);
@@ -1834,6 +1862,20 @@ async function renderAuswertungen(jahr = null) {
     auslastDia.innerHTML = '<p class="bw-leise">Noch keine belegten Prüfungstermine — erst Prüflinge zuteilen (Planung).</p>';
   }
 
+  const einsatzDia = document.getElementById("einsatz-diagramm");
+  if (window.bwChart && einsaetze.length) {
+    const maxE = Math.max.apply(null, einsaetze.map((r) => r.einsaetze));
+    // Liste ist nach Einsätzen absteigend sortiert — nur den Spitzenwert
+    // hervorheben (Gelb gilt genau EINEM Wert, CI-Regel).
+    window.bwChart.bars(
+      einsatzDia,
+      einsaetze.slice(0, 16).map((r, i) => ({ label: kurzName(r.name), value: r.einsaetze, highlight: i === 0 })),
+      { titel: "Einsätze je Prüfer:in", max: Math.max(1, maxE) }
+    );
+  } else {
+    einsatzDia.innerHTML = '<p class="bw-leise">Noch keine Ausschuss-Zuteilungen — erst unter <a href="#/planung">Planung</a> besetzen.</p>';
+  }
+
   document.getElementById("jahr-filter")?.addEventListener("change", (ev) => {
     renderAuswertungen(ev.target.value || null);
   });
@@ -1851,6 +1893,18 @@ async function renderAuswertungen(jahr = null) {
     dateiDownload(`Auslastung${jahr ? "-" + jahr : ""}.csv`, csvText(kopf, zeilen), "text/csv;charset=utf-8");
     meldung(`Auslastung exportiert: ${zahl(auslast.length)} Termine.`);
   });
+  document.getElementById("csv-einsaetze")?.addEventListener("click", () => {
+    const kopf = ["Prüfer:in", "Organisation", "Einsätze", "Tage", "zugesagt", "offen", "abgesagt"];
+    const zeilen = einsaetze.map((r) => [r.name, r.organisation || "", r.einsaetze, r.tage, r.zugesagt, r.offen, r.abgesagt]);
+    dateiDownload(`Pruefer-Einsaetze${jahr ? "-" + jahr : ""}.csv`, csvText(kopf, zeilen), "text/csv;charset=utf-8");
+    meldung(`Prüfer-Einsätze exportiert: ${zahl(einsaetze.length)} Prüfer:innen.`);
+  });
+}
+
+/** Kürzt „Nachname, Vorname" für Diagramm-Achsen (Nachname + Initial). */
+function kurzName(name) {
+  const [nach, vor] = String(name || "").split(",").map((s) => s.trim());
+  return nach + (vor ? " " + vor.charAt(0) + "." : "");
 }
 
 /** Kürzt lange Fachrichtungsnamen für Diagramm-Achsen. */
