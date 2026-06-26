@@ -334,6 +334,12 @@ Prüfling. Lässt sich der Name keinem Betrieb zuordnen, bleibt er reiner Text.
 `prueflingAkte().betriebId`. Chromium-getestet (beidseitig, Nicht-Treffer, Mobile).
 
 ### Betriebs-Akte (Betrieb ↔ Prüflinge) ✅
+✅ **Notenlage je Betrieb (Beratung)**: die Betriebs-Akte zeigt zusätzlich die
+Ø Gesamtnote (mit Wortstufe) und die Bestehensquote des Betriebs sowie je
+Prüfling eine Gesamtnote-Spalte — so erkennt die Ausbildungsberatung auf einen
+Blick, welche Betriebe schwächer abschneiden (rein abgeleitet aus `betriebAkte`,
+keine neue Eingabe). Chromium-getestet (Ø 2,5, Quote 100 %, Notenspalte, Mobile
+390px).
 Detailansicht je Ausbildungsbetrieb (`#/betrieb/<id>`, „📋" in der Betriebs-
 liste): Kontaktdaten (Anschrift, Ansprechpartner, klickbare Mail/Tel) und alle
 zugeordneten Prüflinge (über das Betriebsfeld verknüpft) mit Fachrichtung,

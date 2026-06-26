@@ -2043,6 +2043,10 @@ async function renderBetriebAkte(id) {
   const pl = a.prueflinge || [];
   const bewertet = pl.filter((p) => p.gesamt != null);
   const bestanden = pl.filter((p) => p.bestanden === true).length;
+  // Notenlage des Betriebs (Beratungs-Information): Ø Gesamtnote + Quote.
+  const schnitt = bewertet.length
+    ? Math.round((bewertet.reduce((s, p) => s + Number(p.gesamt), 0) / bewertet.length) * 10) / 10 : null;
+  const quote = bewertet.length ? Math.round((bestanden / bewertet.length) * 100) : null;
   const adresse = [b.strasse, [b.plz, b.ort].filter(Boolean).join(" ")].filter(Boolean).join(", ");
 
   appEl().innerHTML = `
@@ -2069,15 +2073,17 @@ async function renderBetriebAkte(id) {
       <section aria-labelledby="betrieb-pl">
         <h2 id="betrieb-pl">Prüflinge (${zahl(pl.length)})</h2>
         ${pl.length ? `
-          <p class="bw-klein bw-leise">${zahl(bewertet.length)} bewertet · ${zahl(bestanden)} bestanden</p>
+          <p class="bw-klein bw-leise">${zahl(bewertet.length)} bewertet · ${zahl(bestanden)} bestanden${
+            schnitt != null ? ` · Ø Gesamtnote ${noteMitWort(schnitt)} · Quote ${zahl(quote)} %` : ""}</p>
           <div class="bw-tablewrap">
             <table class="bw-table">
-              <thead><tr><th>Name</th><th>Fachrichtung</th><th>Jahr</th><th>Fortschritt</th><th>Aktion</th></tr></thead>
+              <thead><tr><th>Name</th><th>Fachrichtung</th><th>Jahr</th><th style="text-align:right">Gesamtnote</th><th>Fortschritt</th><th>Aktion</th></tr></thead>
               <tbody>${pl.map((p) => `
                 <tr>
                   <td>${esc((p.nachname || "") + ", " + (p.vorname || ""))}</td>
                   <td>${esc(p.beruf || "—")}</td>
                   <td>${esc(p.pruefungsjahr || "—")}</td>
+                  <td style="text-align:right">${formatNote(p.gesamt)}</td>
                   <td>${fortschrittTag(p.phase)}</td>
                   <td class="bw-actions"><a class="bw-iconbtn" href="#/pruefling/${p.id}" title="Akte öffnen" aria-label="Akte öffnen">📋</a></td>
                 </tr>`).join("")}</tbody>
