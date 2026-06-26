@@ -79,6 +79,11 @@ Bewertung (Schnitte/Gesamtnote/Ergebnis) und den abgeleiteten Fortschritt an
 einem Ort. Direkt-Aktionen: Bewerten (Noten-Dialog), Einladung/Zeugnis drucken,
 Stammdaten bearbeiten — eine Ansicht bedient Planung, Noten und Zeugnis.
 Smoke-getestet (inkl. Mobile 390px).
+✅ **Bemerkungen in der Akte sichtbar**: die Freitext-Bemerkung zum Prüfling
+(Stammdaten) und die Bemerkung des Ausschusses zur Bewertung wurden bisher
+erfasst, aber nirgends angezeigt — jetzt erscheinen sie in der Prüflings-Akte
+(nur wenn gefüllt). „Alles an einem Ort", ohne Bearbeiten-Dialog. Chromium-
+getestet (beide Bemerkungen sichtbar; ohne Bemerkung keine leeren Zeilen; Mobile).
 ✅ **Einzel-Bereichsnoten in der Akte**: die Bewertungs-Sektion zeigt unter
 „Einzelnoten anzeigen" (aufklappbar) alle 9 Bereiche (Praxis I–V + 4 Kenntnis)
 mit ihren Noten — inkl. mündlicher Ergänzung (effektive Note + Fußnote „*"),
