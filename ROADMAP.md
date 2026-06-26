@@ -100,8 +100,12 @@ konfigurierbarer Zeugnistext je Beruf.
 CSV/Excel; Format für nachgelagerte Systeme (z. B. Listen, Seriendruck).
 
 ### M8 — Outlook-/Kalender-Konnektivität (offline-konform)
-**ICS-Export** der Prüfungstage (Kalendereinträge/Einladungen), vCard-Export der
-Adress-/Telefonliste, `mailto:`-Vorlagen — ohne externe Requests (kein Graph-API).
+- ✅ **ICS-Export** der Prüfungstage (RFC 5545, lokal als `.ics`-Datei, kein
+  Graph-API): in der Planung „Alle Termine als Kalender (.ics)" und je Termin
+  „Termin als .ics". VEVENT mit Datum/Uhrzeit, Ort/Raum und Beschreibung
+  (Fachrichtung, Prüflingszahl, Ausschuss). In Outlook importierbar. Smoke-getestet.
+- Offen: vCard-Export der Adress-/Telefonliste; `mailto:`-Einladung (Prüfer-Plan
+  vorhanden).
 
 ### M9 — Adress- & Telefonliste ✅
 Neue Ansicht „Adressliste": konsolidiert Betriebe und Prüfer:innen, DB-seitige

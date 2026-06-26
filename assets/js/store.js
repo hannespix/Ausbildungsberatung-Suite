@@ -691,6 +691,25 @@ export async function prueferKonflikte() {
 }
 
 /**
+ * Termine mit allen Eckdaten für den Kalender-Export (ICS): Zeiten, Ort/Raum,
+ * Fachrichtung, Prüflingszahl und Ausschuss. Nur Termine mit Datum.
+ */
+export async function kalenderDaten() {
+  const res = await _pg.query(
+    `SELECT pr.id, pr.titel, pr.beruf, pr.datum, pr.zeit_von, pr.zeit_bis, pr.ort, pr.raum,
+            (SELECT count(*)::int FROM zuteilungen z WHERE z.pruefung_id = pr.id) AS prueflinge,
+            (SELECT string_agg(pp.nachname || ', ' || coalesce(pp.vorname,''), '; '
+                       ORDER BY pz.rolle NULLS LAST, pp.nachname)
+               FROM pruefer_zuteilungen pz JOIN pruefer pp ON pp.id = pz.pruefer_id
+              WHERE pz.pruefung_id = pr.id) AS ausschuss
+       FROM pruefungen pr
+      WHERE pr.datum IS NOT NULL
+      ORDER BY pr.datum, pr.zeit_von NULLS LAST, pr.id`
+  );
+  return res.rows;
+}
+
+/**
  * Bestehensquote und Notenschnitt je Gärtner-Fachrichtung.
  * @returns {Array<{beruf,gesamt,bewertet,bestanden,durchgefallen,quote,schnitt}>}
  */

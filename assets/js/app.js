@@ -295,6 +295,84 @@ function terminLabel(t) {
   return `${t.titel} — ${datum}${t.ort ? " · " + t.ort : ""}`;
 }
 
+/* --------------------------------------------------- Kalender-Export (ICS)
+   Erzeugt offline eine iCalendar-Datei (RFC 5545) – ohne externe Requests,
+   in Outlook/Thunderbird/Apple Kalender importierbar. */
+
+function icsEscape(s) {
+  return String(s == null ? "" : s)
+    .replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,")
+    .replace(/\r?\n/g, "\\n");
+}
+/** Datum (Date oder "YYYY-MM-DD") -> "YYYYMMDD". */
+function icsDatum(datum) {
+  if (datum instanceof Date && !isNaN(datum)) {
+    return String(datum.getFullYear()) +
+      String(datum.getMonth() + 1).padStart(2, "0") +
+      String(datum.getDate()).padStart(2, "0");
+  }
+  return String(datum).slice(0, 10).replace(/-/g, "");
+}
+/** Datum(+ "HH:MM") -> "YYYYMMDD" bzw. "YYYYMMDDTHHMMSS" (lokale Zeit). */
+function icsZeit(datum, zeit) {
+  const d = icsDatum(datum);
+  if (!zeit) return d;
+  const t = String(zeit).slice(0, 5).replace(":", "") + "00";
+  return d + "T" + t;
+}
+/** Faltet ICS-Zeilen auf max. 75 Oktette (vereinfachte UTF-Annäherung). */
+function icsFold(zeile) {
+  if (zeile.length <= 75) return zeile;
+  const teile = [];
+  let rest = zeile;
+  teile.push(rest.slice(0, 75));
+  rest = rest.slice(75);
+  while (rest.length) { teile.push(" " + rest.slice(0, 74)); rest = rest.slice(74); }
+  return teile.join("\r\n");
+}
+
+/** Baut ein VCALENDAR aus Termin-Datensätzen (store.kalenderDaten()). */
+function icsBauen(termine) {
+  const stempel = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z");
+  const zeilen = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//RP Freiburg//Ausbildungsberatung-Suite//DE", "CALSCALE:GREGORIAN", "METHOD:PUBLISH"];
+  termine.forEach((t) => {
+    const beschreibung = [
+      t.beruf ? "Fachrichtung: " + t.beruf : "",
+      t.prueflinge != null ? "Prüflinge: " + t.prueflinge : "",
+      t.ausschuss ? "Ausschuss: " + t.ausschuss : "",
+    ].filter(Boolean).join("\n");
+    const ort = [t.ort, t.raum].filter(Boolean).join(", ");
+    zeilen.push("BEGIN:VEVENT");
+    zeilen.push("UID:rpf-termin-" + t.id + "@ausbildungsberatung");
+    zeilen.push("DTSTAMP:" + stempel);
+    if (t.zeit_von) {
+      zeilen.push("DTSTART:" + icsZeit(t.datum, t.zeit_von));
+      zeilen.push("DTEND:" + icsZeit(t.datum, t.zeit_bis || t.zeit_von));
+    } else {
+      zeilen.push("DTSTART;VALUE=DATE:" + icsZeit(t.datum));
+    }
+    zeilen.push("SUMMARY:" + icsEscape(t.titel || "Prüfungstermin"));
+    if (ort) zeilen.push("LOCATION:" + icsEscape(ort));
+    if (beschreibung) zeilen.push("DESCRIPTION:" + icsEscape(beschreibung));
+    zeilen.push("END:VEVENT");
+  });
+  zeilen.push("END:VCALENDAR");
+  return zeilen.map(icsFold).join("\r\n") + "\r\n";
+}
+
+/** Lädt einen Text als Datei herunter (offline, ohne externe Requests). */
+function icsDownload(dateiname, text) {
+  const blob = new Blob([text], { type: "text/calendar;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = dateiname;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 /** Liefert (und erzeugt bei Bedarf) den nur beim Drucken sichtbaren Bereich. */
 function druckbereich() {
   let root = document.getElementById("druckbereich");
@@ -349,16 +427,28 @@ async function renderPlanung() {
   appEl().innerHTML = `
     <h1>Prüfungstag-Planung</h1>
     <p class="bw-unterzeile">Prüflinge den Prüfungsterminen zuteilen und den Tagesablauf planen</p>
-    <div class="bw-field" style="max-width:36rem">
-      <label for="pruefungswahl">Prüfungstermin</label>
-      <select id="pruefungswahl">
-        ${termine.map((t) => `<option value="${t.id}">${esc(terminLabel(t))}</option>`).join("")}
-      </select>
+    <div class="bw-toolbar">
+      <div class="bw-field" style="max-width:36rem;flex:1 1 24rem;margin:0">
+        <label for="pruefungswahl">Prüfungstermin</label>
+        <select id="pruefungswahl">
+          ${termine.map((t) => `<option value="${t.id}">${esc(terminLabel(t))}</option>`).join("")}
+        </select>
+      </div>
+      <button class="bw-btn bw-btn--sekundaer" type="button" id="ics-alle">Alle Termine als Kalender (.ics)</button>
     </div>
     <div id="plan" aria-live="polite"></div>
   `;
 
   const wahl = document.getElementById("pruefungswahl");
+
+  document.getElementById("ics-alle").addEventListener("click", async () => {
+    try {
+      const daten = await store.kalenderDaten();
+      if (!daten.length) { meldung("Keine Termine mit Datum für den Kalender-Export.", "fehler"); return; }
+      icsDownload("Pruefungstermine-Gaertner.ics", icsBauen(daten));
+      meldung(`Kalender exportiert: ${zahl(daten.length)} Termine (.ics). In Outlook über „Datei → Öffnen/Importieren" einlesen.`);
+    } catch (e) { console.error(e); meldung("Kalender-Export fehlgeschlagen: " + e.message, "fehler"); }
+  });
 
   async function planZeichnen() {
     const id = Number(wahl.value);
@@ -380,8 +470,12 @@ async function renderPlanung() {
             ${termin.beruf ? " · " + esc(termin.beruf) : ""}
           </div>
         </div>
-        <button class="bw-btn bw-btn--sekundaer" type="button" id="drucken-btn"
-                ${zugeteilt.length || prueferZug.length ? "" : "disabled"}>Tagesablauf drucken</button>
+        <div class="bw-toolbar" style="margin:0">
+          <button class="bw-btn bw-btn--sekundaer" type="button" id="ics-termin"
+                  ${termin.datum ? "" : "disabled title=\"Termin ohne Datum\""}>Termin als .ics</button>
+          <button class="bw-btn bw-btn--sekundaer" type="button" id="drucken-btn"
+                  ${zugeteilt.length || prueferZug.length ? "" : "disabled"}>Tagesablauf drucken</button>
+        </div>
       </div>
 
       <h2>Zugeteilte Prüflinge (${zahl(zugeteilt.length)})</h2>
@@ -553,6 +647,15 @@ async function renderPlanung() {
 
     document.getElementById("drucken-btn")?.addEventListener("click", () => {
       tagesablaufDrucken(termin, zugeteilt, prueferZug);
+    });
+
+    document.getElementById("ics-termin")?.addEventListener("click", async () => {
+      try {
+        const daten = (await store.kalenderDaten()).filter((t) => String(t.id) === String(id));
+        if (!daten.length) { meldung("Dieser Termin hat kein Datum.", "fehler"); return; }
+        icsDownload(`Pruefungstermin-${id}.ics`, icsBauen(daten));
+        meldung("Termin als .ics exportiert — in Outlook importierbar.");
+      } catch (e) { console.error(e); meldung("Export fehlgeschlagen: " + e.message, "fehler"); }
     });
   }
 
