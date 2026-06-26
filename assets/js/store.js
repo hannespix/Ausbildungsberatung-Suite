@@ -1104,6 +1104,28 @@ export async function prueflingAkte(prueflingId) {
 }
 
 /**
+ * Einladungs-Daten: jede Prüfling-Termin-Zuteilung mit Name, Betrieb und allen
+ * Termindetails (inkl. persönlicher Uhrzeit/Slot). Verknüpft Stammdaten und
+ * Planung für den Einladungsdruck. Mit prueflingId nur dessen Zuteilungen,
+ * sonst alle (Serien-Druck), in Termin-/Uhrzeit-/Namensreihenfolge.
+ * @returns {Array<{pruefling_id,nachname,vorname,beruf,betrieb,titel,datum,
+ *   zeit_von,zeit_bis,ort,raum,slot}>}
+ */
+export async function einladungsListe(prueflingId = null) {
+  const res = await _pg.query(
+    `SELECT p.id AS pruefling_id, p.nachname, p.vorname, p.beruf, p.betrieb,
+            pr.titel, pr.datum, pr.zeit_von, pr.zeit_bis, pr.ort, pr.raum, z.slot
+       FROM zuteilungen z
+       JOIN prueflinge p ON p.id = z.pruefling_id
+       JOIN pruefungen pr ON pr.id = z.pruefung_id
+      WHERE ($1::int IS NULL OR p.id = $1::int)
+      ORDER BY pr.datum NULLS LAST, z.slot NULLS LAST, p.nachname, p.vorname`,
+    [prueflingId]
+  );
+  return res.rows;
+}
+
+/**
  * Funnel der Prüfungs-Fortschritte in fachlicher Reihenfolge. Kernstufen werden
  * immer gezeigt, Sonderstufen (nicht bestanden, zurückgezogen) nur bei Bedarf.
  * @returns {Array<{key:string,label:string,wert:number}>}

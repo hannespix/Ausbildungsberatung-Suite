@@ -237,6 +237,11 @@ mit 1–10 Azubis, passende Prüfer:innen und Prüfungstermine je Fachrichtung;
   passend viele Termine (Kapazität je Tag), PLZ-geclustert, fehlende Termine
   automatisch angelegt, **Ausschuss je Termin** automatisch besetzt.
 - ✅ **Serien-Zeugnisdruck**: alle bewerteten Zeugnisse in einem Druck (je Seite).
+- ✅ **Prüflings-Einladungen**: druckbares Einladungsschreiben je Prüfling mit
+  persönlichem Prüfungstermin (Datum/Uhrzeit-Slot/Ort/Raum aus der Planung) und
+  Standard-Mitbringliste — einzeln aus der Akte oder als **Serien-Druck** aller
+  zugeteilten Prüflinge (je Seite) in der Planung (`einladungsListe`).
+  SQL-getestet (PGlite).
 - ✅ **Prüfer-Plan & Zusage-Workflow**: je Termin Ausschuss informieren
   (E-Mail/mailto), Status offen→angefragt→zugesagt/abgesagt in einer Übersicht.
 - ✅ **Automatischer Prüfungs-Fortschritt**: je Prüfling eine abgeleitete Phase
