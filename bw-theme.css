@@ -155,6 +155,16 @@ a:hover { text-decoration: none; }
 .bw-btn--gelb:hover { background: var(--bw-schwarz); color: var(--bw-weiss); }
 .bw-btn:disabled { background: var(--bw-grau-200); border-color: var(--bw-grau-300); color: var(--bw-grau-500); cursor: not-allowed; }
 
+/* Aufklappbare Knopf-Gruppe (native <details>) — bündelt seltener genutzte
+   Aktionen, hält Werkzeugleisten aufgeräumt. Nur --bw-*-Tokens, keine Deko. */
+.bw-disclosure { position: relative; }
+.bw-disclosure > summary { display: inline-block; list-style: none; }
+.bw-disclosure > summary::-webkit-details-marker { display: none; }
+.bw-disclosure > summary::after { content: " ▾"; font-weight: 700; }
+.bw-disclosure[open] > summary::after { content: " ▴"; }
+.bw-disclosure__panel { display: none; flex-wrap: wrap; gap: var(--bw-space-1); margin-top: var(--bw-space-1); }
+.bw-disclosure[open] > .bw-disclosure__panel { display: flex; }
+
 /* ===================== Formulare =================================== */
 label { display: block; font-weight: 700; font-size: var(--bw-fs-klein); margin-bottom: 0.25rem; }
 input, select, textarea { font: inherit; width: 100%; padding: 0.5em 0.65em; background: var(--bw-weiss); color: var(--bw-text); border: 1px solid var(--bw-grau-300); border-radius: var(--bw-radius); }
