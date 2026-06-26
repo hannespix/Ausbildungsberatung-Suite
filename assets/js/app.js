@@ -1635,11 +1635,11 @@ async function renderSuche() {
   const prueflingZeile = (r, q) => `
     <li><a href="#/pruefling/${r.id}">${hl((r.nachname || "") + ", " + (r.vorname || ""), q)}</a>
       <span class="bw-klein bw-leise">${esc(r.beruf || "")}${r.betrieb ? " · " + esc(r.betrieb) : ""}</span></li>`;
-  const kontaktZeile = (r, q, name, zusatz) => `
-    <li>${hl(name, q)}${zusatz ? ` <span class="bw-klein bw-leise">${esc(zusatz)}</span>` : ""}
+  const kontaktZeile = (r, q, name, zusatz, href) => `
+    <li>${href ? `<a href="${href}">${hl(name, q)}</a>` : hl(name, q)}${zusatz ? ` <span class="bw-klein bw-leise">${esc(zusatz)}</span>` : ""}
       <span class="bw-klein">${[r.telefon ? telLink(r.telefon, q) : "", r.email ? mailLink(r.email, q) : ""].filter(Boolean).join(" · ")}</span></li>`;
   const terminZeile = (r, q) => `
-    <li><a href="#/planung">${hl(r.titel || "Termin", q)}</a>
+    <li><a href="#/planung?termin=${r.id}">${hl(r.titel || "Termin", q)}</a>
       <span class="bw-klein bw-leise">${r.datum ? esc(new Date(r.datum).toLocaleDateString("de-DE")) : ""}${r.beruf ? " · " + esc(r.beruf) : ""}${r.ort ? " · " + esc(r.ort) : ""}</span></li>`;
 
   const gruppe = (titel, items, html) => items.length
@@ -1655,8 +1655,8 @@ async function renderSuche() {
     const gesamt = r.prueflinge.length + r.betriebe.length + r.pruefer.length + r.pruefungen.length;
     const html =
       gruppe("Prüflinge", r.prueflinge, (x) => prueflingZeile(x, q)) +
-      gruppe("Betriebe", r.betriebe, (x) => kontaktZeile(x, q, x.name, x.ort)) +
-      gruppe("Prüfer:innen", r.pruefer, (x) => kontaktZeile(x, q, (x.nachname || "") + ", " + (x.vorname || ""), x.organisation)) +
+      gruppe("Betriebe", r.betriebe, (x) => kontaktZeile(x, q, x.name, x.ort, `#/betrieb/${x.id}`)) +
+      gruppe("Prüfer:innen", r.pruefer, (x) => kontaktZeile(x, q, (x.nachname || "") + ", " + (x.vorname || ""), x.organisation, `#/pruefer/${x.id}`)) +
       gruppe("Prüfungstermine", r.pruefungen, (x) => terminZeile(x, q));
     ziel.innerHTML = gesamt ? html : `<p class="bw-hinweis">Keine Treffer für „${esc(q)}".</p>`;
   };
@@ -2253,7 +2253,7 @@ async function renderKontakte() {
     document.getElementById("zeilen").innerHTML = rows.map((r) => `
       <tr>
         <td>${esc(r.typ)}</td>
-        <td>${hl(r.bezeichnung, q)}</td>
+        <td>${r.id != null ? `<a href="${r.typ === "Betrieb" ? "#/betrieb/" : "#/pruefer/"}${r.id}">${hl(r.bezeichnung, q)}</a>` : hl(r.bezeichnung, q)}</td>
         <td>${hl(r.zusatz || "", q)}</td>
         <td>${hl(r.person || "", q)}</td>
         <td>${telLink(r.telefon, q)}</td>
