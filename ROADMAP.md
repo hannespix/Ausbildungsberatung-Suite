@@ -35,6 +35,13 @@ E-Mail-Format-Validierung mit deutscher Meldung; Dublettenwarnung (bestätigbar)
 ### M2b — Weitere Stammdaten-Politur (offen)
 Berufe-Lookup, PLZ-Format, Inline-Bearbeitung, Sortierung per Spaltenkopf.
 
+### Globale Schnellsuche ✅
+Eigene Ansicht (`#/suche`, über die Header-Lupe erreichbar): durchsucht
+Prüflinge, Betriebe, Prüfer:innen und Termine **gleichzeitig** DB-seitig
+(Trigramm, tippfehlertolerant), gruppierte Trefferliste mit Markierung. Treffer
+verlinken direkt — Prüflinge in ihre Akte, Termine in die Planung, Kontakte mit
+`tel:`/`mailto:`. Smoke-getestet (inkl. Mobile 390px).
+
 ### Prüflings-Akte (verbindende Klammer) ✅
 Eigene Detailansicht je Prüfling (`#/pruefling/<id>`, „📋"-Symbol in der Liste):
 bündelt Stammdaten, zugeteilten Prüfungstag (Datum/Uhrzeit-Slot, Ort, Ausschuss),

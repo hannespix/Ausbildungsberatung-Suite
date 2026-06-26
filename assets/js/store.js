@@ -117,6 +117,21 @@ export async function suche(key, query) {
   return globaleSuche(_pg, e.key, query, { limit: 200 });
 }
 
+/**
+ * Schnellsuche über alle Stammdaten zugleich (Prüflinge, Betriebe, Prüfer:innen,
+ * Termine). DB-seitige Trigramm-Fuzzy-Suche je Entität, wenige Treffer je Gruppe.
+ * @returns {{prueflinge:Array,betriebe:Array,pruefer:Array,pruefungen:Array}}
+ */
+export async function schnellsuche(query, { proGruppe = 8 } = {}) {
+  const q = String(query || "").trim();
+  const leer = { prueflinge: [], betriebe: [], pruefer: [], pruefungen: [] };
+  if (!q) return leer;
+  for (const key of Object.keys(leer)) {
+    leer[key] = await globaleSuche(_pg, ENTITAETEN[key].key, q, { limit: proGruppe });
+  }
+  return leer;
+}
+
 export async function holen(key, id) {
   const e = ent(key);
   const res = await _pg.query(`SELECT * FROM ${e.key} WHERE id = $1`, [id]);

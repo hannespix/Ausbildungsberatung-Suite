@@ -276,6 +276,12 @@ mark.bw-treffer { background: var(--bw-gelb); color: var(--bw-schwarz); padding:
 .bw-legend li { display: inline-flex; align-items: center; gap: 0.4em; }
 .bw-legend .swatch { width: 0.9em; height: 0.9em; border-radius: 2px; display: inline-block; }
 
+/* Trefferliste (Schnellsuche): klare Zeilen, je Treffer eine Zeile mit Zusatz */
+.bw-trefferliste { list-style: none; margin: 0; padding: 0; }
+.bw-trefferliste li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.2em 0.8em;
+  padding: var(--bw-space-2) 0; border-bottom: 1px solid var(--bw-linie); }
+.bw-trefferliste li > a { font-weight: 700; }
+
 /* ===================== Footer (schwarzer Streifen) =============== */
 .bw-footer {
   background: var(--bw-schwarz); color: var(--bw-weiss);
