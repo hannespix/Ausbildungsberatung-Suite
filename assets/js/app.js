@@ -1345,6 +1345,11 @@ function zeugnisHtml(d) {
     : "—";
   const P = [d.p1, d.p2, d.p3, d.p4, d.p5];
   const K = [d.k1, d.k2, d.k3, d.k4];
+  // Hatte ein Kenntnisbereich eine mündliche Ergänzungsprüfung, zeigt das
+  // Zeugnis die gewichtete (effektive) Bereichsnote — passend zum Schnitt.
+  const ergIdx = { k1: 0, k2: 1, k3: 2, k4: 3 }[d.ergaenzung_bereich];
+  const Keff = (ergIdx != null && d.ergaenzung_note != null)
+    ? store.ergaenzteKenntnis(K, d.ergaenzung_bereich, d.ergaenzung_note) : K;
   const bereichZeile = (label, note) =>
     `<tr><td>${esc(label)}</td><td style="text-align:right">${formatNote(note)}</td></tr>`;
   return `
@@ -1367,9 +1372,10 @@ function zeugnisHtml(d) {
 
     <h2>Kenntnisprüfung</h2>
     <table class="bw-table"><tbody>
-      ${GALABAU_BEREICHE.kenntnis.map((b, i) => bereichZeile(b, K[i])).join("")}
+      ${GALABAU_BEREICHE.kenntnis.map((b, i) => bereichZeile(b + (i === ergIdx ? " *" : ""), Keff[i])).join("")}
       <tr><th scope="row">Kenntnis-Schnitt</th><td style="text-align:right"><strong>${formatNote(d.kenntnis)}</strong></td></tr>
     </tbody></table>
+    ${ergIdx != null ? '<p class="bw-klein">* Note nach mündlicher Ergänzungsprüfung: (2 × schriftlich + 1 × mündlich) ÷ 3.</p>' : ""}
 
     <table class="bw-table bw-zeugnis"><tbody>
       <tr><th scope="row">Gesamtnote</th><td><strong>${formatNote(d.gesamt)}</strong></td></tr>
