@@ -119,6 +119,17 @@ Erzeugt `dist/index.html` mit inline-Theme, base64-Schriften und -Bildern —
 offline lauffähig, keine externen Requests, per Doppelklick zu öffnen. `dist/`
 ist nicht versioniert.
 
+**Zum Testen ohne lokales Bauen** baut die Action
+[`.github/workflows/build.yml`](.github/workflows/build.yml) die Einzeldatei bei
+jedem Stand und legt sie als Artifact
+**`ausbildungsberatung-suite-singlefile`** ab: betreffenden Workflow-Run unter
+**Actions** öffnen → Artifact herunterladen → entpacken → `index.html` per
+Doppelklick öffnen. Artifacts sind **nur für Repo-Mitglieder** abrufbar, daher
+keine öffentliche Verteilung der lizenzierten Schriften/Logos (kein GitHub
+Pages, das den Output öffentlich machen würde — siehe „Recht & Lizenz").
+Hinweis: Single-File gilt für einfache Tools; sobald die Suite PGlite/WASM nutzt
+(DB-Milestones), wird zusätzlich als Ordner-Bundle ausgeliefert.
+
 ## Offline-Pflicht (keine CDN-Abhängigkeit)
 
 Jedes Tool muss **vollständig offline** laufen — im Flugmodus, ohne Netzwerk.
