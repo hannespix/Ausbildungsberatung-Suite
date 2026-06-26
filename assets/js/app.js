@@ -66,7 +66,7 @@ function navAufbauen() {
   const route = aktiveRoute();
   const punkte = [{ key: "uebersicht", label: "Übersicht" }]
     .concat(NAV_REIHENFOLGE.map((k) => ({ key: k, label: ENTITAETEN[k].plural })))
-    .concat([{ key: "planung", label: "Planung" }]);
+    .concat([{ key: "planung", label: "Planung" }, { key: "noten", label: "Noten" }]);
   ul.innerHTML = punkte.map((p) => {
     const aktiv = p.key === route ? ' aria-current="page"' : "";
     return `<li><a href="#/${p.key === "uebersicht" ? "" : p.key}"${aktiv}>${esc(p.label)}</a></li>`;
@@ -421,6 +421,130 @@ async function renderPlanung() {
   planZeichnen();
 }
 
+/* --------------------------------------------------------------- Noten */
+
+function statusBadge(status) {
+  if (status === "bestanden") return '<span class="bw-status-do">bestanden</span>';
+  if (status === "nicht bestanden") return '<span class="bw-status-dont">nicht bestanden</span>';
+  return '<span class="bw-leise">offen</span>';
+}
+
+async function renderNoten() {
+  const rows = await store.bewertungenListe();
+  const verteilung = await store.notenVerteilung();
+  const bewertet = rows.filter((r) => r.note != null).length;
+
+  appEl().innerHTML = `
+    <h1>Noten</h1>
+    <p class="bw-unterzeile">Gesamtbewertung je Prüfling nach dem 100-Punkte-Schlüssel</p>
+
+    <table class="bw-table">
+      <thead><tr><th>Name</th><th>Beruf</th><th>Punkte</th><th>Note</th><th>Status</th><th>Aktion</th></tr></thead>
+      <tbody id="noten-koerper">
+        ${rows.map((r) => `
+          <tr>
+            <td>${esc((r.nachname || "") + ", " + (r.vorname || ""))}</td>
+            <td>${esc(r.beruf || "")}</td>
+            <td>${r.punkte != null ? zahl(r.punkte) : "—"}</td>
+            <td>${r.note != null ? esc(String(r.note)) : "—"}</td>
+            <td>${statusBadge(r.status)}</td>
+            <td class="bw-actions">
+              <button class="bw-btn bw-btn--sekundaer" type="button" data-bewerten="${r.pruefling_id}">${r.note != null ? "Ändern" : "Bewerten"}</button>
+            </td>
+          </tr>`).join("")}
+      </tbody>
+    </table>
+    <p class="bw-hinweis"${rows.length ? " hidden" : ""}>Noch keine Prüflinge vorhanden — zuerst unter <a href="#/prueflinge">Prüflinge</a> anlegen.</p>
+
+    <h2 style="margin-top:var(--bw-space-4)">Notenverteilung</h2>
+    <div id="noten-diagramm" class="bw-card"></div>
+    <p class="bw-klein bw-leise" style="margin-top:var(--bw-space-2)">
+      Schlüssel: 100–92 = Note 1, 91–81 = 2, 80–67 = 3, 66–50 = 4, 49–30 = 5, 29–0 = 6 · bestanden ab 50 Punkten.
+      Beruf-spezifische Gewichtungen/Sperrfächer folgen.
+    </p>
+  `;
+
+  if (window.bwChart && bewertet) {
+    const maxWert = Math.max.apply(null, verteilung.map((v) => v.wert));
+    window.bwChart.bars(
+      document.getElementById("noten-diagramm"),
+      verteilung.map((v) => ({ label: "Note " + v.note, value: v.wert, highlight: v.wert === maxWert && maxWert > 0 })),
+      { titel: "Notenverteilung", max: Math.max(1, maxWert) }
+    );
+  } else {
+    document.getElementById("noten-diagramm").innerHTML = '<p class="bw-leise">Noch keine Bewertungen erfasst.</p>';
+  }
+
+  document.getElementById("noten-koerper").addEventListener("click", async (ev) => {
+    const pid = ev.target.closest("[data-bewerten]")?.getAttribute("data-bewerten");
+    if (!pid) return;
+    const row = rows.find((r) => String(r.pruefling_id) === String(pid));
+    notenDialog(row, renderNoten);
+  });
+}
+
+function notenDialog(row, nachher) {
+  const alt = document.getElementById("dialog");
+  if (alt) alt.remove();
+  const dlg = document.createElement("dialog");
+  dlg.className = "bw-dialog";
+  dlg.id = "dialog";
+  dlg.innerHTML = `
+    <form method="dialog" id="noten-form" novalidate>
+      <h2 style="margin-top:0">Bewertung — ${esc((row.vorname || "") + " " + (row.nachname || ""))}</h2>
+      <div class="bw-field">
+        <label for="f_punkte">Punkte (0–100) <span aria-hidden="true">*</span></label>
+        <input id="f_punkte" name="punkte" type="number" min="0" max="100" inputmode="numeric"
+               value="${row.punkte != null ? esc(String(row.punkte)) : ""}" required>
+      </div>
+      <p id="noten-preview" class="bw-hinweis" aria-live="polite"></p>
+      <div class="bw-field">
+        <label for="f_bem">Bemerkung</label>
+        <textarea id="f_bem" name="bemerkung" rows="2">${esc(row.bemerkung || "")}</textarea>
+      </div>
+      <div class="bw-dialog__aktionen">
+        <button type="button" class="bw-btn bw-btn--sekundaer" id="abbrechen">Abbrechen</button>
+        <button type="submit" class="bw-btn">Speichern</button>
+      </div>
+    </form>`;
+  document.body.appendChild(dlg);
+
+  const form = dlg.querySelector("#noten-form");
+  const punkteEl = form.elements["punkte"];
+  const preview = dlg.querySelector("#noten-preview");
+  const vorschau = () => {
+    const v = punkteEl.value.trim();
+    if (v === "") { preview.hidden = true; return; }
+    const r = store.noteAusPunkten(v);
+    preview.hidden = false;
+    preview.className = "bw-hinweis " + (r.bestanden ? "bw-hinweis--erfolg" : "bw-hinweis--fehler");
+    preview.textContent = `Note ${r.note} (${r.bezeichnung}) — ${r.bestanden ? "bestanden" : "nicht bestanden"}`;
+  };
+  punkteEl.addEventListener("input", vorschau);
+  vorschau();
+
+  dlg.querySelector("#abbrechen").addEventListener("click", () => dlg.close());
+  dlg.addEventListener("close", () => dlg.remove());
+  form.addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const v = punkteEl.value.trim();
+    if (v === "" || isNaN(Number(v)) || Number(v) < 0 || Number(v) > 100) {
+      punkteEl.focus();
+      meldung("Bitte Punkte zwischen 0 und 100 eingeben.", "fehler");
+      return;
+    }
+    try {
+      const r = await store.setzeBewertung(row.pruefling_id, Number(v), form.elements["bemerkung"].value);
+      meldung(`Bewertung gespeichert: Note ${r.note} (${r.bezeichnung}).`);
+      dlg.close();
+      if (nachher) nachher();
+    } catch (e) { console.error(e); meldung("Speichern fehlgeschlagen: " + e.message, "fehler"); }
+  });
+
+  dlg.showModal();
+  punkteEl.focus();
+}
+
 /* ------------------------------------------------------------- CRUD-Dialog */
 
 function feldHtml(f, value, refOptionen) {
@@ -547,6 +671,7 @@ async function route() {
   try {
     if (r === "uebersicht") await renderUebersicht();
     else if (r === "planung") await renderPlanung();
+    else if (r === "noten") await renderNoten();
     else if (ENTITAETEN[r]) await renderListe(r);
     else { location.hash = "#/"; return; }
   } catch (e) {
