@@ -212,6 +212,13 @@ Auswahl): CSV mit Semikolon + BOM (Excel), vCard 3.0 je Kontakt (N/FN/ORG/TEL/
 EMAIL, Prüfer:innen mit TITLE). Offline per Datei-Download, in Outlook/Telefon
 importierbar. Smoke-getestet.
 
+### Nächste Prüfungstage — Terminvorschau ✅
+Die Übersicht zeigt die nächsten (heute oder später liegenden) Prüfungstage
+chronologisch (max. 5): Datum mit Wochentag, Bezeichnung, Fachrichtung,
+Prüflingszahl und Warnung „kein Ausschuss"; jeder Eintrag öffnet den Termin
+direkt in der Planung (`#/planung?termin=…`). Aus `auslastung()` abgeleitet,
+keine neue Eingabe. Chromium-getestet (Auswahl, Verlinkung, Mobile 390px).
+
 ### „Was ist zu tun?" — Aufgaben-Panel ✅
 Übersicht erkennt automatisch Handlungsbedarf über alle Stationen und verlinkt
 dorthin: belegte Termine ohne Ausschuss, Prüfer-Doppelbelegungen, offene/
