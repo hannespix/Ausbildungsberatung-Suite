@@ -1,0 +1,20 @@
+name: Offline-Check
+
+# Stellt sicher, dass kein Tool externe/CDN-Referenzen enthält.
+# Schlägt der Check fehl, wird der PR rot -> Merge blockiert.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Auf externe Referenzen prüfen
+        run: python3 tools/check_offline.py

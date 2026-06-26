@@ -1,0 +1,20 @@
+# Build-Ausgabe
+/dist/
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# Secrets / lokale Konfig — NIEMALS committen
+.env
+*.key
+*.pem
+
+# --- Optional bei ÖFFENTLICHEM Repo: lizenzpflichtige Assets ausschließen ---
+# Schriften (Luzi Type) und Logo dürfen nicht öffentlich verteilt werden.
+# Bei public Repo die folgenden Zeilen aktivieren:
+# assets/fonts/
+# assets/logo/

@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ausbildungsberatung-Suite — RP Freiburg</title>
+<meta name="description" content="Interne Werkzeug-Suite der Ausbildungsberatung des Regierungspräsidiums Freiburg.">
+
+<!-- Favicons / PWA -->
+<link rel="icon" href="assets/favicons/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicons/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="assets/favicons/favicon-16x16.png">
+<link rel="apple-touch-icon" href="assets/favicons/apple-touch-icon.png">
+<link rel="manifest" href="site.webmanifest">
+<meta name="theme-color" content="#FFFC00">
+
+<link rel="stylesheet" href="bw-theme.css">
+</head>
+<body>
+<a class="bw-skip-link" href="#inhalt">Zum Inhalt springen</a>
+
+<!-- Kopf mit responsiver Navigation (Hamburger unterhalb 800px) -->
+<header style="position:relative;background:var(--bw-weiss);border-bottom:var(--bw-border)">
+  <div class="bw-app" style="padding-block:var(--bw-space-2)">
+    <nav class="bw-nav" aria-label="Hauptnavigation">
+      <a class="bw-nav__brand" href="index.html">
+        <img class="bw-logo" src="assets/logo/rpf-logo.png"
+             alt="Regierungspräsidium Freiburg, Baden-Württemberg">
+      </a>
+
+      <div class="bw-nav__panel" id="hauptmenue">
+        <ul class="bw-nav__links">
+          <li><a href="#" aria-current="page">Übersicht</a></li>
+          <li><a href="#">Erfassen</a></li>
+          <li><a href="#">Auswertung</a></li>
+          <li><a href="#">Export</a></li>
+        </ul>
+      </div>
+
+      <div class="bw-nav__actions">
+        <button class="bw-iconbtn" type="button" aria-label="Suche fokussieren"
+                onclick="document.getElementById('q').focus()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+        </button>
+        <button class="bw-iconbtn bw-nav__toggle" type="button"
+                data-nav-toggle aria-controls="hauptmenue" aria-expanded="false" aria-label="Menü">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+    </nav>
+  </div>
+</header>
+
+<div class="bw-app">
+  <main id="inhalt">
+    <h1>Ausbildungsberatung-Suite</h1>
+    <p class="bw-unterzeile">Werkzeug-Suite der Ausbildungsberatung — Regierungspräsidium Freiburg</p>
+
+    <!-- Globale Fuzzy-Suche -->
+    <div class="bw-search" style="margin-bottom:var(--bw-space-4)">
+      <label for="q" class="bw-skip-link">Suche</label>
+      <input id="q" type="search" placeholder="Suchen… (tippt­olerant, alle Felder)"
+             aria-label="Globale Suche">
+      <button type="button" onclick="suchen()">Suchen</button>
+    </div>
+
+    <h2>Ausbildungsbetriebe</h2>
+    <table class="bw-table">
+      <thead><tr><th>Nr.</th><th>Ausbildungsbetrieb</th><th>Ort</th><th>Status</th></tr></thead>
+      <tbody id="zeilen"></tbody>
+    </table>
+
+    <h2>Auswertung</h2>
+    <div id="diagramm" class="bw-card"></div>
+    <ul class="bw-legend">
+      <li><span class="swatch" style="background:var(--bw-cat-1)"></span> Standard (Grau)</li>
+      <li><span class="swatch" style="background:var(--bw-gelb);outline:1.5px solid var(--bw-schwarz)"></span> Hervorgehoben</li>
+    </ul>
+  </main>
+</div>
+
+<footer class="bw-footer">
+  <div class="bw-app" style="padding:0;display:flex;align-items:center;justify-content:space-between;gap:var(--bw-space-3)">
+    <img class="bw-logo bw-logo--neg" src="assets/logo/rpf-logo-negativ.png"
+         alt="Regierungspräsidium Freiburg" style="display:block">
+    <span class="bw-klein">Impressum · Barrierefreiheit · Datenschutz</span>
+  </div>
+</footer>
+
+<script src="assets/js/nav.js"></script>
+<script src="assets/js/search.js"></script>
+<script src="assets/js/chart.js"></script>
+<script>
+  // Demodaten
+  var daten = [
+    { nr: 1, bezeichnung: "Müller GmbH",       ort: "Freiburg",     status: "aktiv",  wert: 42 },
+    { nr: 2, bezeichnung: "Schäfer & Söhne",   ort: "Müllheim",     status: "ruht",   wert: 18 },
+    { nr: 3, bezeichnung: "Gärtnerei Ihringen", ort: "Ihringen",    status: "aktiv",  wert: 67 },
+    { nr: 4, bezeichnung: "Weingut am Kaiserstuhl", ort: "Breisach", status: "aktiv", wert: 35 }
+  ];
+
+  function rendern(rows) {
+    var q = document.getElementById("q").value;
+    document.getElementById("zeilen").innerHTML = rows.map(function (d) {
+      var hl = function (v) { return window.bwSearch.highlight(v, q); };
+      return "<tr><td>" + d.nr + "</td><td>" + hl(d.bezeichnung) +
+             "</td><td>" + hl(d.ort) + "</td><td>" +
+             (d.status === "aktiv" ? '<span class="bw-status-do">aktiv</span>' : '<span class="bw-leise">ruht</span>') +
+             "</td></tr>";
+    }).join("");
+  }
+  function suchen() {
+    var q = document.getElementById("q").value;
+    rendern(window.bwSearch.search(daten, q, { fields: ["bezeichnung", "ort", "status"] }));
+  }
+  document.getElementById("q").addEventListener("input", suchen);
+
+  // Diagramm: ein Wert hervorgehoben (gelb + Outline), Rest in Grau.
+  // Abgesichert, falls chart.js (noch) nicht geladen ist.
+  function diagramm() {
+    if (!window.bwChart) return;
+    window.bwChart.bars(document.getElementById("diagramm"),
+      daten.map(function (d) { return { label: d.ort, value: d.wert, highlight: d.wert === 67 }; }),
+      { titel: "Werte je Ort" });
+  }
+
+  rendern(daten);
+  diagramm();
+</script>
+</body>
+</html>
