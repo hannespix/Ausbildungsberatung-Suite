@@ -1585,6 +1585,7 @@ async function renderPrueflingAkte(id) {
   const name = `${p.vorname || ""} ${p.nachname || ""}`.trim() || "Prüfling";
   const b = a.bewertung;
   const bewertet = b && b.gesamt != null;
+  const zurueckgezogen = String(p.status || "").toLowerCase() === "zurückgezogen";
   const geb = p.geburtsdatum ? new Date(p.geburtsdatum).toLocaleDateString("de-DE") : "—";
 
   const terminCard = (t) => `
@@ -1625,6 +1626,10 @@ async function renderPrueflingAkte(id) {
       <button class="bw-btn bw-btn--sekundaer" type="button" id="akte-einladung" ${a.termine.length ? "" : "disabled title=\"Erst einem Termin zuteilen\""}>Einladung drucken</button>
       <button class="bw-btn bw-btn--sekundaer" type="button" id="akte-zeugnis" ${bewertet ? "" : "disabled title=\"Erst bewerten\""}>Zeugnis drucken</button>
       <button class="bw-btn bw-btn--sekundaer" type="button" id="akte-bearbeiten">Stammdaten bearbeiten</button>
+      ${zurueckgezogen
+        ? '<button class="bw-btn bw-btn--sekundaer" type="button" id="akte-reaktivieren">Reaktivieren</button>'
+        : `${a.phase === "angemeldet" ? '<button class="bw-btn bw-btn--sekundaer" type="button" id="akte-zulassen">Zulassen</button>' : ""}
+           <button class="bw-btn bw-btn--sekundaer" type="button" id="akte-zurueckziehen">Zurückziehen</button>`}
     </div>
 
     <div class="bw-flaechen">
@@ -1677,6 +1682,19 @@ async function renderPrueflingAkte(id) {
   document.getElementById("akte-bearbeiten").addEventListener("click", () => {
     formularOeffnen("prueflinge", p, () => renderPrueflingAkte(id));
   });
+  const statusAktion = async (status, frage) => {
+    if (frage && !confirm(frage)) return;
+    try {
+      await store.setzeStatus(p.id, status);
+      meldung(`Status gesetzt: ${status}.`);
+      renderPrueflingAkte(id);
+    } catch (e) { console.error(e); meldung("Status ändern fehlgeschlagen: " + e.message, "fehler"); }
+  };
+  document.getElementById("akte-zulassen")?.addEventListener("click", () => statusAktion("zugelassen"));
+  document.getElementById("akte-zurueckziehen")?.addEventListener("click", () =>
+    statusAktion("zurückgezogen", `${name} von der Prüfung zurückziehen?`));
+  document.getElementById("akte-reaktivieren")?.addEventListener("click", () =>
+    statusAktion("angemeldet", `${name} wieder aktivieren (Status „angemeldet")?`));
   document.getElementById("akte-zuteilen")?.addEventListener("click", async () => {
     const pid = Number(document.getElementById("akte-terminwahl").value);
     if (!pid) return;
