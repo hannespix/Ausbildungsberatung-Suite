@@ -1184,6 +1184,28 @@ export async function setzeStatusViele(ids, status) {
 }
 
 /**
+ * Prüfer-Akte: Stammdaten, alle Ausschuss-Einsätze (Termin, Rolle, Zusage) und
+ * hinterlegte Abwesenheiten — verbindet Prüfer:innen, Planung und Abwesenheiten.
+ */
+export async function prueferAkte(prueferId) {
+  const p = (await _pg.query(`SELECT * FROM pruefer WHERE id = $1`, [prueferId])).rows[0];
+  if (!p) return null;
+  const einsaetze = (await _pg.query(
+    `SELECT pz.id AS zuteilung_id, pz.rolle, coalesce(pz.status,'offen') AS status,
+            pr.id AS pruefung_id, pr.titel, pr.datum, pr.zeit_von, pr.ort, pr.beruf
+       FROM pruefer_zuteilungen pz JOIN pruefungen pr ON pr.id = pz.pruefung_id
+      WHERE pz.pruefer_id = $1
+      ORDER BY pr.datum NULLS LAST, pr.zeit_von NULLS LAST, pr.id`,
+    [prueferId]
+  )).rows;
+  const abwesenheiten = (await _pg.query(
+    `SELECT id, datum FROM pruefer_abwesenheit WHERE pruefer_id = $1 ORDER BY datum`,
+    [prueferId]
+  )).rows;
+  return { pruefer: p, einsaetze, abwesenheiten };
+}
+
+/**
  * Betriebs-Akte: Stammdaten des Ausbildungsbetriebs und alle ihm zugeordneten
  * Prüflinge (Name über das Betriebsfeld verknüpft) samt abgeleiteter Phase und
  * Bestehensstatus — verbindet Betriebe und Prüflinge in einer Ansicht.

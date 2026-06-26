@@ -135,6 +135,9 @@ a:hover { text-decoration: none; }
 .bw-logo--neg { display: none; }                              /* Negativ-Logo nur auf dunklem Header */
 
 .bw-flaechen { display: grid; gap: var(--bw-space-2); }
+/* Grid-Items dürfen schmaler als ihr Inhalt werden — sonst sprengt eine breite
+   Tabelle (nowrap) das Raster, statt im .bw-tablewrap horizontal zu scrollen. */
+.bw-flaechen > * { min-width: 0; }
 .bw-flaechen.bw-halb    { grid-template-columns: 1fr 1fr; }
 .bw-flaechen.bw-drittel { grid-template-columns: 1fr 1fr 1fr; }
 
