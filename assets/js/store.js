@@ -1116,6 +1116,22 @@ export async function fortschrittAlle() {
 }
 
 /**
+ * Setzt den Status mehrerer Prüflinge auf einmal (z. B. Sammel-Zulassung).
+ * „Zurückgezogen" bleibt unangetastet (bewusste Entscheidung). Gibt die Zahl
+ * der geänderten Datensätze zurück.
+ */
+export async function setzeStatusViele(ids, status) {
+  const liste = (ids || []).map(Number).filter((n) => Number.isFinite(n));
+  if (!liste.length) return 0;
+  const res = await _pg.query(
+    `UPDATE prueflinge SET status = $2
+       WHERE id = ANY($1) AND lower(coalesce(status,'')) <> 'zurückgezogen'`,
+    [liste, status]
+  );
+  return res.affectedRows ?? liste.length;
+}
+
+/**
  * Gesamtakte eines Prüflings: Stammdaten, zugeteilte Termine (mit Slot und
  * Ausschuss), Bewertung und abgeleitete Phase — die verbindende Klammer über
  * Stammdaten, Planung, Noten und Zeugnis in einer Ansicht.
