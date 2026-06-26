@@ -150,6 +150,13 @@ Auswahl): CSV mit Semikolon + BOM (Excel), vCard 3.0 je Kontakt (N/FN/ORG/TEL/
 EMAIL, Prüfer:innen mit TITLE). Offline per Datei-Download, in Outlook/Telefon
 importierbar. Smoke-getestet.
 
+### „Was ist zu tun?" — Aufgaben-Panel ✅
+Übersicht erkennt automatisch Handlungsbedarf über alle Stationen und verlinkt
+dorthin: belegte Termine ohne Ausschuss, Prüfer-Doppelbelegungen, offene/
+angefragte Zusagen, eingeplante aber unbewertete Prüflinge, Termine ohne
+Prüflinge. Nur Punkte mit Bedarf werden gezeigt; sonst „Alles erledigt".
+`store.hinweise()`. Smoke-getestet (inkl. Leerzustand, Mobile).
+
 ### M10 — Auswertungen & Dashboard ✅
 Neue Ansicht „Auswertungen": Kennzahlen (belegte Termine, Ø Prüflinge/Termin,
 Bestehensquote gesamt), **Bestehensquote je Fachrichtung** (CI-konformes
