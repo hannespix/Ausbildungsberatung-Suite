@@ -429,10 +429,15 @@ async function renderPlanung() {
 
 /* --------------------------------------------------------------- Noten */
 
-function statusBadge(status) {
-  if (status === "bestanden") return '<span class="bw-status-do">bestanden</span>';
-  if (status === "nicht bestanden") return '<span class="bw-status-dont">nicht bestanden</span>';
-  return '<span class="bw-leise">offen</span>';
+function formatNote(n) {
+  if (n == null) return "—";
+  return Number(n).toLocaleString("de-DE", { minimumFractionDigits: 1, maximumFractionDigits: 2 });
+}
+
+function bewertungBadge(r) {
+  if (r.note == null) return '<span class="bw-leise">offen</span>';
+  const klasse = r.note <= 4.4 ? "bw-status-do" : "bw-status-dont";
+  return `<span class="${klasse}">${esc(r.note_wort || "")}</span>`;
 }
 
 async function renderNoten() {
@@ -442,18 +447,18 @@ async function renderNoten() {
 
   appEl().innerHTML = `
     <h1>Noten</h1>
-    <p class="bw-unterzeile">Gesamtbewertung je Prüfling nach dem 100-Punkte-Schlüssel</p>
+    <p class="bw-unterzeile">Gesamtbewertung je Prüfling nach dem linearen Punkteschlüssel (Dezimalnote)</p>
 
     <table class="bw-table">
-      <thead><tr><th>Name</th><th>Beruf</th><th>Punkte</th><th>Note</th><th>Status</th><th>Aktion</th></tr></thead>
+      <thead><tr><th>Name</th><th>Beruf</th><th>Punkte</th><th>Note</th><th>Bewertung</th><th>Aktion</th></tr></thead>
       <tbody id="noten-koerper">
         ${rows.map((r) => `
           <tr>
             <td>${esc((r.nachname || "") + ", " + (r.vorname || ""))}</td>
             <td>${esc(r.beruf || "")}</td>
-            <td>${r.punkte != null ? zahl(r.punkte) : "—"}</td>
-            <td>${r.note != null ? esc(String(r.note)) : "—"}</td>
-            <td>${statusBadge(r.status)}</td>
+            <td>${r.punkte != null ? zahl(r.punkte) + " / " + zahl(r.max_punkte || 100) : "—"}</td>
+            <td>${formatNote(r.note)}</td>
+            <td>${bewertungBadge(r)}</td>
             <td class="bw-actions">
               <button class="bw-btn bw-btn--sekundaer" type="button" data-bewerten="${r.pruefling_id}">${r.note != null ? "Ändern" : "Bewerten"}</button>
             </td>
@@ -465,8 +470,9 @@ async function renderNoten() {
     <h2 style="margin-top:var(--bw-space-4)">Notenverteilung</h2>
     <div id="noten-diagramm" class="bw-card"></div>
     <p class="bw-klein bw-leise" style="margin-top:var(--bw-space-2)">
-      Schlüssel: 100–92 = Note 1, 91–81 = 2, 80–67 = 3, 66–50 = 4, 49–30 = 5, 29–0 = 6 · bestanden ab 50 Punkten.
-      Beruf-spezifische Gewichtungen/Sperrfächer folgen.
+      Linearer Schlüssel: Note = 6 − 5 · (Punkte / Maximalpunktzahl), 1,0–6,0. Wortstufen:
+      1,0–1,4 sehr gut · 1,5–2,4 gut · 2,5–3,4 befriedigend · 3,5–4,4 ausreichend · 4,5–5,4 mangelhaft · 5,5–6,0 ungenügend.
+      Gewichtung der Prüfungsbereiche und Bestehensregeln (Gärtner-Gesamtschema) folgen.
     </p>
   `;
 
@@ -474,7 +480,7 @@ async function renderNoten() {
     const maxWert = Math.max.apply(null, verteilung.map((v) => v.wert));
     window.bwChart.bars(
       document.getElementById("noten-diagramm"),
-      verteilung.map((v) => ({ label: "Note " + v.note, value: v.wert, highlight: v.wert === maxWert && maxWert > 0 })),
+      verteilung.map((v) => ({ label: v.label, value: v.wert, highlight: v.wert === maxWert && maxWert > 0 })),
       { titel: "Notenverteilung", max: Math.max(1, maxWert) }
     );
   } else {
@@ -495,13 +501,22 @@ function notenDialog(row, nachher) {
   const dlg = document.createElement("dialog");
   dlg.className = "bw-dialog";
   dlg.id = "dialog";
+  const maxAkt = row.max_punkte || 100;
   dlg.innerHTML = `
     <form method="dialog" id="noten-form" novalidate>
       <h2 style="margin-top:0">Bewertung — ${esc((row.vorname || "") + " " + (row.nachname || ""))}</h2>
-      <div class="bw-field">
-        <label for="f_punkte">Punkte (0–100) <span aria-hidden="true">*</span></label>
-        <input id="f_punkte" name="punkte" type="number" min="0" max="100" inputmode="numeric"
-               value="${row.punkte != null ? esc(String(row.punkte)) : ""}" required>
+      <div class="bw-dialog__felder">
+        <div class="bw-field">
+          <label for="f_max">Maximalpunktzahl</label>
+          <select id="f_max" name="max">
+            ${store.MAX_PUNKTZAHLEN.map((m) => `<option value="${m}"${m === maxAkt ? " selected" : ""}>${m}</option>`).join("")}
+          </select>
+        </div>
+        <div class="bw-field">
+          <label for="f_punkte">Erreichte Punkte <span aria-hidden="true">*</span></label>
+          <input id="f_punkte" name="punkte" type="number" min="0" max="${maxAkt}" step="1" inputmode="numeric"
+                 value="${row.punkte != null ? esc(String(row.punkte)) : ""}" required>
+        </div>
       </div>
       <p id="noten-preview" class="bw-hinweis" aria-live="polite"></p>
       <div class="bw-field">
@@ -517,16 +532,20 @@ function notenDialog(row, nachher) {
 
   const form = dlg.querySelector("#noten-form");
   const punkteEl = form.elements["punkte"];
+  const maxEl = form.elements["max"];
   const preview = dlg.querySelector("#noten-preview");
   const vorschau = () => {
     const v = punkteEl.value.trim();
+    const max = Number(maxEl.value);
+    punkteEl.max = String(max);
     if (v === "") { preview.hidden = true; return; }
-    const r = store.noteAusPunkten(v);
+    const r = store.noteAusPunkten(v, max);
     preview.hidden = false;
-    preview.className = "bw-hinweis " + (r.bestanden ? "bw-hinweis--erfolg" : "bw-hinweis--fehler");
-    preview.textContent = `Note ${r.note} (${r.bezeichnung}) — ${r.bestanden ? "bestanden" : "nicht bestanden"}`;
+    preview.className = "bw-hinweis " + (r.ausreichend ? "bw-hinweis--erfolg" : "bw-hinweis--fehler");
+    preview.textContent = `${r.punkte} / ${r.max} Punkte → Note ${formatNote(r.note)} (${r.wort})`;
   };
   punkteEl.addEventListener("input", vorschau);
+  maxEl.addEventListener("change", vorschau);
   vorschau();
 
   dlg.querySelector("#abbrechen").addEventListener("click", () => dlg.close());
@@ -534,14 +553,15 @@ function notenDialog(row, nachher) {
   form.addEventListener("submit", async (ev) => {
     ev.preventDefault();
     const v = punkteEl.value.trim();
-    if (v === "" || isNaN(Number(v)) || Number(v) < 0 || Number(v) > 100) {
+    const max = Number(maxEl.value);
+    if (v === "" || isNaN(Number(v)) || Number(v) < 0 || Number(v) > max) {
       punkteEl.focus();
-      meldung("Bitte Punkte zwischen 0 und 100 eingeben.", "fehler");
+      meldung(`Bitte Punkte zwischen 0 und ${max} eingeben.`, "fehler");
       return;
     }
     try {
-      const r = await store.setzeBewertung(row.pruefling_id, Number(v), form.elements["bemerkung"].value);
-      meldung(`Bewertung gespeichert: Note ${r.note} (${r.bezeichnung}).`);
+      const r = await store.setzeBewertung(row.pruefling_id, Number(v), max, form.elements["bemerkung"].value);
+      meldung(`Bewertung gespeichert: Note ${formatNote(r.note)} (${r.wort}).`);
       dlg.close();
       if (nachher) nachher();
     } catch (e) { console.error(e); meldung("Speichern fehlgeschlagen: " + e.message, "fehler"); }
@@ -560,14 +580,14 @@ async function renderZeugnisse() {
     <h1>Zeugnisse</h1>
     <p class="bw-unterzeile">Prüfungszeugnis je Prüfling drucken (oder als PDF speichern)</p>
     <table class="bw-table">
-      <thead><tr><th>Name</th><th>Beruf</th><th>Note</th><th>Status</th><th>Aktion</th></tr></thead>
+      <thead><tr><th>Name</th><th>Beruf</th><th>Note</th><th>Bewertung</th><th>Aktion</th></tr></thead>
       <tbody id="zeugnis-koerper">
         ${rows.map((r) => `
           <tr>
             <td>${esc((r.nachname || "") + ", " + (r.vorname || ""))}</td>
             <td>${esc(r.beruf || "")}</td>
-            <td>${r.note != null ? esc(String(r.note)) : "—"}</td>
-            <td>${statusBadge(r.status)}</td>
+            <td>${formatNote(r.note)}</td>
+            <td>${bewertungBadge(r)}</td>
             <td class="bw-actions">
               <button class="bw-btn bw-btn--sekundaer" type="button" data-zeugnis="${r.pruefling_id}"
                       ${r.note != null ? "" : "disabled title=\"Erst unter Noten bewerten\""}>Zeugnis drucken</button>
@@ -591,7 +611,7 @@ async function renderZeugnisse() {
 async function zeugnisDrucken(prueflingId) {
   const d = await store.zeugnisDaten(prueflingId);
   if (!d) { meldung("Prüfling nicht gefunden.", "fehler"); return; }
-  const note = d.punkte != null ? store.noteAusPunkten(d.punkte) : null;
+  const note = d.punkte != null ? store.noteAusPunkten(d.punkte, d.max_punkte || 100) : null;
   const heute = new Date().toLocaleDateString("de-DE");
   const geb = d.geburtsdatum ? new Date(d.geburtsdatum).toLocaleDateString("de-DE") : "";
   const terminZeile = d.termin
@@ -610,9 +630,9 @@ async function zeugnisDrucken(prueflingId) {
         <tr><th scope="row">Ausbildungsbetrieb</th><td>${esc(d.betrieb || "—")}</td></tr>
         <tr><th scope="row">Prüfungstermin</th><td>${terminZeile}</td></tr>
         <tr><th scope="row">Ergebnis</th><td>${note
-          ? `${zahl(note.punkte)} von 100 Punkten — Note ${note.note} (${esc(note.bezeichnung)})`
+          ? `${zahl(note.punkte)} von ${zahl(note.max)} Punkten — Note ${formatNote(note.note)} (${esc(note.wort)})`
           : "—"}</td></tr>
-        <tr><th scope="row">Prüfung</th><td><strong>${d.status === "bestanden" ? "bestanden" : d.status === "nicht bestanden" ? "nicht bestanden" : "—"}</strong></td></tr>
+        <tr><th scope="row">Bewertung</th><td><strong>${note ? esc(note.wort) : "—"}</strong></td></tr>
       </tbody>
     </table>
     <p>Freiburg, den ${esc(heute)}</p>

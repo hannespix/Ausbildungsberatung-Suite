@@ -64,16 +64,22 @@ export async function oeffnen() {
       UNIQUE (pruefung_id, pruefer_id)
     );
   `);
-  // Gesamtbewertung je Prüfling (Punkte -> Note über 100-Punkte-Schlüssel).
+  // Gesamtbewertung je Prüfling (Punkte -> Dezimalnote über linearen Schlüssel).
   await _pg.exec(`
     CREATE TABLE IF NOT EXISTS bewertungen (
       id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
       pruefling_id bigint NOT NULL UNIQUE,
       punkte int,
-      note int,
+      max_punkte int DEFAULT 100,
+      note numeric,
+      note_wort text,
       status text,
       bemerkung text
     );
+    -- Migration bestehender Datenbanken auf das lineare Dezimal-Schema
+    ALTER TABLE bewertungen ADD COLUMN IF NOT EXISTS max_punkte int DEFAULT 100;
+    ALTER TABLE bewertungen ADD COLUMN IF NOT EXISTS note_wort text;
+    ALTER TABLE bewertungen ALTER COLUMN note TYPE numeric USING note::numeric;
   `);
   return { pg: _pg, modus: _modus };
 }
@@ -247,34 +253,47 @@ export async function entfernePrueferZuteilung(zuteilungId) {
 
 /* ------------------------------------------------------------ Notenberechnung */
 
+/** Zulässige Maximalpunktzahlen (eigener Schlüssel je Bereich). */
+export const MAX_PUNKTZAHLEN = [40, 60, 80, 100, 120, 150, 200];
+
+/** Wortstufe zur Dezimalnote (offizielle Bänder, linearer Schlüssel BW). */
+function noteWort(note) {
+  if (note <= 1.4) return "sehr gut";
+  if (note <= 2.4) return "gut";
+  if (note <= 3.4) return "befriedigend";
+  if (note <= 4.4) return "ausreichend";
+  if (note <= 5.4) return "mangelhaft";
+  return "ungenügend";
+}
+
 /**
- * Standardisierter 100-Punkte-Schlüssel (Berufsbildung): Punkte -> Note +
- * Bezeichnung; bestanden ab 50 Punkten. Beruf-spezifische Gewichtungen/
- * Sperrfächer sind bewusst (noch) nicht abgebildet (Fachentscheidung).
+ * Linearer Punkteschlüssel (Abschlussprüfung BW, grüne Berufe): Dezimalnote
+ * Note = 6 − 5 · (Punkte / Maximalpunktzahl), auf 2 Nachkommastellen, 1,0–6,0.
+ * Beispiel 100er: 100→1,0 · 80→2,0 · 50→3,5 · 40→4,0 · 0→6,0.
+ * „ausreichend" (Bereich erreicht) bis Note 4,4. Das offizielle Gesamtergebnis
+ * (Gewichtung, Sperrfach/Bestehensregeln) ist eine Fachentscheidung und folgt
+ * mit dem Gärtner-Gesamtschema.
  */
-export function noteAusPunkten(punkte) {
-  const p = Math.max(0, Math.min(100, Math.round(Number(punkte) || 0)));
-  let note, bezeichnung;
-  if (p >= 92) { note = 1; bezeichnung = "sehr gut"; }
-  else if (p >= 81) { note = 2; bezeichnung = "gut"; }
-  else if (p >= 67) { note = 3; bezeichnung = "befriedigend"; }
-  else if (p >= 50) { note = 4; bezeichnung = "ausreichend"; }
-  else if (p >= 30) { note = 5; bezeichnung = "mangelhaft"; }
-  else { note = 6; bezeichnung = "ungenügend"; }
-  return { punkte: p, note, bezeichnung, bestanden: p >= 50 };
+export function noteAusPunkten(punkte, max = 100) {
+  const m = Number(max) > 0 ? Number(max) : 100;
+  const p = Math.max(0, Math.min(m, Math.round(Number(punkte) || 0)));
+  const note = Math.max(1, Math.min(6, Math.round((6 - 5 * (p / m)) * 100) / 100));
+  const wort = noteWort(note);
+  return { punkte: p, max: m, note, wort, ausreichend: note <= 4.4 };
 }
 
 /** Setzt/aktualisiert die Gesamtbewertung eines Prüflings. */
-export async function setzeBewertung(prueflingId, punkte, bemerkung = null) {
-  const r = noteAusPunkten(punkte);
-  const status = r.bestanden ? "bestanden" : "nicht bestanden";
+export async function setzeBewertung(prueflingId, punkte, max = 100, bemerkung = null) {
+  const r = noteAusPunkten(punkte, max);
+  const status = r.ausreichend ? "ausreichend" : "nicht bestanden";
   await _pg.query(
-    `INSERT INTO bewertungen (pruefling_id, punkte, note, status, bemerkung)
-       VALUES ($1, $2, $3, $4, $5)
+    `INSERT INTO bewertungen (pruefling_id, punkte, max_punkte, note, note_wort, status, bemerkung)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        ON CONFLICT (pruefling_id) DO UPDATE
-         SET punkte = EXCLUDED.punkte, note = EXCLUDED.note,
+         SET punkte = EXCLUDED.punkte, max_punkte = EXCLUDED.max_punkte,
+             note = EXCLUDED.note, note_wort = EXCLUDED.note_wort,
              status = EXCLUDED.status, bemerkung = EXCLUDED.bemerkung`,
-    [prueflingId, r.punkte, r.note, status, bemerkung || null]
+    [prueflingId, r.punkte, r.max, r.note, r.wort, status, bemerkung || null]
   );
   return r;
 }
@@ -283,7 +302,7 @@ export async function setzeBewertung(prueflingId, punkte, bemerkung = null) {
 export async function bewertungenListe() {
   const res = await _pg.query(
     `SELECT p.id AS pruefling_id, p.nachname, p.vorname, p.beruf,
-            b.punkte, b.note, b.status, b.bemerkung
+            b.punkte, b.max_punkte, b.note, b.note_wort, b.status, b.bemerkung
        FROM prueflinge p LEFT JOIN bewertungen b ON b.pruefling_id = p.id
       ORDER BY p.nachname, p.vorname`
   );
@@ -293,7 +312,7 @@ export async function bewertungenListe() {
 /** Alle Daten für ein Zeugnis: Prüfling + Bewertung + (erster) Prüfungstermin. */
 export async function zeugnisDaten(prueflingId) {
   const p = (await _pg.query(
-    `SELECT p.*, b.punkte, b.note, b.status
+    `SELECT p.*, b.punkte, b.max_punkte, b.note, b.note_wort, b.status
        FROM prueflinge p LEFT JOIN bewertungen b ON b.pruefling_id = p.id
       WHERE p.id = $1`,
     [prueflingId]
@@ -308,15 +327,16 @@ export async function zeugnisDaten(prueflingId) {
   return { ...p, termin: t };
 }
 
-/** Notenverteilung (Note 1..6) für Auswertungen/Diagramme. */
+/** Notenverteilung nach Wortstufe für Auswertungen/Diagramme. */
 export async function notenVerteilung() {
   const res = await _pg.query(
-    `SELECT note, count(*)::int AS wert FROM bewertungen
-      WHERE note IS NOT NULL GROUP BY note ORDER BY note`
+    `SELECT note_wort, count(*)::int AS wert FROM bewertungen
+      WHERE note_wort IS NOT NULL GROUP BY note_wort`
   );
   const map = {};
-  res.rows.forEach((r) => { map[r.note] = r.wert; });
-  return [1, 2, 3, 4, 5, 6].map((n) => ({ note: n, wert: map[n] || 0 }));
+  res.rows.forEach((r) => { map[r.note_wort] = r.wert; });
+  const stufen = ["sehr gut", "gut", "befriedigend", "ausreichend", "mangelhaft", "ungenügend"];
+  return stufen.map((s) => ({ label: s, wert: map[s] || 0 }));
 }
 
 export async function anzahl(key) {
