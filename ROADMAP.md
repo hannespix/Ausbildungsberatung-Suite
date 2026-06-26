@@ -138,10 +138,11 @@ mit 1–10 Azubis, passende Prüfer:innen und Prüfungstermine je Fachrichtung;
 - ✅ **Intelligente Gesamtplanung**: je Fachrichtung gleichmäßige Verteilung auf
   passend viele Termine (Kapazität je Tag), PLZ-geclustert, fehlende Termine
   automatisch angelegt, **Ausschuss je Termin** automatisch besetzt.
+- ✅ **Serien-Zeugnisdruck**: alle bewerteten Zeugnisse in einem Druck (je Seite).
 - ✅ **Prüfer-Plan & Zusage-Workflow**: je Termin Ausschuss informieren
   (E-Mail/mailto), Status offen→angefragt→zugesagt/abgesagt in einer Übersicht.
 - Offen: Zeitraster/Slots mit Gruppen, Status-Workflow der Prüflinge
-  (angemeldet→zugelassen→geprüft→bestanden), Serien-Zeugnisdruck, Auswertungen,
+  (angemeldet→zugelassen→geprüft→bestanden), Auswertungen,
   Prüfer-Verfügbarkeiten/Konfliktprüfung bei der Ausschuss-Besetzung.
 
 ### Laufend

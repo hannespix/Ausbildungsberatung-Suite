@@ -753,6 +753,11 @@ async function renderZeugnisse() {
   appEl().innerHTML = `
     <h1>Zeugnisse</h1>
     <p class="bw-unterzeile">Prüfungszeugnis je Prüfling drucken (oder als PDF speichern)</p>
+    <div class="bw-toolbar">
+      <span class="bw-klein bw-leise">${zahl(rows.filter((r) => r.gesamt != null).length)} bewertete Prüflinge</span>
+      <button class="bw-btn bw-btn--gelb" type="button" id="serien-druck"
+              ${rows.some((r) => r.gesamt != null) ? "" : "disabled"}>Alle Zeugnisse drucken (Serie)</button>
+    </div>
     <div class="bw-tablewrap">
     <table class="bw-table">
       <thead><tr><th>Name</th><th>Fachrichtung</th><th>Gesamtnote</th><th>Ergebnis</th><th>Aktion</th></tr></thead>
@@ -781,12 +786,15 @@ async function renderZeugnisse() {
     try { await zeugnisDrucken(Number(pid)); }
     catch (e) { console.error(e); meldung("Zeugnis konnte nicht erstellt werden: " + e.message, "fehler"); }
   });
+  document.getElementById("serien-druck")?.addEventListener("click", async () => {
+    try { await serienZeugnisDruck(); }
+    catch (e) { console.error(e); meldung("Serien-Druck fehlgeschlagen: " + e.message, "fehler"); }
+  });
 }
 
 /** Baut ein druckbares Prüfungszeugnis und ruft den Druckdialog auf. */
-async function zeugnisDrucken(prueflingId) {
-  const d = await store.zeugnisDaten(prueflingId);
-  if (!d) { meldung("Prüfling nicht gefunden.", "fehler"); return; }
+/** Inneres HTML eines Prüfungszeugnisses (für Einzel- und Serien-Druck). */
+function zeugnisHtml(d) {
   const heute = new Date().toLocaleDateString("de-DE");
   const geb = d.geburtsdatum ? new Date(d.geburtsdatum).toLocaleDateString("de-DE") : "";
   const terminZeile = d.termin
@@ -796,9 +804,7 @@ async function zeugnisDrucken(prueflingId) {
   const K = [d.k1, d.k2, d.k3, d.k4];
   const bereichZeile = (label, note) =>
     `<tr><td>${esc(label)}</td><td style="text-align:right">${formatNote(note)}</td></tr>`;
-
-  const root = druckbereich();
-  root.innerHTML = `
+  return `
     <h1>Prüfungszeugnis</h1>
     <p>über die Abschlussprüfung im Ausbildungsberuf Gärtner/in${d.beruf ? " — Fachrichtung " + esc(d.beruf) : ""}</p>
     <table class="bw-table bw-zeugnis">
@@ -831,8 +837,22 @@ async function zeugnisDrucken(prueflingId) {
       <span>Vorsitz des Prüfungsausschusses</span>
       <span>Beisitz</span>
     </div>
-    <p class="bw-klein bw-leise">Erstellt mit der Ausbildungsberatung-Suite — Regierungspräsidium Freiburg</p>
-  `;
+    <p class="bw-klein bw-leise">Erstellt mit der Ausbildungsberatung-Suite — Regierungspräsidium Freiburg</p>`;
+}
+
+async function zeugnisDrucken(prueflingId) {
+  const d = await store.zeugnisDaten(prueflingId);
+  if (!d) { meldung("Prüfling nicht gefunden.", "fehler"); return; }
+  druckbereich().innerHTML = zeugnisHtml(d);
+  window.print();
+}
+
+/** Serien-Druck aller bewerteten Zeugnisse (je Zeugnis eine Seite). */
+async function serienZeugnisDruck() {
+  const liste = await store.alleZeugnisDaten();
+  if (!liste.length) { meldung("Keine bewerteten Prüflinge für den Serien-Druck.", "fehler"); return; }
+  druckbereich().innerHTML = liste
+    .map((d) => `<section class="bw-zeugnisblatt">${zeugnisHtml(d)}</section>`).join("");
   window.print();
 }
 

@@ -332,6 +332,9 @@ mark.bw-treffer { background: var(--bw-gelb); color: var(--bw-schwarz); padding:
 /* Zeugnis: Zeilenkopf-Tabelle + Unterschriftenlinien */
 .bw-druck .bw-zeugnis th { width: 14rem; vertical-align: top; background: var(--bw-weiss); color: var(--bw-schwarz); }
 .bw-druck__unterschriften { display: flex; gap: var(--bw-space-6); margin-top: var(--bw-space-8); font-size: var(--bw-fs-klein); }
+/* Serien-Zeugnisdruck: je Zeugnis eine Seite */
+.bw-druck .bw-zeugnisblatt { break-after: page; page-break-after: always; }
+.bw-druck .bw-zeugnisblatt:last-child { break-after: auto; page-break-after: auto; }
 .bw-druck__unterschriften span { flex: 1; border-top: 1px solid var(--bw-schwarz); padding-top: var(--bw-space-1); }
 
 @media print {
