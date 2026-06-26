@@ -189,7 +189,10 @@ Balkendiagramm + Tabelle mit Ø Note) und **Auslastung je Prüfungstermin**
 keine neue Eingabe. Smoke-getestet (inkl. Mobile 390px).
 ✅ **CSV-Export**: „Quoten als CSV" und „Auslastung als CSV" (Semikolon + BOM
 für Excel, deutsche Dezimalkommas) — für Berichte/Weiterverarbeitung. Smoke-getestet.
-Offen: Filter/Stichtagsauswertung, Auslastungs-Diagramm.
+✅ **Prüfungsjahr-Filter**: Auswertungen lassen sich auf ein Prüfungsjahr
+einschränken (Quoten nach `pruefungsjahr`, Auslastung nach Termin-Jahr); CSV
+trägt das Jahr im Dateinamen. Smoke-getestet.
+Offen: Stichtagsauswertung, Auslastungs-Diagramm.
 
 ### M11 — Barrierefreiheit & Feinschliff
 WCAG-AA-Audit, Tastatur-/Screenreader-Durchgang, Leer-/Fehlerzustände,
