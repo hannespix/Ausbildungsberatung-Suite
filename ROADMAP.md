@@ -237,6 +237,10 @@ trägt das Jahr im Dateinamen. Smoke-getestet.
 (CI-konform, stärkste Auslastung gelb hervorgehoben) über der Auslastungs-
 tabelle — über/unterbelegte Tage auf einen Blick, folgt dem Prüfungsjahr-Filter.
 Chromium-getestet (Balken, Hervorhebung, Mobile 390px).
+✅ **Prüfer-Einsätze**: neue Sektion mit Diagramm + Tabelle (Einsätze, Tage,
+zugesagt/offen je Prüfer:in) für eine faire Lastverteilung — aus der Planung
+abgeleitet, mit Prüfungsjahr-Filter und CSV-Export (`prueferEinsaetze`).
+Chromium-getestet (31 Prüfer:innen, Diagramm, CSV, Mobile 390px).
 Offen: Stichtagsauswertung.
 
 ### M11 — Barrierefreiheit & Feinschliff
