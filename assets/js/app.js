@@ -1423,9 +1423,11 @@ async function renderPrueflingAkte(id) {
 
 /* --------------------------------------------------------- Auswertungen */
 
-async function renderAuswertungen() {
-  const auslast = await store.auslastung();
-  const quoten = await store.quoteJeFachrichtung();
+async function renderAuswertungen(jahr = null) {
+  const jahre = await store.pruefungsjahre();
+  if (jahr != null) jahr = Number(jahr);
+  const auslast = await store.auslastung(jahr);
+  const quoten = await store.quoteJeFachrichtung(jahr);
   const konflikte = await store.prueferKonflikte();
 
   const belegt = auslast.filter((t) => t.prueflinge > 0);
@@ -1459,6 +1461,14 @@ async function renderAuswertungen() {
     <h1>Auswertungen</h1>
     <p class="bw-unterzeile">Auslastung der Prüfungstage und Bestehensquoten je Fachrichtung — automatisch aus den vorhandenen Daten</p>
     <div class="bw-toolbar">
+      ${jahre.length ? `
+      <div class="bw-field" style="margin:0">
+        <label for="jahr-filter" class="bw-skip-link">Prüfungsjahr</label>
+        <select id="jahr-filter" aria-label="Prüfungsjahr filtern">
+          <option value="">Alle Prüfungsjahre</option>
+          ${jahre.map((j) => `<option value="${j}"${String(jahr) === String(j) ? " selected" : ""}>${esc(j)}</option>`).join("")}
+        </select>
+      </div>` : ""}
       <button class="bw-btn bw-btn--sekundaer" type="button" id="csv-quoten" ${quoten.length ? "" : "disabled"}>Quoten als CSV</button>
       <button class="bw-btn bw-btn--sekundaer" type="button" id="csv-auslastung" ${auslast.length ? "" : "disabled"}>Auslastung als CSV</button>
     </div>
@@ -1527,17 +1537,21 @@ async function renderAuswertungen() {
     document.getElementById("quote-diagramm").innerHTML = '<p class="bw-leise">Noch keine Bewertungen — Quote erscheint, sobald unter <a href="#/noten">Noten</a> bewertet wurde.</p>';
   }
 
+  document.getElementById("jahr-filter")?.addEventListener("change", (ev) => {
+    renderAuswertungen(ev.target.value || null);
+  });
+
   const deDez = (n) => n == null ? "" : String(n).replace(".", ",");
   document.getElementById("csv-quoten")?.addEventListener("click", () => {
     const kopf = ["Fachrichtung", "Prüflinge", "bewertet", "bestanden", "Quote %", "Ø Note"];
     const zeilen = quoten.map((r) => [r.beruf, r.gesamt, r.bewertet, r.bestanden, r.quote == null ? "" : r.quote, r.schnitt == null ? "" : deDez(Math.round(r.schnitt * 10) / 10)]);
-    dateiDownload("Bestehensquoten.csv", csvText(kopf, zeilen), "text/csv;charset=utf-8");
+    dateiDownload(`Bestehensquoten${jahr ? "-" + jahr : ""}.csv`, csvText(kopf, zeilen), "text/csv;charset=utf-8");
     meldung(`Quoten exportiert: ${zahl(quoten.length)} Fachrichtungen.`);
   });
   document.getElementById("csv-auslastung")?.addEventListener("click", () => {
     const kopf = ["Termin", "Datum", "Beginn", "Fachrichtung", "Ort", "Prüflinge", "Ausschuss"];
     const zeilen = auslast.map((t) => [t.titel || "", t.datum ? new Date(t.datum).toLocaleDateString("de-DE") : "", t.zeit_von || "", t.beruf || "", t.ort || "", t.prueflinge, t.ausschuss]);
-    dateiDownload("Auslastung.csv", csvText(kopf, zeilen), "text/csv;charset=utf-8");
+    dateiDownload(`Auslastung${jahr ? "-" + jahr : ""}.csv`, csvText(kopf, zeilen), "text/csv;charset=utf-8");
     meldung(`Auslastung exportiert: ${zahl(auslast.length)} Termine.`);
   });
 }

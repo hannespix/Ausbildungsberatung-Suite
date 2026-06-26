@@ -709,14 +709,29 @@ export async function anzahl(key) {
 /* -------------------------------------------------- Auswertungen / Dashboard
    Oversight über vorhandene Daten — keine neue Eingabe, alles abgeleitet. */
 
-/** Auslastung je Prüfungstermin: zugeteilte Prüflinge und Ausschussgröße. */
-export async function auslastung() {
+/** Distinkte Prüfungsjahre (aus den Prüflingen), neueste zuerst. */
+export async function pruefungsjahre() {
+  const res = await _pg.query(
+    `SELECT DISTINCT pruefungsjahr AS jahr FROM prueflinge
+      WHERE pruefungsjahr IS NOT NULL ORDER BY pruefungsjahr DESC`
+  );
+  return res.rows.map((r) => r.jahr);
+}
+
+/**
+ * Auslastung je Prüfungstermin: zugeteilte Prüflinge und Ausschussgröße.
+ * @param jahr optional — nur Termine dieses Kalenderjahres (aus dem Datum).
+ */
+export async function auslastung(jahr = null) {
+  const j = jahr ? Number(jahr) : null;
   const res = await _pg.query(
     `SELECT pr.id, pr.titel, pr.beruf, pr.datum, pr.zeit_von, pr.ort,
             (SELECT count(*)::int FROM zuteilungen z      WHERE z.pruefung_id  = pr.id) AS prueflinge,
             (SELECT count(*)::int FROM pruefer_zuteilungen pz WHERE pz.pruefung_id = pr.id) AS ausschuss
        FROM pruefungen pr
-      ORDER BY pr.datum NULLS LAST, pr.zeit_von NULLS LAST, pr.id`
+      WHERE ($1::int IS NULL OR extract(year FROM pr.datum)::int = $1)
+      ORDER BY pr.datum NULLS LAST, pr.zeit_von NULLS LAST, pr.id`,
+    [j]
   );
   return res.rows;
 }
@@ -849,7 +864,8 @@ export async function kalenderDaten() {
  * Bestehensquote und Notenschnitt je Gärtner-Fachrichtung.
  * @returns {Array<{beruf,gesamt,bewertet,bestanden,durchgefallen,quote,schnitt}>}
  */
-export async function quoteJeFachrichtung() {
+export async function quoteJeFachrichtung(jahr = null) {
+  const j = jahr ? Number(jahr) : null;
   const res = await _pg.query(
     `SELECT p.beruf,
             count(*)::int AS gesamt,
@@ -859,7 +875,9 @@ export async function quoteJeFachrichtung() {
             avg(b.gesamt) AS schnitt
        FROM prueflinge p LEFT JOIN bewertungen b ON b.pruefling_id = p.id
       WHERE p.beruf IS NOT NULL AND btrim(p.beruf) <> ''
-      GROUP BY p.beruf ORDER BY p.beruf`
+        AND ($1::int IS NULL OR p.pruefungsjahr = $1)
+      GROUP BY p.beruf ORDER BY p.beruf`,
+    [j]
   );
   return res.rows.map((r) => ({
     ...r,
