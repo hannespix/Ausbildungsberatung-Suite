@@ -203,6 +203,23 @@ export async function zuteilungenFuer(pruefungId) {
   return res.rows;
 }
 
+/**
+ * Ergebnisliste eines Prüfungstermins: zugeteilte Prüflinge in Slot-Reihenfolge
+ * samt Bewertung (für die druckbare Niederschrift). Verknüpft Planung und Noten.
+ */
+export async function terminErgebnisse(pruefungId) {
+  const res = await _pg.query(
+    `SELECT z.slot, p.nachname, p.vorname, p.betrieb,
+            b.praxis, b.kenntnis, b.gesamt, b.bestanden
+       FROM zuteilungen z JOIN prueflinge p ON p.id = z.pruefling_id
+       LEFT JOIN bewertungen b ON b.pruefling_id = p.id
+      WHERE z.pruefung_id = $1
+      ORDER BY z.slot NULLS LAST, z.reihenfolge, p.nachname, p.vorname`,
+    [pruefungId]
+  );
+  return res.rows;
+}
+
 /** Prüflinge, die diesem Termin noch nicht zugeteilt sind. */
 export async function nichtZugeteilt(pruefungId) {
   const res = await _pg.query(

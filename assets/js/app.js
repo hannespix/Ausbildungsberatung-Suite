@@ -463,6 +463,49 @@ function tagesablaufDrucken(termin, zugeteilt, prueferZug) {
   window.print();
 }
 
+/** Druckbare Ergebnis-Niederschrift je Termin: Prüflinge mit Note + Ergebnis. */
+function niederschriftDrucken(termin, ergebnisse, prueferZug) {
+  const root = druckbereich();
+  const datum = termin.datum ? new Date(termin.datum).toLocaleDateString("de-DE") : "—";
+  const kopf = [
+    datum,
+    termin.ort ? esc(termin.ort) + (termin.raum ? ", " + esc(termin.raum) : "") : "",
+    termin.beruf ? esc(termin.beruf) : "",
+  ].filter(Boolean).join(" · ");
+  const bestanden = ergebnisse.filter((r) => r.bestanden === true).length;
+  const bewertet = ergebnisse.filter((r) => r.gesamt != null).length;
+
+  root.innerHTML = `
+    <h1>Ergebnis-Niederschrift — ${esc(termin.titel)}</h1>
+    <p>${kopf}</p>
+    <p class="bw-klein">Praktische Abschlussprüfung Gärtner/in · ${zahl(ergebnisse.length)} Prüflinge · ${zahl(bewertet)} bewertet · ${zahl(bestanden)} bestanden</p>
+
+    <table class="bw-table">
+      <thead><tr><th>Uhrzeit</th><th>Name</th><th>Betrieb</th><th>Praxis</th><th>Kenntnis</th><th>Gesamtnote</th><th>Ergebnis</th></tr></thead>
+      <tbody>${ergebnisse.map((r) => `
+        <tr>
+          <td>${esc(r.slot || "—")}</td>
+          <td>${esc((r.nachname || "") + ", " + (r.vorname || ""))}</td>
+          <td>${esc(r.betrieb || "")}</td>
+          <td>${formatNote(r.praxis)}</td>
+          <td>${formatNote(r.kenntnis)}</td>
+          <td><strong>${formatNote(r.gesamt)}</strong></td>
+          <td>${r.bestanden === true ? "bestanden" : r.bestanden === false ? "nicht bestanden" : "—"}</td>
+        </tr>`).join("")}</tbody>
+    </table>
+
+    <h2>Prüfungsausschuss</h2>
+    <table class="bw-table">
+      <thead><tr><th>Rolle</th><th>Name</th><th>Unterschrift</th></tr></thead>
+      <tbody>${(prueferZug.length ? prueferZug : [{}, {}, {}]).map((p) => `
+        <tr><td>${esc(p.rolle || "—")}</td><td>${esc(((p.nachname || "") + (p.vorname ? ", " + p.vorname : "")) || "—")}</td><td style="min-width:8rem"> </td></tr>`).join("")}</tbody>
+    </table>
+    <p>Ort, Datum: ${esc(termin.ort || "")}${termin.ort ? ", " : ""}den ${esc(datum)}</p>
+    <p class="bw-klein bw-leise">Erstellt mit der Ausbildungsberatung-Suite — Regierungspräsidium Freiburg</p>
+  `;
+  window.print();
+}
+
 async function renderPlanung() {
   const termine = await store.liste("pruefungen");
   if (!termine.length) {
@@ -524,6 +567,8 @@ async function renderPlanung() {
                   ${termin.datum ? "" : "disabled title=\"Termin ohne Datum\""}>Termin als .ics</button>
           <button class="bw-btn bw-btn--sekundaer" type="button" id="drucken-btn"
                   ${zugeteilt.length || prueferZug.length ? "" : "disabled"}>Tagesablauf drucken</button>
+          <button class="bw-btn bw-btn--sekundaer" type="button" id="niederschrift-btn"
+                  ${zugeteilt.length ? "" : "disabled title=\"Keine Prüflinge zugeteilt\""}>Ergebnis-Niederschrift</button>
         </div>
       </div>
 
@@ -696,6 +741,13 @@ async function renderPlanung() {
 
     document.getElementById("drucken-btn")?.addEventListener("click", () => {
       tagesablaufDrucken(termin, zugeteilt, prueferZug);
+    });
+
+    document.getElementById("niederschrift-btn")?.addEventListener("click", async () => {
+      try {
+        const ergebnisse = await store.terminErgebnisse(id);
+        niederschriftDrucken(termin, ergebnisse, prueferZug);
+      } catch (e) { console.error(e); meldung("Niederschrift fehlgeschlagen: " + e.message, "fehler"); }
     });
 
     document.getElementById("ics-termin")?.addEventListener("click", async () => {
