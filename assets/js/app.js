@@ -317,11 +317,13 @@ function fortschrittTag(phase) {
   return `<span class="bw-tag${cls}">${esc(FORTSCHRITT_LABELS[phase] || phase)}</span>`;
 }
 
-function zeileHtml(ent, row, query, phase) {
+function zeileHtml(ent, row, query, phase, termin) {
   const tds = tabellenSpalten(ent).map((f) => {
     const roh = formatWert(f, row[f.name]);
     return `<td>${f.such ? hl(roh, query) : esc(roh)}</td>`;
   }).join("");
+  const terminTd = termin !== undefined
+    ? `<td>${termin ? esc(termin) : '<span class="bw-leise">—</span>'}</td>` : "";
   const fortschrittTd = phase !== undefined ? `<td>${fortschrittTag(phase)}</td>` : "";
   const akte = ent.key === "prueflinge"
     ? `<a class="bw-iconbtn" href="#/pruefling/${row.id}" aria-label="Akte von ${esc((row.vorname || "") + " " + (row.nachname || ""))} öffnen" title="Akte öffnen">📋</a>`
@@ -333,7 +335,7 @@ function zeileHtml(ent, row, query, phase) {
   const abw = ent.key === "pruefer"
     ? `<button class="bw-iconbtn" type="button" data-abwesenheit="${row.id}" aria-label="Abwesenheiten von ${esc((row.vorname || "") + " " + (row.nachname || ""))}" title="Abwesenheiten">📅</button>`
     : "";
-  return `<tr>${tds}${fortschrittTd}
+  return `<tr>${tds}${terminTd}${fortschrittTd}
     <td class="bw-actions">
       ${akte}${abw}
       <button class="bw-iconbtn" type="button" data-edit="${row.id}" aria-label="${esc(ent.singular)} bearbeiten" title="Bearbeiten">✎</button>
@@ -373,7 +375,7 @@ async function renderListe(key) {
     const aria = aktiv ? (sortDir === 1 ? "ascending" : "descending") : "none";
     return `<th class="bw-th-sort" data-sort="${f.name}" role="button" tabindex="0" aria-sort="${aria}"
                 title="Nach ${esc(f.label)} sortieren">${esc(f.label)}<span aria-hidden="true">${marker}</span></th>`;
-  }).join("") + `${zeigtFortschritt ? "<th>Fortschritt</th>" : ""}<th>Aktionen</th>`;
+  }).join("") + `${zeigtFortschritt ? "<th>Prüfungstag</th><th>Fortschritt</th>" : ""}<th>Aktionen</th>`;
 
   appEl().innerHTML = `
     <h1>${esc(ent.plural)}</h1>
@@ -417,7 +419,13 @@ async function renderListe(key) {
   `;
 
   const eingabe = document.getElementById("modulsuche");
-  let aktuelleRows = [], aktuellePhasen = null;
+  let aktuelleRows = [], aktuellePhasen = null, aktuelleTermine = null;
+  // Abgeleiteter Prüfungstag je Prüfling (frühester) als Klartext „TT.MM.JJJJ · HH:MM".
+  const terminPlain = (r) => {
+    const t = aktuelleTermine && aktuelleTermine.get(String(r.id));
+    if (!t || !t.datum) return "";
+    return new Date(t.datum).toLocaleDateString("de-DE") + (t.slot ? " · " + t.slot : "");
+  };
   const zeichne = async () => {
     const q = eingabe.value;
     let rows;
@@ -428,12 +436,16 @@ async function renderListe(key) {
       if (f) rows = rows.slice().sort((a, b) => vergleichWert(f, a, b) * sortDir);
     }
     document.getElementById("kopf").innerHTML = kopfRow();
-    let phaseMap = null;
+    let phaseMap = null, terminMap = null;
     if (zeigtFortschritt) {
       try {
         const ph = await store.fortschrittAlle();
         phaseMap = new Map(ph.map((r) => [String(r.id), r.phase]));
       } catch (e) { console.warn("Fortschritt nicht verfügbar:", e); }
+      try {
+        const tm = await store.prueflingTermin();
+        terminMap = new Map(tm.map((r) => [String(r.id), r]));
+      } catch (e) { console.warn("Prüfungstage nicht verfügbar:", e); }
     }
     if (phaseFilter && phaseMap) {
       rows = rows.filter((r) => (phaseMap.get(String(r.id)) || "angemeldet") === phaseFilter);
@@ -441,9 +453,11 @@ async function renderListe(key) {
     if (jahrFilter) {
       rows = rows.filter((r) => String(r.pruefungsjahr || "") === String(jahrFilter));
     }
-    aktuelleRows = rows; aktuellePhasen = phaseMap;
+    aktuelleRows = rows; aktuellePhasen = phaseMap; aktuelleTermine = terminMap;
     document.getElementById("zeilen").innerHTML = rows
-      .map((r) => zeileHtml(ent, r, q, phaseMap ? (phaseMap.get(String(r.id)) || "angemeldet") : undefined))
+      .map((r) => zeileHtml(ent, r, q,
+        phaseMap ? (phaseMap.get(String(r.id)) || "angemeldet") : undefined,
+        zeigtFortschritt ? terminPlain(r) : undefined))
       .join("");
     const leer = document.getElementById("leer");
     if (!rows.length) {
@@ -484,9 +498,9 @@ async function renderListe(key) {
   document.getElementById("csv-btn")?.addEventListener("click", () => csvImportDialog(key, zeichne));
 
   // Spalten der aktuellen Liste (sichtbare Felder + ggf. Fortschritt) für Export/Druck.
-  const exportKopf = () => spalten.map((f) => f.label).concat(zeigtFortschritt ? ["Fortschritt"] : []);
+  const exportKopf = () => spalten.map((f) => f.label).concat(zeigtFortschritt ? ["Prüfungstag", "Fortschritt"] : []);
   const exportZeile = (r) => spalten.map((f) => formatWert(f, r[f.name]))
-    .concat(zeigtFortschritt ? [FORTSCHRITT_LABELS[(aktuellePhasen && aktuellePhasen.get(String(r.id))) || "angemeldet"] || ""] : []);
+    .concat(zeigtFortschritt ? [terminPlain(r), FORTSCHRITT_LABELS[(aktuellePhasen && aktuellePhasen.get(String(r.id))) || "angemeldet"] || ""] : []);
 
   document.getElementById("csv-export-btn").addEventListener("click", () => {
     if (!aktuelleRows.length) { meldung("Keine Einträge zum Exportieren.", "fehler"); return; }

@@ -1277,6 +1277,22 @@ export async function fortschrittAlle() {
 }
 
 /**
+ * Zugeteilter Prüfungstag je Prüfling (frühester, falls mehrere) — für eine
+ * abgeleitete „Prüfungstag"-Spalte in der Prüflingsliste. Verknüpft Stammdaten
+ * und Planung, ohne die Akte öffnen zu müssen.
+ * @returns {Array<{id,datum,titel,slot}>}
+ */
+export async function prueflingTermin() {
+  const res = await _pg.query(
+    `SELECT DISTINCT ON (z.pruefling_id)
+            z.pruefling_id AS id, pr.datum, pr.titel, z.slot
+       FROM zuteilungen z JOIN pruefungen pr ON pr.id = z.pruefung_id
+      ORDER BY z.pruefling_id, pr.datum NULLS LAST, z.slot NULLS LAST, pr.id`
+  );
+  return res.rows;
+}
+
+/**
  * Setzt den Status mehrerer Prüflinge auf einmal (z. B. Sammel-Zulassung).
  * „Zurückgezogen" bleibt unangetastet (bewusste Entscheidung). Gibt die Zahl
  * der geänderten Datensätze zurück.
