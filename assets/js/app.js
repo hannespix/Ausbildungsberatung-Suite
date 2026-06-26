@@ -490,6 +490,18 @@ function druckbereich() {
 }
 
 /** Baut einen druckbaren Tagesablauf (nur beim Drucken sichtbar) und druckt. */
+/**
+ * Fester Ablauf des handlungsorientierten Prüfungstags im GaLaBau
+ * (Grundlage: Präsentation „Handlungsorientierte Prüfung im GaLaBau", RPF).
+ */
+const GALABAU_TAGESPHASEN = [
+  { phase: "Praktische Prüfung (Gewerk)", dauer: "4,5 Std." },
+  { phase: "Fachgespräch", dauer: "10 Min. je Prüfling" },
+  { phase: "Mittagspause", dauer: "" },
+  { phase: "Pflanzenbestimmung", dauer: "20 Pflanzen / 20 Min." },
+  { phase: "Zeugnisübergabe", dauer: "" },
+];
+
 function tagesablaufDrucken(termin, zugeteilt, prueferZug) {
   const root = druckbereich();
   const datum = termin.datum ? new Date(termin.datum).toLocaleDateString("de-DE") : "—";
@@ -499,10 +511,17 @@ function tagesablaufDrucken(termin, zugeteilt, prueferZug) {
     termin.ort ? esc(termin.ort) + (termin.raum ? ", " + esc(termin.raum) : "") : "",
     termin.beruf ? esc(termin.beruf) : "",
   ].filter(Boolean).join(" · ");
+  const istGalabau = termin.beruf === "Garten- und Landschaftsbau";
 
   root.innerHTML = `
     <h1>Tagesablauf — ${esc(termin.titel)}</h1>
     <p>${kopf}</p>
+    ${istGalabau ? `
+    <h2>Ablauf des Prüfungstags</h2>
+    <table class="bw-table">
+      <thead><tr><th>Phase</th><th>Richtwert</th></tr></thead>
+      <tbody>${GALABAU_TAGESPHASEN.map((x) => `<tr><td>${esc(x.phase)}</td><td>${esc(x.dauer || "—")}</td></tr>`).join("")}</tbody>
+    </table>` : ""}
     <h2>Prüflinge (${zahl(zugeteilt.length)})</h2>
     <table class="bw-table">
       <thead><tr><th>Uhrzeit</th><th>Name</th><th>Beruf</th><th>Betrieb</th></tr></thead>
