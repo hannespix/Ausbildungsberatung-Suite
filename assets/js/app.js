@@ -190,7 +190,9 @@ async function renderUebersicht() {
     meldung("Planung wird erstellt…");
     try {
       const r = await store.planungAutomatisch(cap);
-      meldung(`Geplant: ${zahl(r.zuteilungen)} Prüflinge auf ${zahl(r.termine)} Termine, ${zahl(r.prueferZuteilungen)} Prüfer-Zuteilungen.`);
+      meldung(`Geplant: ${zahl(r.zuteilungen)} Prüflinge auf ${zahl(r.termine)} Termine, ${zahl(r.prueferZuteilungen)} Prüfer-Zuteilungen.`
+        + (r.uebersprungen ? ` ${zahl(r.uebersprungen)} ohne Fachrichtung übersprungen — bitte ergänzen.` : ""),
+        r.uebersprungen ? "fehler" : "erfolg");
       location.hash = "#/planungsliste";
     } catch (e) { console.error(e); meldung("Planung fehlgeschlagen: " + e.message, "fehler"); }
   });

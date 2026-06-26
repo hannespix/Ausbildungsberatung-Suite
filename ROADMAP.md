@@ -201,6 +201,11 @@ dorthin: belegte Termine ohne Ausschuss, Prüfer-Doppelbelegungen, offene/
 angefragte Zusagen, eingeplante aber unbewertete Prüflinge, Termine ohne
 Prüflinge. Nur Punkte mit Bedarf werden gezeigt; sonst „Alles erledigt".
 `store.hinweise()`. Smoke-getestet (inkl. Leerzustand, Mobile).
+✅ **Datenqualität sichtbar**: Prüflinge ohne Fachrichtung (die sich nicht
+automatisch einplanen lassen) erscheinen als Hinweis und verlinken in die
+Stammdaten; die automatische Planung meldet zusätzlich, wie viele Prüflinge
+deshalb übersprungen wurden (`planungAutomatisch().uebersprungen`, kein stilles
+Übergehen). Chromium-getestet.
 
 ### M10 — Auswertungen & Dashboard ✅
 Neue Ansicht „Auswertungen": Kennzahlen (belegte Termine, Ø Prüflinge/Termin,
