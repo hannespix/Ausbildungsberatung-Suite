@@ -752,7 +752,7 @@ export async function bewertungenListe(pruefungId = null) {
 export async function zeugnisDaten(prueflingId) {
   const p = (await _pg.query(
     `SELECT p.*, b.p1,b.p2,b.p3,b.p4,b.p5, b.k1,b.k2,b.k3,b.k4,
-            b.praxis, b.kenntnis, b.gesamt, b.bestanden
+            b.praxis, b.kenntnis, b.gesamt, b.bestanden, b.ergaenzung_bereich, b.ergaenzung_note
        FROM prueflinge p LEFT JOIN bewertungen b ON b.pruefling_id = p.id
       WHERE p.id = $1`,
     [prueflingId]
@@ -771,7 +771,7 @@ export async function zeugnisDaten(prueflingId) {
 export async function alleZeugnisDaten() {
   const rows = (await _pg.query(
     `SELECT p.*, b.p1,b.p2,b.p3,b.p4,b.p5, b.k1,b.k2,b.k3,b.k4,
-            b.praxis, b.kenntnis, b.gesamt, b.bestanden
+            b.praxis, b.kenntnis, b.gesamt, b.bestanden, b.ergaenzung_bereich, b.ergaenzung_note
        FROM prueflinge p JOIN bewertungen b ON b.pruefling_id = p.id
       WHERE b.gesamt IS NOT NULL
       ORDER BY p.beruf, p.nachname, p.vorname`

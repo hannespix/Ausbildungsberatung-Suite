@@ -152,6 +152,11 @@ Bewerten-Dialog (9 Bereiche, Live-Ergebnis), Noten-Liste, Zeugnis. Smoke-geteste
   Ausschuss am Prüfungstag genau seine Liste ab (Planung ↔ Noten).
   `bewertungenListe(pruefungId)`, SQL- und Chromium-getestet (155 → 12,
   Slot-Reihenfolge, Filter bleibt nach Speichern, Mobile 390px).
+- ✅ **Zeugnis spiegelt die Ergänzung**: hatte ein Kenntnisbereich eine
+  mündliche Ergänzungsprüfung, zeigt das Zeugnis die gewichtete (effektive)
+  Bereichsnote mit Fußnote „* nach mündlicher Ergänzungsprüfung" — passend zum
+  ausgewiesenen Kenntnis-Schnitt (keine widersprüchliche Bereichsnote mehr).
+  Chromium-getestet (roh 5,0 → effektiv 4,0 im Zeugnis, Fußnote, Mobile 390px).
 - Offen: „eine einzige 6 → durchgefallen" explizit, weitere Fachrichtungen.
 
 ### M7 — Excel-/CSV-Import (teils ✅)
