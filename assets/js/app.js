@@ -929,6 +929,7 @@ async function serienZeugnisDruck() {
 async function renderAuswertungen() {
   const auslast = await store.auslastung();
   const quoten = await store.quoteJeFachrichtung();
+  const konflikte = await store.prueferKonflikte();
 
   const belegt = auslast.filter((t) => t.prueflinge > 0);
   const summePl = belegt.reduce((s, t) => s + t.prueflinge, 0);
@@ -965,7 +966,26 @@ async function renderAuswertungen() {
       <div class="bw-card bw-stat"><span class="bw-stat__zahl">${zahl(belegt.length)}</span><span class="bw-stat__label">belegte Termine</span></div>
       <div class="bw-card bw-stat"><span class="bw-stat__zahl">${zahl(schnittPl)}</span><span class="bw-stat__label">Ø Prüflinge / Termin</span></div>
       <div class="bw-card bw-stat"><span class="bw-stat__zahl">${gesamtQuote == null ? "—" : zahl(gesamtQuote) + " %"}</span><span class="bw-stat__label">Bestehensquote gesamt</span></div>
+      <div class="bw-card bw-stat"><span class="bw-stat__zahl">${zahl(konflikte.length)}</span><span class="bw-stat__label">Prüfer-Konflikte</span></div>
     </div>
+
+    <section aria-labelledby="konflikt-h" style="margin-top:var(--bw-space-4)">
+      <h2 id="konflikt-h">Prüfer-Doppelbelegungen</h2>
+      ${konflikte.length ? `
+        <p class="bw-hinweis bw-hinweis--fehler">${zahl(konflikte.length)} Prüfer:in(nen) sind am selben Tag mehreren Terminen zugeteilt. Im <a href="#/planung">Planung</a> entzerren.</p>
+        <div class="bw-tablewrap">
+          <table class="bw-table">
+            <thead><tr><th>Prüfer:in</th><th>Datum</th><th style="text-align:right">Termine</th><th>betroffene Termine</th></tr></thead>
+            <tbody>${konflikte.map((k) => `
+              <tr>
+                <td>${esc(k.name || "—")}</td>
+                <td>${k.datum ? esc(new Date(k.datum).toLocaleDateString("de-DE")) : "—"}</td>
+                <td style="text-align:right">${zahl(k.anzahl)}</td>
+                <td>${esc(k.termine || "")}</td>
+              </tr>`).join("")}</tbody>
+          </table>
+        </div>` : '<p class="bw-hinweis bw-hinweis--erfolg">Keine Doppelbelegungen — keine Prüfer:in ist am selben Tag mehreren Terminen zugeteilt.</p>'}
+    </section>
 
     <section aria-labelledby="quote-h" style="margin-top:var(--bw-space-4)">
       <h2 id="quote-h">Bestehensquote je Fachrichtung</h2>
