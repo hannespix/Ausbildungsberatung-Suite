@@ -106,9 +106,13 @@ globale Fuzzy-Suche (UNION + Trigramm) mit Treffermarkierung, Telefon-/E-Mail al
 ### M9b — Kontakte-Export (offen)
 CSV-/vCard-Export der Adressliste.
 
-### M10 — Auswertungen & Dashboard
-Kennzahlen (Bestehensquoten, Auslastung je Tag/Beruf), CI-konforme Diagramme,
-Filter, Stichtagsauswertung.
+### M10 — Auswertungen & Dashboard ✅
+Neue Ansicht „Auswertungen": Kennzahlen (belegte Termine, Ø Prüflinge/Termin,
+Bestehensquote gesamt), **Bestehensquote je Fachrichtung** (CI-konformes
+Balkendiagramm + Tabelle mit Ø Note) und **Auslastung je Prüfungstermin**
+(Prüflinge/Ausschuss, Warnung bei Terminen ohne Ausschuss). Alles abgeleitet,
+keine neue Eingabe. Smoke-getestet (inkl. Mobile 390px).
+Offen: Filter/Stichtagsauswertung, Auslastungs-Diagramm.
 
 ### M11 — Barrierefreiheit & Feinschliff
 WCAG-AA-Audit, Tastatur-/Screenreader-Durchgang, Leer-/Fehlerzustände,

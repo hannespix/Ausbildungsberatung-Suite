@@ -638,6 +638,44 @@ export async function anzahl(key) {
   return res.rows[0].n;
 }
 
+/* -------------------------------------------------- Auswertungen / Dashboard
+   Oversight über vorhandene Daten — keine neue Eingabe, alles abgeleitet. */
+
+/** Auslastung je Prüfungstermin: zugeteilte Prüflinge und Ausschussgröße. */
+export async function auslastung() {
+  const res = await _pg.query(
+    `SELECT pr.id, pr.titel, pr.beruf, pr.datum, pr.zeit_von, pr.ort,
+            (SELECT count(*)::int FROM zuteilungen z      WHERE z.pruefung_id  = pr.id) AS prueflinge,
+            (SELECT count(*)::int FROM pruefer_zuteilungen pz WHERE pz.pruefung_id = pr.id) AS ausschuss
+       FROM pruefungen pr
+      ORDER BY pr.datum NULLS LAST, pr.zeit_von NULLS LAST, pr.id`
+  );
+  return res.rows;
+}
+
+/**
+ * Bestehensquote und Notenschnitt je Gärtner-Fachrichtung.
+ * @returns {Array<{beruf,gesamt,bewertet,bestanden,durchgefallen,quote,schnitt}>}
+ */
+export async function quoteJeFachrichtung() {
+  const res = await _pg.query(
+    `SELECT p.beruf,
+            count(*)::int AS gesamt,
+            count(b.gesamt)::int AS bewertet,
+            count(*) FILTER (WHERE b.bestanden IS TRUE)::int  AS bestanden,
+            count(*) FILTER (WHERE b.bestanden IS FALSE)::int AS durchgefallen,
+            avg(b.gesamt) AS schnitt
+       FROM prueflinge p LEFT JOIN bewertungen b ON b.pruefling_id = p.id
+      WHERE p.beruf IS NOT NULL AND btrim(p.beruf) <> ''
+      GROUP BY p.beruf ORDER BY p.beruf`
+  );
+  return res.rows.map((r) => ({
+    ...r,
+    quote: r.bewertet ? Math.round((r.bestanden / r.bewertet) * 100) : null,
+    schnitt: r.schnitt == null ? null : Number(r.schnitt),
+  }));
+}
+
 /** Häufigkeiten einer Spalte (für Auswertungen/Diagramme). */
 export async function gruppiert(key, spalte) {
   const e = ent(key);
