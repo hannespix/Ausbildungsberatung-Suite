@@ -1338,6 +1338,7 @@ async function renderNoten(pruefungId = null) {
   const rows = await store.bewertungenListe(pruefungId);
   const verteilung = await store.notenVerteilung();
   const bewertet = rows.filter((r) => r.gesamt != null).length;
+  const bestandenN = rows.filter((r) => r.bestanden === true).length;
   const gefiltert = pruefungId != null;
 
   appEl().innerHTML = `
@@ -1353,7 +1354,7 @@ async function renderNoten(pruefungId = null) {
           ${termine.map((t) => `<option value="${t.id}"${String(t.id) === String(pruefungId) ? " selected" : ""}>${esc(terminLabel(t))}</option>`).join("")}
         </select>
       </div>
-      <span class="bw-klein bw-leise" style="align-self:center">${zahl(bewertet)} von ${zahl(rows.length)} bewertet</span>
+      <span class="bw-klein bw-leise" style="align-self:center">${zahl(bewertet)} von ${zahl(rows.length)} bewertet${bewertet ? " · " + zahl(bestandenN) + " bestanden" : ""}</span>
       ${gefiltert && rows.some((r) => r.gesamt == null)
         ? `<button class="bw-btn bw-btn--gelb" type="button" id="reihen-btn">Reihen-Bewertung (${zahl(rows.filter((r) => r.gesamt == null).length)} offen)</button>`
         : ""}
@@ -1372,7 +1373,8 @@ async function renderNoten(pruefungId = null) {
               <td>${formatNote(r.praxis)}</td>
               <td>${formatNote(r.kenntnis)}</td>
               <td><strong>${formatNote(r.gesamt)}</strong></td>
-              <td>${ergebnisBadge(r.bestanden)}</td>
+              <td>${ergebnisBadge(r.bestanden)}${r.bestanden === false && store.bewertungGruende(r).length
+                ? `<br><span class="bw-klein bw-leise">${store.bewertungGruende(r).map(esc).join("; ")}</span>` : ""}</td>
               <td class="bw-actions">
                 <button class="bw-btn bw-btn--sekundaer" type="button" data-bewerten="${r.pruefling_id}">${r.gesamt != null ? "Ändern" : "Bewerten"}</button>
               </td>
