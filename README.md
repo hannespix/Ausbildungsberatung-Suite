@@ -55,6 +55,8 @@ im aktuellen Landes-Corporate-Design Baden-Württemberg
   < 4,5; Sperrfach; max. ein Bereich ≥ 4,5), Pflanzenkenntnisse als Teilnote
   und optionale **mündliche Ergänzungsprüfung** ((2 × schriftlich + 1 × mündlich)
   ÷ 3 in einem Kenntnisbereich); Live-Vorschau und Notenverteilungs-Diagramm.
+  Die Notenliste lässt sich **nach Prüfungstermin filtern** (Schnellerfassung am
+  Prüfungstag: Prüflinge in Uhrzeit-Reihenfolge, Zähler „X von Y bewertet").
 - **Zeugnisse** — druckbares Prüfungszeugnis je Prüfling sowie **Serien-Druck**
   aller bewerteten Zeugnisse (Druck/PDF).
 - **Auswertungen** — Auslastung je Termin, Bestehensquoten je Fachrichtung,

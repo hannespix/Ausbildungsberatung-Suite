@@ -1069,21 +1069,36 @@ function ergebnisBadge(bestanden) {
   return '<span class="bw-leise">offen</span>';
 }
 
-async function renderNoten() {
-  const rows = await store.bewertungenListe();
+async function renderNoten(pruefungId = null) {
+  const termine = await store.liste("pruefungen");
+  const rows = await store.bewertungenListe(pruefungId);
   const verteilung = await store.notenVerteilung();
   const bewertet = rows.filter((r) => r.gesamt != null).length;
+  const gefiltert = pruefungId != null;
 
   appEl().innerHTML = `
     <h1>Noten</h1>
     <p class="bw-unterzeile">Galabau-Sammelbewertung: 5 praktische + 4 Kenntnisbereiche → Gesamtnote</p>
 
+    ${termine.length ? `
+    <div class="bw-toolbar">
+      <div class="bw-field" style="max-width:36rem;flex:1 1 22rem;margin:0">
+        <label for="noten-termin">Prüfungstermin</label>
+        <select id="noten-termin">
+          <option value="">— alle Prüflinge —</option>
+          ${termine.map((t) => `<option value="${t.id}"${String(t.id) === String(pruefungId) ? " selected" : ""}>${esc(terminLabel(t))}</option>`).join("")}
+        </select>
+      </div>
+      <span class="bw-klein bw-leise" style="align-self:center">${zahl(bewertet)} von ${zahl(rows.length)} bewertet</span>
+    </div>` : ""}
+
     <div class="bw-tablewrap">
       <table class="bw-table">
-        <thead><tr><th>Name</th><th>Fachrichtung</th><th>Praxis</th><th>Kenntnis</th><th>Gesamtnote</th><th>Ergebnis</th><th>Aktion</th></tr></thead>
+        <thead><tr>${gefiltert ? "<th>Uhrzeit</th>" : ""}<th>Name</th><th>Fachrichtung</th><th>Praxis</th><th>Kenntnis</th><th>Gesamtnote</th><th>Ergebnis</th><th>Aktion</th></tr></thead>
         <tbody id="noten-koerper">
           ${rows.map((r) => `
             <tr>
+              ${gefiltert ? `<td>${esc(r.slot || "—")}</td>` : ""}
               <td>${esc((r.nachname || "") + ", " + (r.vorname || ""))}</td>
               <td>${esc(r.beruf || "")}</td>
               <td>${formatNote(r.praxis)}</td>
@@ -1097,17 +1112,20 @@ async function renderNoten() {
         </tbody>
       </table>
     </div>
-    <p class="bw-hinweis"${rows.length ? " hidden" : ""}>Noch keine Prüflinge vorhanden — zuerst unter <a href="#/prueflinge">Prüflinge</a> anlegen.</p>
+    <p class="bw-hinweis"${rows.length ? " hidden" : ""}>${gefiltert
+      ? "Diesem Termin sind noch keine Prüflinge zugeteilt — unter <a href=\"#/planung\">Planung</a> zuteilen."
+      : "Noch keine Prüflinge vorhanden — zuerst unter <a href=\"#/prueflinge\">Prüflinge</a> anlegen."}</p>
 
     <h2 style="margin-top:var(--bw-space-4)">Verteilung der Gesamtnoten</h2>
     <div id="noten-diagramm" class="bw-card"></div>
     <p class="bw-klein bw-leise" style="margin-top:var(--bw-space-2)">
       Galabau: Gesamtnote = Praxis-Schnitt · 0,6 + Kenntnis-Schnitt · 0,4 (auf 1 Stelle abgeschnitten).
       Nicht bestanden, wenn Praxis, Kenntnis oder Gesamt ≥ 4,5, ein Bereich ≥ 5,5 (Sperrfach) oder ≥ 2 Bereiche ≥ 4,5.
+      Das Diagramm zeigt stets alle Bewertungen.
     </p>
   `;
 
-  if (window.bwChart && bewertet) {
+  if (window.bwChart && verteilung.some((v) => v.wert > 0)) {
     const maxWert = Math.max.apply(null, verteilung.map((v) => v.wert));
     window.bwChart.bars(
       document.getElementById("noten-diagramm"),
@@ -1118,11 +1136,16 @@ async function renderNoten() {
     document.getElementById("noten-diagramm").innerHTML = '<p class="bw-leise">Noch keine Bewertungen erfasst.</p>';
   }
 
+  document.getElementById("noten-termin")?.addEventListener("change", (ev) => {
+    const v = ev.target.value;
+    renderNoten(v ? Number(v) : null);
+  });
+
   document.getElementById("noten-koerper").addEventListener("click", async (ev) => {
     const pid = ev.target.closest("[data-bewerten]")?.getAttribute("data-bewerten");
     if (!pid) return;
     const row = rows.find((r) => String(r.pruefling_id) === String(pid));
-    notenDialog(row, renderNoten);
+    notenDialog(row, () => renderNoten(pruefungId));
   });
 }
 
