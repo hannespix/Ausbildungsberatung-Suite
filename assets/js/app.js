@@ -340,6 +340,10 @@ async function renderListe(key) {
   // Optionaler Fortschritt-Filter (nur Prüflinge), per Deep-Link aus der
   // Übersicht (#/prueflinge?phase=eingeplant) vorbelegt.
   let phaseFilter = zeigtFortschritt ? (routeParams().phase || "") : "";
+  // Optionaler Prüfungsjahr-Filter (nur Prüflinge) für mehrere Jahrgänge.
+  let jahrFilter = "";
+  let jahre = [];
+  if (zeigtFortschritt) { try { jahre = await store.pruefungsjahre(); } catch (e) { console.warn("Jahre nicht verfügbar:", e); } }
 
   const kopfRow = () => spalten.map((f) => {
     const aktiv = f.name === sortName;
@@ -366,6 +370,14 @@ async function renderListe(key) {
           ${store.FORTSCHRITT_STUFEN.map((s) => `<option value="${s.key}"${s.key === phaseFilter ? " selected" : ""}>${esc(s.label)}</option>`).join("")}
         </select>
       </div>
+      ${jahre.length ? `
+      <div class="bw-field" style="margin:0">
+        <label for="jahr-filter-liste" class="bw-skip-link">Nach Prüfungsjahr filtern</label>
+        <select id="jahr-filter-liste" aria-label="Nach Prüfungsjahr filtern">
+          <option value="">Alle Jahre</option>
+          ${jahre.map((j) => `<option value="${j}">${esc(j)}</option>`).join("")}
+        </select>
+      </div>` : ""}
       <button class="bw-btn bw-btn--sekundaer" type="button" id="zulassen-alle" hidden></button>` : ""}
       <button class="bw-btn bw-btn--sekundaer" type="button" id="csv-btn">CSV importieren</button>
       <button class="bw-btn bw-btn--sekundaer" type="button" id="csv-export-btn">CSV exportieren</button>
@@ -404,6 +416,9 @@ async function renderListe(key) {
     if (phaseFilter && phaseMap) {
       rows = rows.filter((r) => (phaseMap.get(String(r.id)) || "angemeldet") === phaseFilter);
     }
+    if (jahrFilter) {
+      rows = rows.filter((r) => String(r.pruefungsjahr || "") === String(jahrFilter));
+    }
     aktuelleRows = rows; aktuellePhasen = phaseMap;
     document.getElementById("zeilen").innerHTML = rows
       .map((r) => zeileHtml(ent, r, q, phaseMap ? (phaseMap.get(String(r.id)) || "angemeldet") : undefined))
@@ -432,6 +447,7 @@ async function renderListe(key) {
   eingabe.addEventListener("input", debounce(zeichne, 180));
   document.getElementById("suche-btn").addEventListener("click", zeichne);
   document.getElementById("phase-filter")?.addEventListener("change", (ev) => { phaseFilter = ev.target.value; zeichne(); });
+  document.getElementById("jahr-filter-liste")?.addEventListener("change", (ev) => { jahrFilter = ev.target.value; zeichne(); });
   document.getElementById("zulassen-alle")?.addEventListener("click", async () => {
     const ids = aktuelleRows.map((r) => r.id);
     if (!ids.length) return;

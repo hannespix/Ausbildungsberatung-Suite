@@ -296,6 +296,10 @@ Prüflinge. Nur Punkte mit Bedarf werden gezeigt; sonst „Alles erledigt".
 (Deep-Link `#/prueflinge?phase=…`). Die Prüflingsliste hat zudem einen
 eigenen Fortschritt-Filter (mit Such-/Sortier-/Export-Zusammenspiel). Verbindet
 Übersicht und Stammdaten. Chromium-getestet (Deep-Link, Teilmenge, Mobile).
+✅ **Prüfungsjahr-Filter**: die Prüflingsliste lässt sich (zusätzlich zu Suche
+und Fortschritt) nach Prüfungsjahr filtern — für mehrere Jahrgänge im selben
+Bestand. Client-seitig aus `pruefungsjahre()`, kombinierbar mit Phasen-Filter.
+Chromium-getestet (4 von 155 für 2027, Kombination Jahr+Phase, Mobile 390px).
 ✅ **Sammel-Zulassung**: ist die Prüflingsliste nach „Angemeldet" gefiltert,
 erscheint „Angezeigte zulassen (N)" — setzt den Status aller angezeigten
 Prüflinge in einem Schritt auf „zugelassen" (Zurückgezogene bleiben
