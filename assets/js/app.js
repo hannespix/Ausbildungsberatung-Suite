@@ -80,7 +80,12 @@ async function renderUebersicht() {
   for (const k of NAV_REIHENFOLGE) {
     stats.push({ key: k, label: ENTITAETEN[k].plural, n: await store.anzahl(k) });
   }
-  const jeStatus = await store.gruppiert("prueflinge", "status");
+  const fortschritt = await store.fortschrittVerteilung();
+  const fGesamt = fortschritt.reduce((s, r) => s + r.wert, 0);
+  const fBestanden = (fortschritt.find((r) => r.key === "bestanden") || {}).wert || 0;
+  const fNicht = (fortschritt.find((r) => r.key === "nicht_bestanden") || {}).wert || 0;
+  const fBewertet = fBestanden + fNicht;
+  const quote = fBewertet ? Math.round((fBestanden / fBewertet) * 100) : null;
 
   appEl().innerHTML = `
     <h1>Übersicht</h1>
@@ -98,10 +103,18 @@ async function renderUebersicht() {
     </section>
 
     <section aria-labelledby="diagramm-h" style="margin-top:var(--bw-space-4)">
-      <h2 id="diagramm-h">Prüflinge nach Status</h2>
+      <h2 id="diagramm-h">Prüfungsfortschritt</h2>
+      <p class="bw-klein bw-leise" id="fortschritt-summe">
+        Automatisch aus Zulassung, Tagesplanung (<a href="#/planung">Planung</a>) und
+        Bewertung (<a href="#/noten">Noten</a>) abgeleitet — keine manuelle Pflege nötig.${
+          fBewertet
+            ? ` Bewertet: ${zahl(fBewertet)} von ${zahl(fGesamt)} · bestanden ${zahl(fBestanden)}${quote !== null ? ` (Quote ${zahl(quote)} %)` : ""}.`
+            : ""
+        }
+      </p>
       <div id="diagramm" class="bw-card"></div>
       <ul class="bw-legend">
-        <li><span class="swatch" style="background:var(--bw-cat-1)"></span> Anzahl je Status</li>
+        <li><span class="swatch" style="background:var(--bw-cat-1)"></span> Anzahl je Phase</li>
         <li><span class="swatch" style="background:var(--bw-gelb);outline:1.5px solid var(--bw-schwarz)"></span> größter Wert</li>
       </ul>
     </section>
@@ -155,12 +168,12 @@ async function renderUebersicht() {
     } catch (e) { console.error(e); meldung("Planung fehlgeschlagen: " + e.message, "fehler"); }
   });
 
-  if (window.bwChart && jeStatus.length) {
-    const maxWert = Math.max.apply(null, jeStatus.map((r) => r.wert));
+  if (window.bwChart && fGesamt) {
+    const maxWert = Math.max.apply(null, fortschritt.map((r) => r.wert));
     window.bwChart.bars(
       document.getElementById("diagramm"),
-      jeStatus.map((r) => ({ label: r.label, value: r.wert, highlight: r.wert === maxWert })),
-      { titel: "Prüflinge nach Status" }
+      fortschritt.map((r) => ({ label: r.label, value: r.wert, highlight: r.wert === maxWert })),
+      { titel: "Prüflinge je Phase" }
     );
   } else {
     document.getElementById("diagramm").innerHTML =
@@ -172,12 +185,25 @@ async function renderUebersicht() {
 
 function tabellenSpalten(ent) { return ent.felder.filter((f) => f.tabelle); }
 
-function zeileHtml(ent, row, query) {
+const FORTSCHRITT_LABELS = {
+  angemeldet: "Angemeldet", zugelassen: "Zugelassen", eingeplant: "Eingeplant",
+  bestanden: "Bestanden", nicht_bestanden: "Nicht bestanden", zurueckgezogen: "Zurückgezogen",
+};
+/** CI-konformes Status-Pill für eine abgeleitete Prüfungs-Phase. */
+function fortschrittTag(phase) {
+  const cls = phase === "bestanden" ? " bw-tag--ok"
+    : phase === "nicht_bestanden" ? " bw-tag--fehler"
+    : phase === "eingeplant" ? " bw-tag--aktiv" : "";
+  return `<span class="bw-tag${cls}">${esc(FORTSCHRITT_LABELS[phase] || phase)}</span>`;
+}
+
+function zeileHtml(ent, row, query, phase) {
   const tds = tabellenSpalten(ent).map((f) => {
     const roh = formatWert(f, row[f.name]);
     return `<td>${f.such ? hl(roh, query) : esc(roh)}</td>`;
   }).join("");
-  return `<tr>${tds}
+  const fortschrittTd = phase !== undefined ? `<td>${fortschrittTag(phase)}</td>` : "";
+  return `<tr>${tds}${fortschrittTd}
     <td class="bw-actions">
       <button class="bw-iconbtn" type="button" data-edit="${row.id}" aria-label="${esc(ent.singular)} bearbeiten" title="Bearbeiten">✎</button>
       <button class="bw-iconbtn" type="button" data-del="${row.id}" aria-label="${esc(ent.singular)} löschen" title="Löschen">🗑</button>
@@ -188,6 +214,7 @@ async function renderListe(key) {
   const ent = ENTITAETEN[key];
   if (!ent) { location.hash = "#/"; return; }
   const spalten = tabellenSpalten(ent);
+  const zeigtFortschritt = key === "prueflinge";
 
   appEl().innerHTML = `
     <h1>${esc(ent.plural)}</h1>
@@ -203,7 +230,7 @@ async function renderListe(key) {
 
     <div id="liste-bereich" aria-live="polite">
       <table class="bw-table">
-        <thead><tr>${spalten.map((f) => `<th>${esc(f.label)}</th>`).join("")}<th>Aktionen</th></tr></thead>
+        <thead><tr>${spalten.map((f) => `<th>${esc(f.label)}</th>`).join("")}${zeigtFortschritt ? "<th>Fortschritt</th>" : ""}<th>Aktionen</th></tr></thead>
         <tbody id="zeilen"></tbody>
       </table>
       <p id="leer" class="bw-hinweis" hidden></p>
@@ -216,7 +243,16 @@ async function renderListe(key) {
     let rows;
     try { rows = await store.suche(key, q); }
     catch (e) { console.error(e); meldung("Suche fehlgeschlagen: " + e.message, "fehler"); return; }
-    document.getElementById("zeilen").innerHTML = rows.map((r) => zeileHtml(ent, r, q)).join("");
+    let phaseMap = null;
+    if (zeigtFortschritt) {
+      try {
+        const ph = await store.fortschrittAlle();
+        phaseMap = new Map(ph.map((r) => [String(r.id), r.phase]));
+      } catch (e) { console.warn("Fortschritt nicht verfügbar:", e); }
+    }
+    document.getElementById("zeilen").innerHTML = rows
+      .map((r) => zeileHtml(ent, r, q, phaseMap ? (phaseMap.get(String(r.id)) || "angemeldet") : undefined))
+      .join("");
     const leer = document.getElementById("leer");
     if (!rows.length) {
       leer.hidden = false;

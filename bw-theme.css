@@ -55,6 +55,8 @@
   /* --- Status / Akzente (sparsam) --------------------------------- */
   --bw-erfolg:      #4E8B3A;
   --bw-fehler:      #9A1A1A;
+  --bw-erfolg-bg:   #E7F0E1;   /* dezente Tönung für Status-Pills (dunkler Text) */
+  --bw-fehler-bg:   #F3E2E2;
 
   /* Semantik */
   --bw-bg:          var(--bw-grau-50);
@@ -177,6 +179,11 @@ input, select, textarea { font: inherit; width: 100%; padding: 0.5em 0.65em; bac
 .bw-status-dont { color: var(--bw-fehler); font-weight: 700; }
 .bw-tag { display: inline-block; background: var(--bw-grau-200); color: var(--bw-schwarz);
   font-size: var(--bw-fs-mini); font-weight: 700; padding: 0.1em 0.6em; border-radius: var(--bw-radius-rund); }
+/* Status-Pills für den abgeleiteten Prüfungs-Fortschritt: dunkler Text auf
+   dezenter Tönung (hoher Kontrast), Gelb mit dunkler Outline (CI). */
+.bw-tag--ok     { background: var(--bw-erfolg-bg); outline: 1px solid var(--bw-erfolg); }
+.bw-tag--fehler { background: var(--bw-fehler-bg); outline: 1px solid var(--bw-fehler); }
+.bw-tag--aktiv  { background: var(--bw-gelb); outline: 1px solid var(--bw-schwarz); }
 
 /* ===================== Copyright-Badge =========================== */
 .bw-copyright { display: inline-block; background: var(--bw-schwarz); color: var(--bw-weiss); font-size: var(--bw-fs-mini); line-height: 1; padding: 0.35em 0.55em; border-radius: var(--bw-radius); }

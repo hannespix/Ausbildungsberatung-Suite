@@ -141,8 +141,12 @@ mit 1–10 Azubis, passende Prüfer:innen und Prüfungstermine je Fachrichtung;
 - ✅ **Serien-Zeugnisdruck**: alle bewerteten Zeugnisse in einem Druck (je Seite).
 - ✅ **Prüfer-Plan & Zusage-Workflow**: je Termin Ausschuss informieren
   (E-Mail/mailto), Status offen→angefragt→zugesagt/abgesagt in einer Übersicht.
-- Offen: Zeitraster/Slots mit Gruppen, Status-Workflow der Prüflinge
-  (angemeldet→zugelassen→geprüft→bestanden), Auswertungen,
+- ✅ **Automatischer Prüfungs-Fortschritt**: je Prüfling eine abgeleitete Phase
+  (Angemeldet→Zugelassen→Eingeplant→Bestanden/Nicht bestanden), die Zulassung,
+  Tagesplanung und Bewertung ohne manuelle Pflege zusammenführt. Funnel mit
+  Bestehensquote auf der Übersicht, Status-Pill je Zeile in der Prüflinge-Liste;
+  eine gespeicherte Bewertung setzt den Prüfling-Status automatisch. Smoke-getestet.
+- Offen: Zeitraster/Slots mit Gruppen, Auswertungen je Tag/Beruf,
   Prüfer-Verfügbarkeiten/Konfliktprüfung bei der Ausschuss-Besetzung.
 
 ### Laufend

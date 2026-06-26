@@ -517,6 +517,13 @@ export async function setzeBewertung(prueflingId, praxis, kenntnis, bemerkung = 
          bestanden=EXCLUDED.bestanden,bemerkung=EXCLUDED.bemerkung`,
     [prueflingId, ...P, ...K, g.praxis, g.kenntnis, g.gesamt, g.bestanden, bemerkung || null]
   );
+  // Bewertung treibt automatisch den Status des Prüflings (eine Aktion, alle
+  // Ansichten aktuell) — ein bewusst zurückgezogener Status bleibt erhalten.
+  await _pg.query(
+    `UPDATE prueflinge SET status = $2
+       WHERE id = $1 AND lower(coalesce(status,'')) <> 'zurückgezogen'`,
+    [prueflingId, g.bestanden ? "bestanden" : "nicht bestanden"]
+  );
   return g;
 }
 
@@ -597,6 +604,55 @@ export async function gruppiert(key, spalte) {
        FROM ${e.key} GROUP BY 1 ORDER BY wert DESC, label`
   );
   return res.rows;
+}
+
+/* ------------------------------------------------ Prüfungs-Fortschritt -----
+   Ein automatisch abgeleiteter Lebenslauf je Prüfling, der Zulassung (Status),
+   Tagesplanung (Zuteilung) und Bewertung zu EINER Phase zusammenführt — die
+   verbindende Klammer über alle Stationen, ohne manuelle Pflege. */
+
+export const FORTSCHRITT_STUFEN = [
+  { key: "angemeldet",      label: "Angemeldet" },
+  { key: "zugelassen",      label: "Zugelassen" },
+  { key: "eingeplant",      label: "Eingeplant" },
+  { key: "bestanden",       label: "Bestanden" },
+  { key: "nicht_bestanden", label: "Nicht bestanden" },
+  { key: "zurueckgezogen",  label: "Zurückgezogen" },
+];
+const _FORTSCHRITT_KERN = ["angemeldet", "zugelassen", "eingeplant", "bestanden"];
+
+// Priorität (höchste zuerst): Bewertung schlägt Planung schlägt Zulassung.
+const _FORTSCHRITT_CASE = `
+  CASE
+    WHEN lower(coalesce(p.status,'')) = 'zurückgezogen' THEN 'zurueckgezogen'
+    WHEN b.bestanden IS TRUE  THEN 'bestanden'
+    WHEN b.bestanden IS FALSE THEN 'nicht_bestanden'
+    WHEN (SELECT count(*) FROM zuteilungen z WHERE z.pruefling_id = p.id) > 0 THEN 'eingeplant'
+    WHEN lower(coalesce(p.status,'')) IN ('zugelassen','geprüft','geprueft') THEN 'zugelassen'
+    ELSE 'angemeldet'
+  END`;
+
+/** Abgeleitete Phase je Prüfling: [{ id, phase }] für die Liste/Anzeige. */
+export async function fortschrittAlle() {
+  const res = await _pg.query(
+    `SELECT p.id, ${_FORTSCHRITT_CASE} AS phase
+       FROM prueflinge p LEFT JOIN bewertungen b ON b.pruefling_id = p.id`
+  );
+  return res.rows;
+}
+
+/**
+ * Funnel der Prüfungs-Fortschritte in fachlicher Reihenfolge. Kernstufen werden
+ * immer gezeigt, Sonderstufen (nicht bestanden, zurückgezogen) nur bei Bedarf.
+ * @returns {Array<{key:string,label:string,wert:number}>}
+ */
+export async function fortschrittVerteilung() {
+  const rows = await fortschrittAlle();
+  const z = {};
+  rows.forEach((r) => { z[r.phase] = (z[r.phase] || 0) + 1; });
+  return FORTSCHRITT_STUFEN
+    .map((s) => ({ key: s.key, label: s.label, wert: z[s.key] || 0 }))
+    .filter((s) => s.wert > 0 || _FORTSCHRITT_KERN.includes(s.key));
 }
 
 /**
