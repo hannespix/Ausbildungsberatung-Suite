@@ -40,9 +40,14 @@ Neue Ansicht „Planung": Prüflinge je Prüfungstermin **zuteilen** (mit Uhrzei
 Slot), Tagesliste mit Entfernen, Konflikt-/Doppelbelegungswarnung am selben Tag,
 saubere Aufräumung abhängiger Zuteilungen beim Löschen. Smoke-getestet (Chromium).
 
-### M3b — Tagesplanung vertiefen (offen)
-Prüfer-Zuteilung je Termin/Ausschuss, druckbarer Tagesablauf (`@media print`),
-Reihenfolge per Drag/Sortierung, Kapazitäts-/Pausenraster.
+### M3b — Ausschuss-Zuteilung ✅
+In der Planung zusätzlich **Prüfer:innen** einem Termin zuteilen (mit Rolle:
+Vorsitz/Beisitz/Lehrkraft), Liste mit Entfernen; abhängige Zuteilungen werden
+beim Löschen aufgeräumt. Smoke-getestet (Chromium).
+
+### M3c — Druckbarer Tagesablauf (offen)
+Tagesablauf je Termin als CI-konforme Druckvorlage (`@media print`):
+Kopf mit Termininfo, Prüflinge mit Slots, Ausschuss; „Drucken/PDF".
 
 ### M4 — Prüfer-Organisation
 Verfügbarkeiten, Ausschuss-Zusammenstellung (Vorsitz/Beisitz/Lehrkraft),

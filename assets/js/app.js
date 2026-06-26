@@ -240,6 +240,9 @@ async function renderPlanung() {
     const termin = termine.find((t) => t.id === id);
     const zugeteilt = await store.zuteilungenFuer(id);
     const offen = await store.nichtZugeteilt(id);
+    const prueferZug = await store.prueferFuer(id);
+    const prueferOff = await store.prueferOffen(id);
+    const ROLLEN = (ENTITAETEN.pruefer.felder.find((f) => f.name === "funktion") || {}).optionen || [];
 
     document.getElementById("plan").innerHTML = `
       <div class="bw-card" style="margin-bottom:var(--bw-space-3)">
@@ -287,6 +290,44 @@ async function renderPlanung() {
         </div>
         <button class="bw-btn bw-btn--gelb" type="button" id="zuteilen-btn"${offen.length ? "" : " disabled"}>Zuteilen</button>
       </div>
+
+      <h2 style="margin-top:var(--bw-space-4)">Ausschuss / Prüfer:innen (${zahl(prueferZug.length)})</h2>
+      <table class="bw-table">
+        <thead><tr><th>Rolle</th><th>Name</th><th>Organisation</th><th>Aktion</th></tr></thead>
+        <tbody id="pruefer-koerper">
+          ${prueferZug.map((p) => `
+            <tr>
+              <td>${esc(p.rolle || "—")}</td>
+              <td>${esc((p.nachname || "") + ", " + (p.vorname || ""))}</td>
+              <td>${esc(p.organisation || "")}</td>
+              <td class="bw-actions">
+                <button class="bw-iconbtn" type="button" data-remove-pruefer="${p.zuteilung_id}"
+                        aria-label="Prüfer:in ${esc((p.vorname || "") + " " + (p.nachname || ""))} entfernen" title="Entfernen">🗑</button>
+              </td>
+            </tr>`).join("")}
+        </tbody>
+      </table>
+      <p class="bw-hinweis"${prueferZug.length ? " hidden" : ""}>Noch keine Prüfer:innen zugeteilt.</p>
+
+      <h2 style="margin-top:var(--bw-space-4)">Prüfer:in zuteilen</h2>
+      <div class="bw-toolbar">
+        <div class="bw-field" style="flex:1 1 18rem;margin:0">
+          <label for="pruefer-wahl" class="bw-skip-link">Prüfer:in</label>
+          <select id="pruefer-wahl"${prueferOff.length ? "" : " disabled"}>
+            ${prueferOff.length
+              ? prueferOff.map((p) => `<option value="${p.id}">${esc((p.nachname || "") + ", " + (p.vorname || "") + (p.organisation ? " (" + p.organisation + ")" : ""))}</option>`).join("")
+              : '<option value="">Alle Prüfer:innen bereits zugeteilt</option>'}
+          </select>
+        </div>
+        <div class="bw-field" style="margin:0">
+          <label for="rolle-wahl" class="bw-skip-link">Rolle</label>
+          <select id="rolle-wahl" aria-label="Rolle (optional)"${prueferOff.length ? "" : " disabled"}>
+            <option value="">— Rolle —</option>
+            ${ROLLEN.map((r) => `<option>${esc(r)}</option>`).join("")}
+          </select>
+        </div>
+        <button class="bw-btn bw-btn--gelb" type="button" id="pruefer-zuteilen-btn"${prueferOff.length ? "" : " disabled"}>Zuteilen</button>
+      </div>
     `;
 
     document.getElementById("zuteilen-btn")?.addEventListener("click", async () => {
@@ -310,6 +351,25 @@ async function renderPlanung() {
       if (!rid) return;
       await store.entferneZuteilung(Number(rid));
       meldung("Zuteilung entfernt.");
+      planZeichnen();
+    });
+
+    document.getElementById("pruefer-zuteilen-btn")?.addEventListener("click", async () => {
+      const prid = Number(document.getElementById("pruefer-wahl").value);
+      if (!prid) { meldung("Bitte eine:n Prüfer:in wählen.", "fehler"); return; }
+      const rolle = document.getElementById("rolle-wahl").value || null;
+      try {
+        await store.prueferZuteilen(id, prid, rolle);
+        meldung("Prüfer:in zugeteilt.");
+        planZeichnen();
+      } catch (e) { console.error(e); meldung("Zuteilen fehlgeschlagen: " + e.message, "fehler"); }
+    });
+
+    document.getElementById("pruefer-koerper")?.addEventListener("click", async (ev) => {
+      const rid = ev.target.closest("[data-remove-pruefer]")?.getAttribute("data-remove-pruefer");
+      if (!rid) return;
+      await store.entfernePrueferZuteilung(Number(rid));
+      meldung("Prüfer-Zuteilung entfernt.");
       planZeichnen();
     });
   }

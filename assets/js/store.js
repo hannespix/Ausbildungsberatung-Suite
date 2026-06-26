@@ -54,6 +54,16 @@ export async function oeffnen() {
       UNIQUE (pruefung_id, pruefling_id)
     );
   `);
+  // Zuteilung Prüfer:in <-> Prüfungstermin (Ausschuss je Termin).
+  await _pg.exec(`
+    CREATE TABLE IF NOT EXISTS pruefer_zuteilungen (
+      id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      pruefung_id bigint NOT NULL,
+      pruefer_id  bigint NOT NULL,
+      rolle text,
+      UNIQUE (pruefung_id, pruefer_id)
+    );
+  `);
   return { pg: _pg, modus: _modus };
 }
 
@@ -123,7 +133,11 @@ export async function loeschen(key, id) {
   const e = ent(key);
   // abhängige Zuteilungen mitentfernen (kein Datenmüll)
   if (key === "prueflinge") await _pg.query(`DELETE FROM zuteilungen WHERE pruefling_id = $1`, [id]);
-  if (key === "pruefungen") await _pg.query(`DELETE FROM zuteilungen WHERE pruefung_id = $1`, [id]);
+  if (key === "pruefer")    await _pg.query(`DELETE FROM pruefer_zuteilungen WHERE pruefer_id = $1`, [id]);
+  if (key === "pruefungen") {
+    await _pg.query(`DELETE FROM zuteilungen WHERE pruefung_id = $1`, [id]);
+    await _pg.query(`DELETE FROM pruefer_zuteilungen WHERE pruefung_id = $1`, [id]);
+  }
   await _pg.query(`DELETE FROM ${e.key} WHERE id = $1`, [id]);
 }
 
@@ -180,6 +194,41 @@ export async function terminkonflikte(prueflingId, pruefungId) {
     [prueflingId, pruefungId]
   );
   return res.rows;
+}
+
+/** Einem Prüfungstermin zugeteilte Prüfer:innen (mit Rolle), sortiert. */
+export async function prueferFuer(pruefungId) {
+  const res = await _pg.query(
+    `SELECT pz.id AS zuteilung_id, pz.rolle, p.*
+       FROM pruefer_zuteilungen pz JOIN pruefer p ON p.id = pz.pruefer_id
+      WHERE pz.pruefung_id = $1
+      ORDER BY pz.rolle NULLS LAST, p.nachname, p.vorname`,
+    [pruefungId]
+  );
+  return res.rows;
+}
+
+/** Prüfer:innen, die diesem Termin noch nicht zugeteilt sind. */
+export async function prueferOffen(pruefungId) {
+  const res = await _pg.query(
+    `SELECT * FROM pruefer
+      WHERE id NOT IN (SELECT pruefer_id FROM pruefer_zuteilungen WHERE pruefung_id = $1)
+      ORDER BY nachname, vorname`,
+    [pruefungId]
+  );
+  return res.rows;
+}
+
+export async function prueferZuteilen(pruefungId, prueferId, rolle = null) {
+  await _pg.query(
+    `INSERT INTO pruefer_zuteilungen (pruefung_id, pruefer_id, rolle) VALUES ($1, $2, $3)
+       ON CONFLICT (pruefung_id, pruefer_id) DO UPDATE SET rolle = EXCLUDED.rolle`,
+    [pruefungId, prueferId, rolle || null]
+  );
+}
+
+export async function entfernePrueferZuteilung(zuteilungId) {
+  await _pg.query(`DELETE FROM pruefer_zuteilungen WHERE id = $1`, [zuteilungId]);
 }
 
 export async function anzahl(key) {
