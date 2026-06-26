@@ -1232,7 +1232,11 @@ async function renderPrueflingAkte(id) {
 
   const terminCard = (t) => `
     <div class="bw-card" style="margin-bottom:var(--bw-space-2)">
-      <strong>${esc(t.titel || "Termin")}</strong>
+      <div class="bw-toolbar" style="margin:0">
+        <strong style="margin-right:auto">${esc(t.titel || "Termin")}</strong>
+        <button class="bw-iconbtn" type="button" data-entfernen="${t.zuteilung_id}"
+                aria-label="Zuteilung entfernen" title="Zuteilung entfernen">🗑</button>
+      </div>
       <div class="bw-klein bw-leise" style="margin:var(--bw-space-1) 0">
         ${t.datum ? esc(new Date(t.datum).toLocaleDateString("de-DE")) : "ohne Datum"}${t.slot ? " · " + esc(t.slot) + " Uhr" : (t.zeit_von ? " · ab " + esc(t.zeit_von) : "")}
         ${t.ort ? " · " + esc(t.ort) : ""}${t.raum ? ", " + esc(t.raum) : ""}${t.beruf ? " · " + esc(t.beruf) : ""}
@@ -1241,6 +1245,18 @@ async function renderPrueflingAkte(id) {
         ? `<div class="bw-klein">Ausschuss: ${t.ausschuss.map((x) => esc((x.nachname || "") + (x.rolle ? " (" + x.rolle + ")" : ""))).join(", ")}</div>`
         : '<div class="bw-klein bw-leise">Noch kein Ausschuss zugeteilt.</div>'}
     </div>`;
+
+  const passend = a.passend || [];
+  const zuteilenHtml = passend.length ? `
+    <div class="bw-toolbar" style="margin-top:var(--bw-space-2)">
+      <div class="bw-field" style="flex:1 1 16rem;margin:0">
+        <label for="akte-terminwahl" class="bw-skip-link">Termin</label>
+        <select id="akte-terminwahl">
+          ${passend.map((t) => `<option value="${t.id}">${esc((t.titel || "Termin") + (t.datum ? " — " + new Date(t.datum).toLocaleDateString("de-DE") : ""))}</option>`).join("")}
+        </select>
+      </div>
+      <button class="bw-btn bw-btn--sekundaer" type="button" id="akte-zuteilen">Diesem Termin zuteilen</button>
+    </div>` : (a.pruefling.beruf ? "" : '<p class="bw-klein bw-leise">Fachrichtung beim Prüfling fehlt — keine passenden Termine.</p>');
 
   appEl().innerHTML = `
     <p class="bw-klein"><a href="#/prueflinge">← Prüflinge</a></p>
@@ -1270,7 +1286,8 @@ async function renderPrueflingAkte(id) {
       <section aria-labelledby="akte-pruefung">
         <h2 id="akte-pruefung">Prüfungstag</h2>
         ${a.termine.length ? a.termine.map(terminCard).join("")
-          : `<p class="bw-hinweis">Noch keinem Prüfungstermin zugeteilt. In der <a href="#/planung">Planung</a> zuteilen.</p>`}
+          : `<p class="bw-hinweis">Noch keinem Prüfungstermin zugeteilt.</p>`}
+        ${zuteilenHtml}
 
         <h2 style="margin-top:var(--bw-space-3)">Bewertung</h2>
         <div class="bw-card">
@@ -1298,6 +1315,24 @@ async function renderPrueflingAkte(id) {
   document.getElementById("akte-bearbeiten").addEventListener("click", () => {
     formularOeffnen("prueflinge", p, () => renderPrueflingAkte(id));
   });
+  document.getElementById("akte-zuteilen")?.addEventListener("click", async () => {
+    const pid = Number(document.getElementById("akte-terminwahl").value);
+    if (!pid) return;
+    try {
+      const konflikte = await store.terminkonflikte(p.id, pid);
+      if (konflikte.length && !confirm(`Am selben Tag bereits zugeteilt (${konflikte.map((k) => "„" + k.titel + "“").join(", ")}). Trotzdem zuteilen?`)) return;
+      await store.zuteilen(pid, p.id);
+      meldung("Prüfling dem Termin zugeteilt.");
+      renderPrueflingAkte(id);
+    } catch (e) { console.error(e); meldung("Zuteilen fehlgeschlagen: " + e.message, "fehler"); }
+  });
+  appEl().querySelectorAll("[data-entfernen]").forEach((btn) => btn.addEventListener("click", async () => {
+    try {
+      await store.entferneZuteilung(Number(btn.getAttribute("data-entfernen")));
+      meldung("Zuteilung entfernt.");
+      renderPrueflingAkte(id);
+    } catch (e) { console.error(e); meldung("Entfernen fehlgeschlagen: " + e.message, "fehler"); }
+  }));
 }
 
 /* --------------------------------------------------------- Auswertungen */

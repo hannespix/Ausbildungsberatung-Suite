@@ -965,11 +965,21 @@ export async function prueflingAkte(prueflingId) {
   const p = (await _pg.query(`SELECT * FROM prueflinge WHERE id = $1`, [prueflingId])).rows[0];
   if (!p) return null;
   const termine = (await _pg.query(
-    `SELECT pr.id, pr.titel, pr.beruf, pr.datum, pr.zeit_von, pr.ort, pr.raum, z.slot
+    `SELECT pr.id, pr.titel, pr.beruf, pr.datum, pr.zeit_von, pr.ort, pr.raum, z.slot, z.id AS zuteilung_id
        FROM zuteilungen z JOIN pruefungen pr ON pr.id = z.pruefung_id
       WHERE z.pruefling_id = $1
       ORDER BY pr.datum NULLS LAST, z.slot NULLS LAST, pr.id`,
     [prueflingId]
+  )).rows;
+  // Passende, noch nicht zugeteilte Termine (gleiche Fachrichtung) für die
+  // direkte Zuteilung aus der Akte.
+  const passend = (await _pg.query(
+    `SELECT pr.id, pr.titel, pr.datum, pr.zeit_von, pr.ort
+       FROM pruefungen pr
+      WHERE coalesce(pr.beruf,'') = coalesce($2,'')
+        AND pr.id NOT IN (SELECT pruefung_id FROM zuteilungen WHERE pruefling_id = $1)
+      ORDER BY pr.datum NULLS LAST, pr.zeit_von NULLS LAST, pr.id`,
+    [prueflingId, p.beruf]
   )).rows;
   for (const t of termine) {
     t.ausschuss = (await _pg.query(
@@ -986,7 +996,7 @@ export async function prueflingAkte(prueflingId) {
        FROM prueflinge p LEFT JOIN bewertungen b ON b.pruefling_id = p.id WHERE p.id = $1`,
     [prueflingId]
   )).rows[0];
-  return { pruefling: p, termine, bewertung, phase: ph ? ph.phase : "angemeldet" };
+  return { pruefling: p, termine, passend, bewertung, phase: ph ? ph.phase : "angemeldet" };
 }
 
 /**

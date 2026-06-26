@@ -42,6 +42,13 @@ Prüflinge, Betriebe, Prüfer:innen und Termine **gleichzeitig** DB-seitig
 verlinken direkt — Prüflinge in ihre Akte, Termine in die Planung, Kontakte mit
 `tel:`/`mailto:`. Smoke-getestet (inkl. Mobile 390px).
 
+### Prüflings-Akte — Termin-Zuteilung direkt ✅
+In der Akte lässt sich der Prüfling jetzt direkt einem passenden Termin
+(gleiche Fachrichtung) zuteilen oder die Zuteilung entfernen — mit
+Konfliktwarnung bei Doppelbelegung am selben Tag. Korrekturen ohne Umweg über
+die Planung. `store.prueflingAkte` liefert passende Termine + Zuteilungs-IDs.
+Smoke-getestet (inkl. Mobile).
+
 ### Prüflings-Akte (verbindende Klammer) ✅
 Eigene Detailansicht je Prüfling (`#/pruefling/<id>`, „📋"-Symbol in der Liste):
 bündelt Stammdaten, zugeteilten Prüfungstag (Datum/Uhrzeit-Slot, Ort, Ausschuss),
