@@ -756,7 +756,7 @@ async function renderPlanung() {
       <div class="bw-field" style="max-width:36rem;flex:1 1 24rem;margin:0">
         <label for="pruefungswahl">Prüfungstermin</label>
         <select id="pruefungswahl">
-          ${termine.map((t) => `<option value="${t.id}">${esc(terminLabel(t))}</option>`).join("")}
+          ${termine.map((t) => `<option value="${t.id}"${String(t.id) === String(routeParams().termin) ? " selected" : ""}>${esc(terminLabel(t))}</option>`).join("")}
         </select>
       </div>
       <button class="bw-btn bw-btn--sekundaer" type="button" id="ics-alle">Alle Termine als Kalender (.ics)</button>
@@ -1638,6 +1638,7 @@ async function renderPrueflingAkte(id) {
     <div class="bw-card" style="margin-bottom:var(--bw-space-2)">
       <div class="bw-toolbar" style="margin:0">
         <strong style="margin-right:auto">${esc(t.titel || "Termin")}</strong>
+        <a class="bw-iconbtn" href="#/planung?termin=${t.id}" aria-label="In der Planung öffnen" title="In der Planung öffnen">📅</a>
         <button class="bw-iconbtn" type="button" data-entfernen="${t.zuteilung_id}"
                 aria-label="Zuteilung entfernen" title="Zuteilung entfernen">🗑</button>
       </div>
@@ -1781,11 +1782,11 @@ async function renderAuswertungen(jahr = null) {
 
   const terminZeile = (t) => `
     <tr>
-      <td>${esc(t.titel || "—")}</td>
+      <td><a href="#/planung?termin=${t.id}" title="In der Planung öffnen">${esc(t.titel || "—")}</a></td>
       <td>${t.datum ? esc(new Date(t.datum).toLocaleDateString("de-DE")) : "—"}${t.zeit_von ? " · " + esc(t.zeit_von) : ""}</td>
       <td>${esc(t.beruf || "—")}</td>
       <td style="text-align:right">${zahl(t.prueflinge)}</td>
-      <td style="text-align:right">${t.ausschuss ? zahl(t.ausschuss) : '<span class="bw-status-dont">0</span>'}</td>
+      <td style="text-align:right">${t.ausschuss ? zahl(t.ausschuss) : '<a href="#/planung?termin=' + t.id + '" class="bw-status-dont" title="Ausschuss besetzen">0</a>'}</td>
     </tr>`;
 
   const quoteZeile = (r) => `
