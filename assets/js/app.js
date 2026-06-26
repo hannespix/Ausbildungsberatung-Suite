@@ -1043,6 +1043,42 @@ function anfrageMailto(termin) {
   return `mailto:${encodeURIComponent(emails.join(","))}?subject=${encodeURIComponent(betreff)}&body=${encodeURIComponent(text)}`;
 }
 
+/** Inneres HTML einer persönlichen Prüfer-Einladung (für Druck/Serie). */
+function prueferEinladungHtml(t, p) {
+  const datum = t.datum
+    ? new Date(t.datum).toLocaleDateString("de-DE", { weekday: "long", year: "numeric", month: "long", day: "numeric" })
+    : "—";
+  const name = `${p.vorname || ""} ${p.nachname || ""}`.trim();
+  const heute = new Date().toLocaleDateString("de-DE");
+  return `
+    <p class="bw-klein bw-leise">Regierungspräsidium Freiburg · Ausbildungsberatung</p>
+    <p>${esc(name) || "Prüfer:in"}${p.organisation ? "<br>" + esc(p.organisation) : ""}</p>
+    <p class="bw-klein bw-leise" style="text-align:right">Freiburg, den ${esc(heute)}</p>
+    <h1>Einladung in den Prüfungsausschuss</h1>
+    <p>Sehr geehrtes Ausschussmitglied,</p>
+    <p>wir laden Sie als <strong>${esc(p.rolle || "Mitglied")}</strong> des Prüfungsausschusses zur
+       praktischen Abschlussprüfung Gärtner/in${t.beruf ? ", Fachrichtung " + esc(t.beruf) : ""} ein.</p>
+    <table class="bw-table bw-zeugnis"><tbody>
+      <tr><th scope="row">Termin</th><td>${esc(datum)}</td></tr>
+      ${t.zeit_von ? `<tr><th scope="row">Beginn</th><td>${esc(t.zeit_von)} Uhr</td></tr>` : ""}
+      <tr><th scope="row">Ort</th><td>${esc(t.ort || "—")}${t.raum ? ", " + esc(t.raum) : ""}</td></tr>
+      <tr><th scope="row">Ihre Rolle</th><td>${esc(p.rolle || "Mitglied")}</td></tr>
+      <tr><th scope="row">Prüflinge</th><td>${zahl(t.anzahl_prueflinge)}</td></tr>
+    </tbody></table>
+    <p>Bitte teilen Sie uns Ihre Zu- oder Absage zeitnah mit. Sind Sie verhindert,
+       nennen Sie uns bitte möglichst eine Vertretung.</p>
+    <p>Mit freundlichen Grüßen<br>Ausbildungsberatung<br>Regierungspräsidium Freiburg</p>
+    <p class="bw-klein bw-leise">Erstellt mit der Ausbildungsberatung-Suite — Regierungspräsidium Freiburg</p>`;
+}
+
+/** Druckt je Ausschussmitglied eines Termins eine persönliche Einladung. */
+function prueferEinladungDrucken(t) {
+  if (!t.pruefer.length) { meldung("Noch kein Ausschuss zugeteilt.", "fehler"); return; }
+  druckbereich().innerHTML = t.pruefer
+    .map((p) => `<section class="bw-zeugnisblatt">${prueferEinladungHtml(t, p)}</section>`).join("");
+  window.print();
+}
+
 async function renderPlanungsliste() {
   const liste = await store.planungsListe();
   const z = await store.zusageZaehler();
@@ -1057,8 +1093,12 @@ async function renderPlanungsliste() {
             ${t.ort ? " · " + esc(t.ort) : ""}${t.raum ? ", " + esc(t.raum) : ""} · ${zahl(t.anzahl_prueflinge)} Prüflinge
           </div>
         </div>
-        <button class="bw-btn bw-btn--sekundaer" type="button" data-anfrage="${t.id}"
-                ${t.pruefer.length ? "" : "disabled"}>Prüfer:innen anfragen (E-Mail)</button>
+        <div class="bw-toolbar" style="margin:0;gap:var(--bw-space-1)">
+          <button class="bw-btn bw-btn--sekundaer" type="button" data-anfrage="${t.id}"
+                  ${t.pruefer.length ? "" : "disabled"}>Prüfer:innen anfragen (E-Mail)</button>
+          <button class="bw-btn bw-btn--sekundaer" type="button" data-pdruck="${t.id}"
+                  ${t.pruefer.length ? "" : "disabled"}>Einladung drucken</button>
+        </div>
       </div>
       <div class="bw-tablewrap">
         <table class="bw-table">
@@ -1093,6 +1133,12 @@ async function renderPlanungsliste() {
   document.getElementById("planliste").addEventListener("click", async (ev) => {
     const statusBtn = ev.target.closest("[data-status]");
     const anfrageBtn = ev.target.closest("[data-anfrage]");
+    const pdruckBtn = ev.target.closest("[data-pdruck]");
+    if (pdruckBtn) {
+      const t = liste.find((x) => String(x.id) === pdruckBtn.getAttribute("data-pdruck"));
+      if (t) prueferEinladungDrucken(t);
+      return;
+    }
     if (statusBtn) {
       await store.setzePrueferStatus(Number(statusBtn.getAttribute("data-zid")), statusBtn.getAttribute("data-status"));
       meldung("Zusage-Status aktualisiert.");
