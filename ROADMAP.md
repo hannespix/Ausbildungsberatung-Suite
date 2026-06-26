@@ -330,6 +330,12 @@ deshalb übersprungen wurden (`planungAutomatisch().uebersprungen`, kein stilles
 unbewerteten zugeteilten Prüflingen erscheinen als Fehler-Hinweis und
 verlinken zu den Noten — zeitbewusst über `CURRENT_DATE`. Chromium-getestet
 (Hinweis erscheint bei vergangenem Termin, verschwindet nach Bewertung).
+✅ **Zeitraster-Check**: anstehende/undatierte Prüfungstermine mit zugeteilten
+Prüflingen, aber (teilweise) fehlenden Uhrzeit-Slots erscheinen als Hinweis und
+verlinken in die Planung — ohne Uhrzeiten fehlen Slots in Tagesablauf,
+Einladung und Anwesenheitsliste. Vergangene Termine bleiben außen vor.
+Chromium-getestet (nur der zukünftige Termin ohne Slot wird gemeldet, nicht der
+mit Slot oder der vergangene; Hinweis verschwindet nach „Zeitraster erzeugen").
 
 ### M10 — Auswertungen & Dashboard ✅
 Neue Ansicht „Auswertungen": Kennzahlen (belegte Termine, Ø Prüflinge/Termin,

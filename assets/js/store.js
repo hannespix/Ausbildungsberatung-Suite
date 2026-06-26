@@ -1185,6 +1185,19 @@ export async function hinweise() {
   if (unbewertet) items.push({ key: "unbewertet", n: unbewertet, route: "#/noten", art: "hinweis",
     text: `${unbewertet} eingeplante(r) Prüfling(e) noch nicht bewertet` });
 
+  // Vorbereitung: anstehende/undatierte Termine mit Prüflingen, aber ohne
+  // (vollständiges) Zeitraster — ohne Uhrzeiten fehlen Slots in Tagesablauf,
+  // Einladung und Anwesenheitsliste. Vergangene Termine bleiben außen vor.
+  const ohneUhrzeit = (await _pg.query(
+    `SELECT count(*)::int AS n FROM pruefungen pr
+      WHERE (pr.datum IS NULL OR pr.datum >= CURRENT_DATE)
+        AND EXISTS (SELECT 1 FROM zuteilungen z WHERE z.pruefung_id = pr.id)
+        AND EXISTS (SELECT 1 FROM zuteilungen z
+                     WHERE z.pruefung_id = pr.id AND (z.slot IS NULL OR btrim(z.slot) = ''))`
+  )).rows[0].n;
+  if (ohneUhrzeit) items.push({ key: "ohne_uhrzeit", n: ohneUhrzeit, route: "#/planung", art: "hinweis",
+    text: `${ohneUhrzeit} anstehende(r) Prüfungstermin(e) mit Prüflingen ohne Uhrzeit (Zeitraster erzeugen)` });
+
   const offeneTermine = (await _pg.query(
     `SELECT count(*)::int AS n FROM pruefungen pr
       WHERE (SELECT count(*) FROM zuteilungen z WHERE z.pruefung_id = pr.id) = 0`
