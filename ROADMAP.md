@@ -103,7 +103,10 @@ Einladungs-/Bestätigungsstatus ✅ (Prüfer-Plan).
   Doppelbelegungen am selben Prüfungstag (datums-bewusst, mit Auffüllung statt
   leerem Ausschuss); verbleibende Doppelbelegungen werden in den Auswertungen
   als „Prüfer-Doppelbelegungen" aufgelistet (`prueferKonflikte`). Smoke-getestet.
-- Offen: gepflegte Prüfer-Verfügbarkeiten (Abwesenheiten) als Eingabe.
+- ✅ **Prüfer-Abwesenheiten**: je Prüfer:in einzelne Tage hinterlegen (📅-Dialog
+  in der Prüfer-Liste); die automatische Ausschuss-Besetzung schließt Abwesende
+  an dem Tag konsequent aus (in beiden Besetzungs-Durchgängen). In der
+  Datensicherung enthalten. Smoke-getestet (kein Verstoß nach Neuplanung).
 
 ### M5 — Notenberechnung ✅
 Neue Ansicht „Noten": Gesamtbewertung je Prüfling, Bewerten-Dialog mit
