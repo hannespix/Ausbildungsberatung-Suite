@@ -1857,6 +1857,29 @@ async function renderPrueflingAkte(id) {
   const zurueckgezogen = String(p.status || "").toLowerCase() === "zurückgezogen";
   const geb = p.geburtsdatum ? new Date(p.geburtsdatum).toLocaleDateString("de-DE") : "—";
 
+  // Aufklappbare Einzel-Bereichsnoten (9 Bereiche) — alles zur Bewertung an
+  // einem Ort, identisch zur Darstellung im Zeugnis (inkl. mündlicher Ergänzung).
+  const einzelnotenHtml = () => {
+    const P = [b.p1, b.p2, b.p3, b.p4, b.p5];
+    const K = [b.k1, b.k2, b.k3, b.k4];
+    const ergIdx = { k1: 0, k2: 1, k3: 2, k4: 3 }[b.ergaenzung_bereich];
+    const Keff = (ergIdx != null && b.ergaenzung_note != null)
+      ? store.ergaenzteKenntnis(K, b.ergaenzung_bereich, b.ergaenzung_note) : K;
+    const zeile = (label, note) => `<tr><td>${esc(label)}</td><td style="text-align:right">${formatNote(note)}</td></tr>`;
+    return `<details class="bw-disclosure" style="margin-top:var(--bw-space-1)">
+      <summary class="bw-btn bw-btn--sekundaer">Einzelnoten anzeigen</summary>
+      <div class="bw-disclosure__panel">
+        <div class="bw-tablewrap" style="width:100%">
+          <table class="bw-table"><tbody>
+            ${GALABAU_BEREICHE.praxis.map((l, i) => zeile(roem(i + 1) + ". " + l, P[i])).join("")}
+            ${GALABAU_BEREICHE.kenntnis.map((l, i) => zeile(l + (i === ergIdx ? " *" : ""), Keff[i])).join("")}
+          </tbody></table>
+        </div>
+        ${ergIdx != null ? '<p class="bw-klein bw-leise" style="width:100%">* nach mündlicher Ergänzungsprüfung</p>' : ""}
+      </div>
+    </details>`;
+  };
+
   const terminCard = (t) => `
     <div class="bw-card" style="margin-bottom:var(--bw-space-2)">
       <div class="bw-toolbar" style="margin:0">
@@ -1935,7 +1958,8 @@ async function renderPrueflingAkte(id) {
               ${b.bestanden === false && store.bewertungGruende(b).length
                 ? `<tr><th scope="row">Grund</th><td>${store.bewertungGruende(b).map(esc).join("; ")}</td></tr>`
                 : ""}
-            </tbody></table>`
+            </tbody></table>
+            ${einzelnotenHtml()}`
           : '<p class="bw-leise">Noch nicht bewertet.</p>'}
         </div>
       </section>
