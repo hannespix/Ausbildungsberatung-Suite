@@ -224,6 +224,16 @@ Auswahl): CSV mit Semikolon + BOM (Excel), vCard 3.0 je Kontakt (N/FN/ORG/TEL/
 EMAIL, Prüfer:innen mit TITLE). Offline per Datei-Download, in Outlook/Telefon
 importierbar. Smoke-getestet.
 
+### Prüfer-Akte (Prüfer:in ↔ Planung) ✅
+Detailansicht je Prüfer:in (`#/pruefer/<id>`, „📋" in der Prüferliste): Kontakt
+(Organisation, Funktion, klickbare Mail/Tel), alle **Ausschuss-Einsätze**
+(Datum, Termin mit Direktsprung in die Planung, Rolle, Zusage-Status) und die
+hinterlegten **Abwesenheiten** (direkt aus der Akte bearbeitbar, Re-Render nach
+dem Schließen). `store.prueferAkte()`. Nebenbei behoben: breite Tabellen in
+`.bw-flaechen` sprengten auf dem Smartphone das Raster — `min-width:0` lässt sie
+jetzt im `.bw-tablewrap` horizontal scrollen. Chromium-getestet (Einsatz-
+Sprung, Abwesenheit, Mobile 390px ohne Overflow).
+
 ### Betriebs-Akte (Betrieb ↔ Prüflinge) ✅
 Detailansicht je Ausbildungsbetrieb (`#/betrieb/<id>`, „📋" in der Betriebs-
 liste): Kontaktdaten (Anschrift, Ansprechpartner, klickbare Mail/Tel) und alle

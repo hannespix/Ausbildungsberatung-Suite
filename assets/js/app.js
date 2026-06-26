@@ -305,6 +305,8 @@ function zeileHtml(ent, row, query, phase) {
     ? `<a class="bw-iconbtn" href="#/pruefling/${row.id}" aria-label="Akte von ${esc((row.vorname || "") + " " + (row.nachname || ""))} öffnen" title="Akte öffnen">📋</a>`
     : ent.key === "betriebe"
     ? `<a class="bw-iconbtn" href="#/betrieb/${row.id}" aria-label="Betrieb ${esc(row.name || "")} öffnen" title="Betrieb öffnen">📋</a>`
+    : ent.key === "pruefer"
+    ? `<a class="bw-iconbtn" href="#/pruefer/${row.id}" aria-label="Akte von ${esc((row.vorname || "") + " " + (row.nachname || ""))} öffnen" title="Akte öffnen">📋</a>`
     : "";
   const abw = ent.key === "pruefer"
     ? `<button class="bw-iconbtn" type="button" data-abwesenheit="${row.id}" aria-label="Abwesenheiten von ${esc((row.vorname || "") + " " + (row.nachname || ""))}" title="Abwesenheiten">📅</button>`
@@ -1870,6 +1872,79 @@ async function renderBetriebAkte(id) {
   });
 }
 
+/* --------------------------------------------------------- Prüfer-Akte */
+
+async function renderPrueferAkte(id) {
+  let a;
+  try { a = await store.prueferAkte(Number(id)); }
+  catch (e) { console.error(e); appEl().innerHTML = `<div class="bw-hinweis bw-hinweis--fehler">Prüfer:in konnte nicht geladen werden: ${esc(e.message)}</div>`; return; }
+  if (!a) { appEl().innerHTML = `<div class="bw-hinweis">Prüfer:in nicht gefunden. <a href="#/pruefer">Zur Liste</a></div>`; return; }
+
+  const p = a.pruefer;
+  const name = `${p.vorname || ""} ${p.nachname || ""}`.trim() || "Prüfer:in";
+  const eins = a.einsaetze || [];
+  const abw = a.abwesenheiten || [];
+  const tage = new Set(eins.filter((e) => e.datum).map((e) => icsDatum(e.datum))).size;
+
+  appEl().innerHTML = `
+    <p class="bw-klein"><a href="#/pruefer">← Prüfer:innen</a></p>
+    <h1 style="margin-bottom:var(--bw-space-1)">${esc(name)}</h1>
+    <p class="bw-unterzeile">Prüfer:in — Kontakt, Ausschuss-Einsätze und Abwesenheiten an einem Ort</p>
+
+    <div class="bw-toolbar" style="margin-bottom:var(--bw-space-3)">
+      <button class="bw-btn bw-btn--sekundaer" type="button" id="pruefer-abw">Abwesenheiten bearbeiten</button>
+      <button class="bw-btn bw-btn--sekundaer" type="button" id="pruefer-bearbeiten">Stammdaten bearbeiten</button>
+    </div>
+
+    <div class="bw-flaechen">
+      <section class="bw-card" aria-labelledby="pruefer-stamm">
+        <h2 id="pruefer-stamm" style="margin-top:0">Kontakt</h2>
+        <table class="bw-table"><tbody>
+          <tr><th scope="row">Organisation</th><td>${esc(p.organisation || "—")}</td></tr>
+          <tr><th scope="row">Funktion</th><td>${esc(p.funktion || "—")}</td></tr>
+          <tr><th scope="row">E-Mail</th><td>${p.email ? `<a href="mailto:${esc(p.email)}">${esc(p.email)}</a>` : "—"}</td></tr>
+          <tr><th scope="row">Telefon</th><td>${p.telefon ? `<a href="tel:${esc(String(p.telefon).replace(/[^\d+]/g, ""))}">${esc(p.telefon)}</a>` : "—"}</td></tr>
+          ${p.bemerkung ? `<tr><th scope="row">Bemerkung</th><td>${esc(p.bemerkung)}</td></tr>` : ""}
+          <tr><th scope="row">Einsätze</th><td>${zahl(eins.length)} an ${zahl(tage)} Prüfungstag(en)</td></tr>
+        </tbody></table>
+      </section>
+
+      <section aria-labelledby="pruefer-eins">
+        <h2 id="pruefer-eins">Ausschuss-Einsätze (${zahl(eins.length)})</h2>
+        ${eins.length ? `
+          <div class="bw-tablewrap">
+            <table class="bw-table">
+              <thead><tr><th>Datum</th><th>Termin</th><th>Rolle</th><th>Zusage</th></tr></thead>
+              <tbody>${eins.map((e) => `
+                <tr>
+                  <td>${e.datum ? esc(new Date(e.datum).toLocaleDateString("de-DE")) : "—"}${e.zeit_von ? " · " + esc(e.zeit_von) : ""}</td>
+                  <td><a href="#/planung?termin=${e.pruefung_id}" title="In der Planung öffnen">${esc(e.titel || "Termin")}</a></td>
+                  <td>${esc(e.rolle || "—")}</td>
+                  <td>${zusageBadge(e.status)}</td>
+                </tr>`).join("")}</tbody>
+            </table>
+          </div>`
+          : '<p class="bw-hinweis">Noch keinem Ausschuss zugeteilt — unter <a href="#/planung">Planung</a> besetzen.</p>'}
+
+        <h2 style="margin-top:var(--bw-space-3)">Abwesenheiten (${zahl(abw.length)})</h2>
+        <div class="bw-card">
+          ${abw.length
+            ? `<p class="bw-klein">${abw.map((x) => esc(new Date(x.datum).toLocaleDateString("de-DE"))).join(" · ")}</p>`
+            : '<p class="bw-leise">Keine Abwesenheiten hinterlegt.</p>'}
+        </div>
+      </section>
+    </div>
+  `;
+
+  document.getElementById("pruefer-bearbeiten").addEventListener("click", () => {
+    formularOeffnen("pruefer", p, () => renderPrueferAkte(id));
+  });
+  document.getElementById("pruefer-abw").addEventListener("click", () => {
+    // Nach dem Schließen die Akte mit dem neuen Abwesenheitsstand neu zeichnen.
+    abwesenheitDialog(p.id, name, () => renderPrueferAkte(id));
+  });
+}
+
 /* --------------------------------------------------------- Auswertungen */
 
 async function renderAuswertungen(jahr = null) {
@@ -2351,7 +2426,7 @@ function csvAutoMap(header, felder) {
 
 /* ---------------------------------------------- Prüfer-Abwesenheiten (Dialog) */
 
-async function abwesenheitDialog(prueferId, name) {
+async function abwesenheitDialog(prueferId, name, nachher) {
   const alt = document.getElementById("dialog");
   if (alt) alt.remove();
   const dlg = document.createElement("dialog");
@@ -2402,7 +2477,7 @@ async function abwesenheitDialog(prueferId, name) {
     zeichne();
   });
   dlg.querySelector("#abw-fertig").addEventListener("click", () => dlg.close());
-  dlg.addEventListener("close", () => dlg.remove());
+  dlg.addEventListener("close", () => { dlg.remove(); if (nachher) nachher(); });
   await zeichne();
   dlg.showModal();
 }
@@ -2649,6 +2724,7 @@ async function route() {
     else if (r === "suche") await renderSuche();
     else if (r.startsWith("pruefling/")) await renderPrueflingAkte(r.slice("pruefling/".length));
     else if (r.startsWith("betrieb/")) await renderBetriebAkte(r.slice("betrieb/".length));
+    else if (r.startsWith("pruefer/")) await renderPrueferAkte(r.slice("pruefer/".length));
     else if (ENTITAETEN[r]) await renderListe(r);
     else { location.hash = "#/"; return; }
   } catch (e) {
