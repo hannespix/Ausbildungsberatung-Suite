@@ -107,6 +107,9 @@ Einladungs-/Bestätigungsstatus ✅ (Prüfer-Plan).
   in der Prüfer-Liste); die automatische Ausschuss-Besetzung schließt Abwesende
   an dem Tag konsequent aus (in beiden Besetzungs-Durchgängen). In der
   Datensicherung enthalten. Smoke-getestet (kein Verstoß nach Neuplanung).
+- ✅ **Abwesenheits-Konflikte sichtbar**: Warnung bei manueller Prüfer-Zuteilung
+  an einem Abwesenheitstag; verbleibende Verstöße erscheinen als Hinweis in
+  „Was ist zu tun?" (`prueferAbwesenheitsKonflikte`, `istAbwesend`). Smoke-getestet.
 
 ### M5 — Notenberechnung ✅
 Neue Ansicht „Noten": Gesamtbewertung je Prüfling, Bewerten-Dialog mit

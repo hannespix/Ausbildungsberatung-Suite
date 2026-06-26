@@ -811,6 +811,33 @@ export async function prueferKonflikte() {
   return res.rows;
 }
 
+/**
+ * Ausschuss-Zuteilungen, die einer hinterlegten Abwesenheit der Prüfer:in am
+ * Termin-Datum widersprechen (z. B. nach manueller Zuteilung).
+ */
+export async function prueferAbwesenheitsKonflikte() {
+  const res = await _pg.query(
+    `SELECT pz.pruefer_id, pr.datum, pr.titel,
+            (pp.nachname || ', ' || coalesce(pp.vorname,'')) AS name
+       FROM pruefer_zuteilungen pz
+       JOIN pruefungen pr ON pr.id = pz.pruefung_id
+       JOIN pruefer pp ON pp.id = pz.pruefer_id
+       JOIN pruefer_abwesenheit a ON a.pruefer_id = pz.pruefer_id AND a.datum = pr.datum
+      ORDER BY pr.datum, name`
+  );
+  return res.rows;
+}
+
+/** Ist die Prüfer:in am gegebenen Datum als abwesend hinterlegt? */
+export async function istAbwesend(prueferId, datum) {
+  if (!datum) return false;
+  const r = await _pg.query(
+    `SELECT 1 FROM pruefer_abwesenheit WHERE pruefer_id = $1 AND datum = $2 LIMIT 1`,
+    [prueferId, isoDatum(datum)]
+  );
+  return r.rows.length > 0;
+}
+
 /* ----------------------------------------------------- Datensicherung -------
    Vollständige Sicherung/Wiederherstellung als JSON-Datei („DB-Datei daneben").
    Bewahrt IDs (für die Beziehungen) über OVERRIDING SYSTEM VALUE; generierte
@@ -960,6 +987,10 @@ export async function hinweise() {
   const k = (await prueferKonflikte()).length;
   if (k) items.push({ key: "konflikt", n: k, route: "#/auswertungen", art: "fehler",
     text: `${k} Prüfer-Doppelbelegung(en) am selben Tag` });
+
+  const aKonf = (await prueferAbwesenheitsKonflikte()).length;
+  if (aKonf) items.push({ key: "abwesenheit", n: aKonf, route: "#/planung", art: "fehler",
+    text: `${aKonf} Ausschuss-Zuteilung(en) an einem Abwesenheitstag der Prüfer:in` });
 
   const z = await zusageZaehler();
   const offen = (z.offen || 0) + (z.angefragt || 0);
