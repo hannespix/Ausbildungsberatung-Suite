@@ -1101,6 +1101,17 @@ export async function hinweise() {
   if (ohneFach) items.push({ key: "ohne_fach", n: ohneFach, route: "#/prueflinge", art: "fehler",
     text: `${ohneFach} Prüfling(e) ohne Fachrichtung — werden nicht automatisch eingeplant` });
 
+  // Überfällig: Prüfungstage in der Vergangenheit mit noch unbewerteten Prüflingen.
+  const ueberfaellig = (await _pg.query(
+    `SELECT count(*)::int AS n FROM pruefungen pr
+      WHERE pr.datum IS NOT NULL AND pr.datum < CURRENT_DATE
+        AND EXISTS (SELECT 1 FROM zuteilungen z
+                      LEFT JOIN bewertungen b ON b.pruefling_id = z.pruefling_id
+                     WHERE z.pruefung_id = pr.id AND b.gesamt IS NULL)`
+  )).rows[0].n;
+  if (ueberfaellig) items.push({ key: "ueberfaellig", n: ueberfaellig, route: "#/noten", art: "fehler",
+    text: `${ueberfaellig} vergangene(r) Prüfungstag(e) mit noch unbewerteten Prüflingen` });
+
   const z = await zusageZaehler();
   const offen = (z.offen || 0) + (z.angefragt || 0);
   if (offen) items.push({ key: "zusagen", n: offen, route: "#/planungsliste", art: "hinweis",
