@@ -316,6 +316,23 @@ mark.bw-treffer { background: var(--bw-gelb); color: var(--bw-schwarz); padding:
 .bw-dialog__felder .bw-field:has(textarea) { grid-column: 1 / -1; }
 .bw-dialog__aktionen { display: flex; justify-content: flex-end; gap: var(--bw-space-2); margin-top: var(--bw-space-2); }
 
+/* ===================== Druck-Tagesablauf ========================= */
+/* Druckbereich liegt im DOM, ist aber nur beim Drucken sichtbar. */
+.bw-druck { display: none; }
+.bw-druck h1 { margin-top: 0; }
+.bw-druck table { margin-bottom: var(--bw-space-3); }
+
+@media print {
+  body > *:not(.bw-druck) { display: none !important; }
+  .bw-druck { display: block !important; padding: var(--bw-space-2); }
+  /* Tintensparend: Kopfzeile mit Linie statt Vollfläche */
+  .bw-druck .bw-table thead th {
+    background: var(--bw-weiss); color: var(--bw-schwarz);
+    border-bottom: 2px solid var(--bw-schwarz);
+  }
+  .bw-druck .bw-table tbody tr { background: var(--bw-weiss) !important; }
+}
+
 /* ===================== Responsive ================================ */
 @media (max-width: 640px) {
   :root { --bw-rand: var(--bw-space-3); }

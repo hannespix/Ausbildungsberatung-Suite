@@ -45,9 +45,10 @@ In der Planung zusätzlich **Prüfer:innen** einem Termin zuteilen (mit Rolle:
 Vorsitz/Beisitz/Lehrkraft), Liste mit Entfernen; abhängige Zuteilungen werden
 beim Löschen aufgeräumt. Smoke-getestet (Chromium).
 
-### M3c — Druckbarer Tagesablauf (offen)
-Tagesablauf je Termin als CI-konforme Druckvorlage (`@media print`):
-Kopf mit Termininfo, Prüflinge mit Slots, Ausschuss; „Drucken/PDF".
+### M3c — Druckbarer Tagesablauf ✅
+„Tagesablauf drucken" je Termin: CI-konforme Druckvorlage (`@media print`,
+tintensparend) mit Kopf, Prüflingen inkl. Slots und Ausschuss; über den
+Druckdialog auch als PDF. Smoke-getestet (Chromium, `window.print` gestubbt).
 
 ### M4 — Prüfer-Organisation
 Verfügbarkeiten, Ausschuss-Zusammenstellung (Vorsitz/Beisitz/Lehrkraft),
