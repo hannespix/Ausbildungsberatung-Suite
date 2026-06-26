@@ -302,6 +302,10 @@ automatisch einplanen lassen) erscheinen als Hinweis und verlinken in die
 Stammdaten; die automatische Planung meldet zusätzlich, wie viele Prüflinge
 deshalb übersprungen wurden (`planungAutomatisch().uebersprungen`, kein stilles
 Übergehen). Chromium-getestet.
+✅ **Überfällig-Check**: vergangene Prüfungstage (Datum < heute) mit noch
+unbewerteten zugeteilten Prüflingen erscheinen als Fehler-Hinweis und
+verlinken zu den Noten — zeitbewusst über `CURRENT_DATE`. Chromium-getestet
+(Hinweis erscheint bei vergangenem Termin, verschwindet nach Bewertung).
 
 ### M10 — Auswertungen & Dashboard ✅
 Neue Ansicht „Auswertungen": Kennzahlen (belegte Termine, Ø Prüflinge/Termin,
