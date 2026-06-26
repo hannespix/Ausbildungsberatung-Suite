@@ -393,6 +393,12 @@ automatisch einplanen lassen) erscheinen als Hinweis und verlinken in die
 Stammdaten; die automatische Planung meldet zusätzlich, wie viele Prüflinge
 deshalb übersprungen wurden (`planungAutomatisch().uebersprungen`, kein stilles
 Übergehen). Chromium-getestet.
+✅ **Datenqualität „ohne Prüfungsjahr"**: Prüflinge ohne Prüfungsjahr fehlen in
+allen jahr-gefilterten Auswertungen — sie erscheinen jetzt als Hinweis in „Was
+ist zu tun?" und verlinken in die Prüflingsliste, gefiltert über die neue
+Filteroption „(ohne Jahr)" (Deep-Link `#/prueflinge?jahr=__ohne__`). Hinweis →
+Liste → Korrektur als zusammenhängendes Paar. Chromium-getestet (Hinweis n=1,
+Filter zeigt genau den ohne-Jahr-Prüfling, „Alle Jahre" wieder alle, Mobile 390px).
 ✅ **Überfällig-Check**: vergangene Prüfungstage (Datum < heute) mit noch
 unbewerteten zugeteilten Prüflingen erscheinen als Fehler-Hinweis und
 verlinken zu den Noten — zeitbewusst über `CURRENT_DATE`. Chromium-getestet

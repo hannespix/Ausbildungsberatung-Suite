@@ -364,8 +364,9 @@ async function renderListe(key) {
   // Optionaler Fortschritt-Filter (nur Prüflinge), per Deep-Link aus der
   // Übersicht (#/prueflinge?phase=eingeplant) vorbelegt.
   let phaseFilter = zeigtFortschritt ? (routeParams().phase || "") : "";
-  // Optionaler Prüfungsjahr-Filter (nur Prüflinge) für mehrere Jahrgänge.
-  let jahrFilter = "";
+  // Optionaler Prüfungsjahr-Filter (nur Prüflinge) für mehrere Jahrgänge; per
+  // Deep-Link vorbelegbar (#/prueflinge?jahr=2027 oder ?jahr=__ohne__).
+  let jahrFilter = zeigtFortschritt ? (routeParams().jahr || "") : "";
   let jahre = [];
   if (zeigtFortschritt) { try { jahre = await store.pruefungsjahre(); } catch (e) { console.warn("Jahre nicht verfügbar:", e); } }
 
@@ -394,12 +395,13 @@ async function renderListe(key) {
           ${store.FORTSCHRITT_STUFEN.map((s) => `<option value="${s.key}"${s.key === phaseFilter ? " selected" : ""}>${esc(s.label)}</option>`).join("")}
         </select>
       </div>
-      ${jahre.length ? `
+      ${(jahre.length || jahrFilter === "__ohne__") ? `
       <div class="bw-field" style="margin:0">
         <label for="jahr-filter-liste" class="bw-skip-link">Nach Prüfungsjahr filtern</label>
         <select id="jahr-filter-liste" aria-label="Nach Prüfungsjahr filtern">
           <option value="">Alle Jahre</option>
-          ${jahre.map((j) => `<option value="${j}">${esc(j)}</option>`).join("")}
+          ${jahre.map((j) => `<option value="${j}"${String(j) === String(jahrFilter) ? " selected" : ""}>${esc(j)}</option>`).join("")}
+          <option value="__ohne__"${jahrFilter === "__ohne__" ? " selected" : ""}>(ohne Jahr)</option>
         </select>
       </div>` : ""}
       <button class="bw-btn bw-btn--sekundaer" type="button" id="zulassen-alle" hidden></button>` : ""}
@@ -450,7 +452,9 @@ async function renderListe(key) {
     if (phaseFilter && phaseMap) {
       rows = rows.filter((r) => (phaseMap.get(String(r.id)) || "angemeldet") === phaseFilter);
     }
-    if (jahrFilter) {
+    if (jahrFilter === "__ohne__") {
+      rows = rows.filter((r) => !String(r.pruefungsjahr || "").trim());
+    } else if (jahrFilter) {
       rows = rows.filter((r) => String(r.pruefungsjahr || "") === String(jahrFilter));
     }
     aktuelleRows = rows; aktuellePhasen = phaseMap; aktuelleTermine = terminMap;
