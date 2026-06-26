@@ -70,6 +70,10 @@ Smoke-getestet (inkl. Mobile 390px).
 (bei Angemeldeten), „Zurückziehen" und „Reaktivieren" — setzen den Status
 direkt, was Fortschritt-Funnel, Filter und „Was ist zu tun?" sofort
 nachziehen. `store.setzeStatus()`. Chromium-getestet (alle Übergänge, Mobile).
+✅ **Termin-Deep-Links in die Planung**: `#/planung?termin=<id>` wählt den
+Termin direkt vor; die Auslastungstabelle (Auswertungen, inkl. „0 Ausschuss")
+und die Termin-Karten der Akte verlinken dorthin — ein Klick statt Suchen im
+Dropdown. Chromium-getestet (Vorauswahl, Klick-Navigation, Akte-Link, Mobile).
 
 ### M3 — Prüfungstag-Planung (Zuteilung) ✅
 Neue Ansicht „Planung": Prüflinge je Prüfungstermin **zuteilen** (mit Uhrzeit-
