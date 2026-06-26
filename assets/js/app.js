@@ -2085,6 +2085,11 @@ async function renderAuswertungen(jahr = null) {
   const einsaetze = await store.prueferEinsaetze(jahr);
   const spiegel = await store.notenVerteilung(jahr);
   const spiegelSumme = spiegel.reduce((s, r) => s + r.wert, 0);
+  const bereiche = await store.bereichsDurchschnitte(jahr);
+  const bereichLabel = (b) => (GALABAU_BEREICHE[b.gruppe] || [])[b.idx] || b.kurz;
+  const bereicheMit = bereiche.filter((b) => b.schnitt != null);
+  // Schwächste Stelle = höchster (schlechtester) Schnitt; erste bei Gleichstand.
+  const maxBereich = bereicheMit.length ? Math.max.apply(null, bereicheMit.map((b) => b.schnitt)) : null;
 
   const belegt = auslast.filter((t) => t.prueflinge > 0);
   const summePl = belegt.reduce((s, t) => s + t.prueflinge, 0);
@@ -2197,6 +2202,23 @@ async function renderAuswertungen(jahr = null) {
       </div>
     </section>
 
+    <section aria-labelledby="bereich-h" style="margin-top:var(--bw-space-4)">
+      <h2 id="bereich-h">Ø Note je Prüfungsbereich</h2>
+      <p class="bw-klein bw-leise">Durchschnitt je Bereich über alle bewerteten Prüflinge — zeigt, wo systematisch Schwächen liegen (höher = schlechter). Hilfe für die gezielte Ausbildungsberatung.</p>
+      <div id="bereich-diagramm" class="bw-card"></div>
+      <ul class="bw-legend"${bereicheMit.length ? "" : " hidden"}>
+        <li><span class="swatch" style="background:var(--bw-cat-1)"></span> Ø Note (1 = sehr gut … 6 = ungenügend)</li>
+        <li><span class="swatch" style="background:var(--bw-gelb);outline:1.5px solid var(--bw-schwarz)"></span> schwächster Bereich</li>
+      </ul>
+      <div class="bw-tablewrap" style="margin-top:var(--bw-space-2)">
+        <table class="bw-table">
+          <thead><tr><th>Bereich</th><th>Prüfungsbereich</th><th style="text-align:right">Ø Note</th><th style="text-align:right">Anzahl</th></tr></thead>
+          <tbody>${bereicheMit.length ? bereiche.map((b) => `<tr><td>${esc(b.kurz)}</td><td>${esc(bereichLabel(b))}</td><td style="text-align:right">${b.schnitt == null ? "—" : formatNote(b.schnitt)}</td><td style="text-align:right">${zahl(b.anzahl)}</td></tr>`).join("")
+            : '<tr><td colspan="4" class="bw-leise">Noch keine Bewertungen — erscheint, sobald unter <a href="#/noten">Noten</a> bewertet wurde.</td></tr>'}</tbody>
+        </table>
+      </div>
+    </section>
+
     <section aria-labelledby="auslast-h" style="margin-top:var(--bw-space-4)">
       <h2 id="auslast-h">Auslastung je Prüfungstermin</h2>
       ${ohneAusschuss ? `<p class="bw-hinweis bw-hinweis--fehler">${zahl(ohneAusschuss)} belegte(r) Termin(e) ohne Ausschuss — bitte im <a href="#/planung">Planung</a> besetzen.</p>` : ""}
@@ -2254,6 +2276,19 @@ async function renderAuswertungen(jahr = null) {
     );
   } else {
     spiegelDia.innerHTML = '<p class="bw-leise">Noch keine Bewertungen — Notenspiegel erscheint nach der Bewertung (<a href="#/noten">Noten</a>).</p>';
+  }
+
+  const bereichDia = document.getElementById("bereich-diagramm");
+  if (window.bwChart && bereicheMit.length) {
+    // Nur die erste schwächste Stelle gelb (CI: Gelb gilt genau EINEM Wert).
+    const hlKey = bereicheMit.find((b) => b.schnitt === maxBereich)?.key;
+    window.bwChart.bars(
+      bereichDia,
+      bereicheMit.map((b) => ({ label: b.kurz, value: b.schnitt, highlight: b.key === hlKey })),
+      { titel: "Ø Note je Prüfungsbereich (höher = schlechter)", max: 6 }
+    );
+  } else {
+    bereichDia.innerHTML = '<p class="bw-leise">Noch keine Bewertungen — erscheint nach der Bewertung (<a href="#/noten">Noten</a>).</p>';
   }
 
   const auslastDia = document.getElementById("auslast-diagramm");
@@ -2335,6 +2370,12 @@ async function renderAuswertungen(jahr = null) {
       <table class="bw-table">
         <thead><tr><th>Notenstufe</th><th style="text-align:right">Anzahl</th><th style="text-align:right">Anteil</th></tr></thead>
         <tbody>${spiegelSumme ? spiegel.map((r) => `<tr><td>${esc(r.label)}</td><td style="text-align:right">${zahl(r.wert)}</td><td style="text-align:right">${Math.round((r.wert / spiegelSumme) * 100)} %</td></tr>`).join("") : '<tr><td colspan="3">Keine Daten.</td></tr>'}</tbody>
+      </table>
+
+      <h2>Ø Note je Prüfungsbereich</h2>
+      <table class="bw-table">
+        <thead><tr><th>Bereich</th><th>Prüfungsbereich</th><th style="text-align:right">Ø Note</th><th style="text-align:right">Anzahl</th></tr></thead>
+        <tbody>${bereicheMit.length ? bereiche.map((b) => `<tr><td>${esc(b.kurz)}</td><td>${esc(bereichLabel(b))}</td><td style="text-align:right">${b.schnitt == null ? "—" : formatNote(b.schnitt)}</td><td style="text-align:right">${zahl(b.anzahl)}</td></tr>`).join("") : '<tr><td colspan="4">Keine Daten.</td></tr>'}</tbody>
       </table>
 
       <h2>Auslastung je Prüfungstermin</h2>
