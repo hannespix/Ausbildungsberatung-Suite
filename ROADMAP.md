@@ -54,9 +54,14 @@ Druckdialog auch als PDF. Smoke-getestet (Chromium, `window.print` gestubbt).
 Verfügbarkeiten, Ausschuss-Zusammenstellung (Vorsitz/Beisitz/Lehrkraft),
 ausgewogene Zuteilung, Einladungs-/Bestätigungsstatus.
 
-### M5 — Notenberechnung
-Bewertungsschema je Beruf (gewichtete Teilleistungen), Punkte→Note (100-Punkte-
-Schlüssel), Bestehensregeln, Sperrfach-Logik, Nachprüfungs-Kennzeichnung.
+### M5 — Notenberechnung ✅
+Neue Ansicht „Noten": Gesamtbewertung je Prüfling über den 100-Punkte-Schlüssel
+(Punkte→Note 1–6, bestanden ab 50), Bewerten-Dialog mit Live-Vorschau,
+Notenverteilungs-Diagramm. Smoke-getestet (Chromium).
+
+### M5b — Notenberechnung vertiefen (offen)
+Gewichtete Teilleistungen je Beruf, Bestehensregeln/Sperrfächer (Fachentscheidung),
+Nachprüfungs-Kennzeichnung, Verknüpfung mit Prüfungsterminen.
 
 ### M6 — Zeugnis-Erstellung
 Zeugnis/Bescheinigung aus Stammdaten + Noten, CI-konforme Druckvorlage

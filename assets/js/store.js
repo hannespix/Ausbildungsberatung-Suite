@@ -64,6 +64,17 @@ export async function oeffnen() {
       UNIQUE (pruefung_id, pruefer_id)
     );
   `);
+  // Gesamtbewertung je Prüfling (Punkte -> Note über 100-Punkte-Schlüssel).
+  await _pg.exec(`
+    CREATE TABLE IF NOT EXISTS bewertungen (
+      id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      pruefling_id bigint NOT NULL UNIQUE,
+      punkte int,
+      note int,
+      status text,
+      bemerkung text
+    );
+  `);
   return { pg: _pg, modus: _modus };
 }
 
@@ -132,7 +143,10 @@ export async function aendern(key, id, daten) {
 export async function loeschen(key, id) {
   const e = ent(key);
   // abhängige Zuteilungen mitentfernen (kein Datenmüll)
-  if (key === "prueflinge") await _pg.query(`DELETE FROM zuteilungen WHERE pruefling_id = $1`, [id]);
+  if (key === "prueflinge") {
+    await _pg.query(`DELETE FROM zuteilungen WHERE pruefling_id = $1`, [id]);
+    await _pg.query(`DELETE FROM bewertungen WHERE pruefling_id = $1`, [id]);
+  }
   if (key === "pruefer")    await _pg.query(`DELETE FROM pruefer_zuteilungen WHERE pruefer_id = $1`, [id]);
   if (key === "pruefungen") {
     await _pg.query(`DELETE FROM zuteilungen WHERE pruefung_id = $1`, [id]);
@@ -229,6 +243,62 @@ export async function prueferZuteilen(pruefungId, prueferId, rolle = null) {
 
 export async function entfernePrueferZuteilung(zuteilungId) {
   await _pg.query(`DELETE FROM pruefer_zuteilungen WHERE id = $1`, [zuteilungId]);
+}
+
+/* ------------------------------------------------------------ Notenberechnung */
+
+/**
+ * Standardisierter 100-Punkte-Schlüssel (Berufsbildung): Punkte -> Note +
+ * Bezeichnung; bestanden ab 50 Punkten. Beruf-spezifische Gewichtungen/
+ * Sperrfächer sind bewusst (noch) nicht abgebildet (Fachentscheidung).
+ */
+export function noteAusPunkten(punkte) {
+  const p = Math.max(0, Math.min(100, Math.round(Number(punkte) || 0)));
+  let note, bezeichnung;
+  if (p >= 92) { note = 1; bezeichnung = "sehr gut"; }
+  else if (p >= 81) { note = 2; bezeichnung = "gut"; }
+  else if (p >= 67) { note = 3; bezeichnung = "befriedigend"; }
+  else if (p >= 50) { note = 4; bezeichnung = "ausreichend"; }
+  else if (p >= 30) { note = 5; bezeichnung = "mangelhaft"; }
+  else { note = 6; bezeichnung = "ungenügend"; }
+  return { punkte: p, note, bezeichnung, bestanden: p >= 50 };
+}
+
+/** Setzt/aktualisiert die Gesamtbewertung eines Prüflings. */
+export async function setzeBewertung(prueflingId, punkte, bemerkung = null) {
+  const r = noteAusPunkten(punkte);
+  const status = r.bestanden ? "bestanden" : "nicht bestanden";
+  await _pg.query(
+    `INSERT INTO bewertungen (pruefling_id, punkte, note, status, bemerkung)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (pruefling_id) DO UPDATE
+         SET punkte = EXCLUDED.punkte, note = EXCLUDED.note,
+             status = EXCLUDED.status, bemerkung = EXCLUDED.bemerkung`,
+    [prueflingId, r.punkte, r.note, status, bemerkung || null]
+  );
+  return r;
+}
+
+/** Alle Prüflinge mit (optionaler) Bewertung, fachlich sortiert. */
+export async function bewertungenListe() {
+  const res = await _pg.query(
+    `SELECT p.id AS pruefling_id, p.nachname, p.vorname, p.beruf,
+            b.punkte, b.note, b.status, b.bemerkung
+       FROM prueflinge p LEFT JOIN bewertungen b ON b.pruefling_id = p.id
+      ORDER BY p.nachname, p.vorname`
+  );
+  return res.rows;
+}
+
+/** Notenverteilung (Note 1..6) für Auswertungen/Diagramme. */
+export async function notenVerteilung() {
+  const res = await _pg.query(
+    `SELECT note, count(*)::int AS wert FROM bewertungen
+      WHERE note IS NOT NULL GROUP BY note ORDER BY note`
+  );
+  const map = {};
+  res.rows.forEach((r) => { map[r.note] = r.wert; });
+  return [1, 2, 3, 4, 5, 6].map((n) => ({ note: n, wert: map[n] || 0 }));
 }
 
 export async function anzahl(key) {
