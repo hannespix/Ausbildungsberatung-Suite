@@ -22,6 +22,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Galabau-Notenlogik testen
+        run: node tools/test_galabau.mjs
       - name: Bundle packen
         run: |
           mkdir -p dist
