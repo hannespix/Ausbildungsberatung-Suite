@@ -294,12 +294,16 @@ Prüfungsjahr und abgeleitetem Fortschritt; jeder Prüfling öffnet seine eigene
 Akte, dazu „X bewertet · Y bestanden". `store.betriebAkte()`. Chromium-getestet
 (Verknüpfung, Prüfling-Sprung, Leerzustand, Mobile 390px).
 
-### Nächste Prüfungstage — Terminvorschau ✅
+### Nächste Prüfungstage — Bereitschafts-Board ✅
 Die Übersicht zeigt die nächsten (heute oder später liegenden) Prüfungstage
-chronologisch (max. 5): Datum mit Wochentag, Bezeichnung, Fachrichtung,
-Prüflingszahl und Warnung „kein Ausschuss"; jeder Eintrag öffnet den Termin
-direkt in der Planung (`#/planung?termin=…`). Aus `auslastung()` abgeleitet,
-keine neue Eingabe. Chromium-getestet (Auswahl, Verlinkung, Mobile 390px).
+chronologisch (max. 5) als **Bereitschafts-Board**: je Tag drei Ampel-Kriterien
+auf einen Blick — **Ausschuss x/3**, **Zusagen** (offen/ok) und **Uhrzeiten
+x/n** (Zeitraster) — grün = erledigt, ○ = offen; Tage ohne Prüflinge sind
+markiert. Jeder Eintrag öffnet den Termin direkt in der Planung
+(`#/planung?termin=…`). Bündelt die Readiness-Signale aus Planung, Zusagen und
+Zeitraster, ohne einzeln je Termin nachzusehen (`prueftagBereitschaft()`).
+Chromium-getestet (bereiter Tag = 3 grün, lückenhafter Tag „Uhrzeiten 0/2",
+Verlinkung, Mobile 390px inkl. Hamburger ohne Overflow).
 
 ### „Was ist zu tun?" — Aufgaben-Panel ✅
 Übersicht erkennt automatisch Handlungsbedarf über alle Stationen und verlinkt

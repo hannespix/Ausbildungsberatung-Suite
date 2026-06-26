@@ -86,6 +86,37 @@ function navAufbauen() {
 
 /* ----------------------------------------------------------------- Übersicht */
 
+/** Ampel-Punkt für ein Bereitschafts-Kriterium (erledigt = grün, offen = leise). */
+function bereitschaftPunkt(ok) {
+  return ok ? '<span class="bw-status-do" aria-hidden="true">●</span>'
+            : '<span class="bw-leise" aria-hidden="true">○</span>';
+}
+
+/** Ein Prüfungstag im Bereitschafts-Board (Ausschuss, Zusagen, Uhrzeiten). */
+function bereitschaftEintrag(t) {
+  const datum = t.datum ? new Date(t.datum).toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit" }) : "—";
+  const hatPl = t.prueflinge > 0;
+  const ausschussOk = t.ausschuss >= 3;
+  const zusagenOk = t.ausschuss > 0 && t.zusagen_offen === 0;
+  const uhrzeitOk = hatPl && t.mit_slot === t.prueflinge;
+  const chips = hatPl
+    ? `<span class="bw-bereitschaft">
+         <span>${bereitschaftPunkt(ausschussOk)} Ausschuss ${zahl(t.ausschuss)}/3</span>
+         <span>${bereitschaftPunkt(zusagenOk)} Zusagen ${t.zusagen_offen ? zahl(t.zusagen_offen) + " offen" : "ok"}</span>
+         <span>${bereitschaftPunkt(uhrzeitOk)} Uhrzeiten ${zahl(t.mit_slot)}/${zahl(t.prueflinge)}</span>
+       </span>`
+    : '<span class="bw-klein"><span class="bw-status-dont">●</span> noch keine Prüflinge</span>';
+  return `
+    <li>
+      <span>
+        <strong>${esc(datum)}</strong> · ${esc(t.titel || "Termin")}
+        <span class="bw-klein bw-leise">${t.beruf ? esc(t.beruf) + " · " : ""}${zahl(t.prueflinge)} Prüflinge</span>
+        ${chips}
+      </span>
+      <a class="bw-btn bw-btn--sekundaer" href="#/planung?termin=${t.id}" style="margin-left:auto">Öffnen</a>
+    </li>`;
+}
+
 async function renderUebersicht() {
   const stats = [];
   for (const k of NAV_REIHENFOLGE) {
@@ -100,13 +131,11 @@ async function renderUebersicht() {
   const fBewertet = fBestanden + fNicht;
   const quote = fBewertet ? Math.round((fBestanden / fBewertet) * 100) : null;
 
-  // Nächste Prüfungstage: heute oder später, chronologisch, max. 5.
-  const heute = new Date(); heute.setHours(0, 0, 0, 0);
+  // Nächste Prüfungstage: heute oder später, chronologisch, max. 5 — als
+  // Bereitschafts-Board (Ausschuss, Zusagen, Uhrzeiten je Tag auf einen Blick).
   let naechste = [];
   try {
-    naechste = (await store.auslastung())
-      .filter((t) => t.datum && new Date(t.datum) >= heute)
-      .slice(0, 5);
+    naechste = (await store.prueftagBereitschaft()).slice(0, 5);
   } catch (e) { console.warn("Termine nicht verfügbar:", e); }
 
   appEl().innerHTML = `
@@ -127,16 +156,9 @@ async function renderUebersicht() {
     ${naechste.length ? `
     <section aria-labelledby="naechste-h" style="margin-top:var(--bw-space-4)">
       <h2 id="naechste-h">Nächste Prüfungstage</h2>
+      <p class="bw-klein bw-leise">Bereitschaft je Tag — <span class="bw-status-do">●</span> erledigt, <span class="bw-leise">○</span> offen. Tag öffnen, um Lücken zu schließen.</p>
       <ul class="bw-trefferliste">
-        ${naechste.map((t) => `
-          <li>
-            <span>
-              <strong>${t.datum ? esc(new Date(t.datum).toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit" })) : "—"}</strong>
-              · ${esc(t.titel || "Termin")}
-              <span class="bw-klein bw-leise">${t.beruf ? esc(t.beruf) + " · " : ""}${zahl(t.prueflinge)} Prüflinge${t.ausschuss ? "" : ' · <span class="bw-status-dont">kein Ausschuss</span>'}</span>
-            </span>
-            <a class="bw-btn bw-btn--sekundaer" href="#/planung?termin=${t.id}" style="margin-left:auto">Öffnen</a>
-          </li>`).join("")}
+        ${naechste.map((t) => bereitschaftEintrag(t)).join("")}
       </ul>
     </section>` : ""}
 
