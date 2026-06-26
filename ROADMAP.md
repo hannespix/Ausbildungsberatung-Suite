@@ -351,6 +351,13 @@ Prüfungsjahr-Filter) — für Dokumentation/Jahresbericht. Chromium-getestet
 ungenügend) als CI-konformes Diagramm + Tabelle mit Anzahl und Anteil — folgt
 dem Prüfungsjahr-Filter, im Bericht enthalten (`notenVerteilung(jahr)`).
 Chromium-getestet (6 Stufen, genau eine hervorgehoben, Anteil %, Mobile 390px).
+✅ **Ø Note je Prüfungsbereich (Schwachstellen)**: Durchschnitt der 9 Bereiche
+(5 Praxis I–V + 4 Kenntnis K1–K4) über alle bewerteten Prüflinge als CI-konformes
+Diagramm (schwächster Bereich gelb) + Tabelle (Bereichsname, Ø Note, Anzahl) —
+zeigt der Ausbildungsberatung, wo systematisch Schwächen liegen (höher =
+schlechter). Folgt dem Prüfungsjahr-Filter, im Bericht enthalten
+(`bereichsDurchschnitte(jahr)`). Chromium-getestet (9 Balken, genau einer
+hervorgehoben = schwächster, Tabelle, Bericht, Mobile 390px).
 Offen: Stichtagsauswertung.
 
 ### M11 — Barrierefreiheit & Feinschliff

@@ -825,6 +825,42 @@ export async function notenVerteilung(jahr = null) {
   return stufen.map((s) => ({ label: s, wert: map[s] || 0 }));
 }
 
+/**
+ * Durchschnittsnote je Prüfungsbereich (5 Praxis- + 4 Kenntnisbereiche) über
+ * alle bewerteten Prüflinge — zeigt der Ausbildungsberatung, wo systematisch
+ * Schwächen liegen (höherer Schnitt = schlechter). Optionaler Prüfungsjahr-
+ * Filter (Join über den Prüfling). Labels setzt die UI aus GALABAU_BEREICHE;
+ * hier nur Schlüssel, Gruppe und Index (Trennung von Daten und Beschriftung).
+ * @returns {Array<{key,kurz,gruppe,idx,schnitt,anzahl}>}
+ */
+export async function bereichsDurchschnitte(jahr = null) {
+  const res = await _pg.query(
+    `SELECT
+        avg(b.p1) AS p1, avg(b.p2) AS p2, avg(b.p3) AS p3, avg(b.p4) AS p4, avg(b.p5) AS p5,
+        avg(b.k1) AS k1, avg(b.k2) AS k2, avg(b.k3) AS k3, avg(b.k4) AS k4,
+        count(b.p1) AS np1, count(b.p2) AS np2, count(b.p3) AS np3, count(b.p4) AS np4, count(b.p5) AS np5,
+        count(b.k1) AS nk1, count(b.k2) AS nk2, count(b.k3) AS nk3, count(b.k4) AS nk4
+       FROM bewertungen b JOIN prueflinge p ON p.id = b.pruefling_id
+      WHERE ($1::int IS NULL OR p.pruefungsjahr = $1::int)`,
+    [jahr]
+  );
+  const r = res.rows[0] || {};
+  const defs = [
+    ["p1", "I", "praxis", 0], ["p2", "II", "praxis", 1], ["p3", "III", "praxis", 2],
+    ["p4", "IV", "praxis", 3], ["p5", "V", "praxis", 4],
+    ["k1", "K1", "kenntnis", 0], ["k2", "K2", "kenntnis", 1],
+    ["k3", "K3", "kenntnis", 2], ["k4", "K4", "kenntnis", 3],
+  ];
+  return defs.map(([key, kurz, gruppe, idx]) => {
+    const v = r[key];
+    return {
+      key, kurz, gruppe, idx,
+      schnitt: v == null ? null : Math.round(Number(v) * 10) / 10,
+      anzahl: Number(r["n" + key] || 0),
+    };
+  });
+}
+
 export async function anzahl(key) {
   const e = ent(key);
   const res = await _pg.query(`SELECT count(*)::int AS n FROM ${e.key}`);
