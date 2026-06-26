@@ -901,6 +901,11 @@ export async function prueferEinsaetze(jahr = null) {
   return res.rows;
 }
 
+/** Setzt den Status eines einzelnen Prüflings (Schnellaktion in der Akte). */
+export async function setzeStatus(prueflingId, status) {
+  await _pg.query(`UPDATE prueflinge SET status = $2 WHERE id = $1`, [Number(prueflingId), status]);
+}
+
 /** Ist die Prüfer:in am gegebenen Datum als abwesend hinterlegt? */
 export async function istAbwesend(prueferId, datum) {
   if (!datum) return false;

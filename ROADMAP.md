@@ -63,9 +63,13 @@ Smoke-getestet (inkl. Mobile).
 Eigene Detailansicht je Prüfling (`#/pruefling/<id>`, „📋"-Symbol in der Liste):
 bündelt Stammdaten, zugeteilten Prüfungstag (Datum/Uhrzeit-Slot, Ort, Ausschuss),
 Bewertung (Schnitte/Gesamtnote/Ergebnis) und den abgeleiteten Fortschritt an
-einem Ort. Direkt-Aktionen: Bewerten (Noten-Dialog), Zeugnis drucken,
+einem Ort. Direkt-Aktionen: Bewerten (Noten-Dialog), Einladung/Zeugnis drucken,
 Stammdaten bearbeiten — eine Ansicht bedient Planung, Noten und Zeugnis.
 Smoke-getestet (inkl. Mobile 390px).
+✅ **Status-Schnellaktionen**: kontextabhängige Knöpfe in der Akte — „Zulassen"
+(bei Angemeldeten), „Zurückziehen" und „Reaktivieren" — setzen den Status
+direkt, was Fortschritt-Funnel, Filter und „Was ist zu tun?" sofort
+nachziehen. `store.setzeStatus()`. Chromium-getestet (alle Übergänge, Mobile).
 
 ### M3 — Prüfungstag-Planung (Zuteilung) ✅
 Neue Ansicht „Planung": Prüflinge je Prüfungstermin **zuteilen** (mit Uhrzeit-
