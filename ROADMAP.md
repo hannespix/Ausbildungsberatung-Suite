@@ -164,6 +164,12 @@ Bewerten-Dialog (9 Bereiche, Live-Ergebnis), Noten-Liste, Zeugnis. Smoke-geteste
   Ausschuss am Prüfungstag genau seine Liste ab (Planung ↔ Noten).
   `bewertungenListe(pruefungId)`, SQL- und Chromium-getestet (155 → 12,
   Slot-Reihenfolge, Filter bleibt nach Speichern, Mobile 390px).
+- ✅ **Reihen-Bewertung**: in der termingefilterten Notenliste startet
+  „Reihen-Bewertung (N offen)" eine Kette — nach dem Speichern öffnet sich
+  automatisch der nächste noch unbewertete Prüfling, bis alle erfasst sind;
+  Abbrechen stoppt jederzeit. Nutzt den vorhandenen, mobil bedienbaren
+  Bewerten-Dialog (kein Raster). Chromium-getestet (Auto-Weiterschaltung,
+  Abbruch, offene Zahl sinkt, Mobile 390px).
 - ✅ **Zeugnis spiegelt die Ergänzung**: hatte ein Kenntnisbereich eine
   mündliche Ergänzungsprüfung, zeigt das Zeugnis die gewichtete (effektive)
   Bereichsnote mit Fußnote „* nach mündlicher Ergänzungsprüfung" — passend zum

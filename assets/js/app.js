@@ -1220,6 +1220,9 @@ async function renderNoten(pruefungId = null) {
         </select>
       </div>
       <span class="bw-klein bw-leise" style="align-self:center">${zahl(bewertet)} von ${zahl(rows.length)} bewertet</span>
+      ${gefiltert && rows.some((r) => r.gesamt == null)
+        ? `<button class="bw-btn bw-btn--gelb" type="button" id="reihen-btn">Reihen-Bewertung (${zahl(rows.filter((r) => r.gesamt == null).length)} offen)</button>`
+        : ""}
     </div>` : ""}
 
     <div class="bw-tablewrap">
@@ -1269,6 +1272,17 @@ async function renderNoten(pruefungId = null) {
   document.getElementById("noten-termin")?.addEventListener("change", (ev) => {
     const v = ev.target.value;
     renderNoten(v ? Number(v) : null);
+  });
+
+  // Reihen-Bewertung: nach dem Speichern öffnet sich der nächste unbewertete
+  // Prüfling automatisch — zügiges Abarbeiten am Prüfungstag, mobil bedienbar.
+  document.getElementById("reihen-btn")?.addEventListener("click", () => {
+    const offene = rows.filter((r) => r.gesamt == null);
+    const naechste = (i) => {
+      if (i >= offene.length) { meldung(`Reihen-Bewertung abgeschlossen: ${zahl(offene.length)} bewertet.`); renderNoten(pruefungId); return; }
+      notenDialog(offene[i], () => naechste(i + 1));
+    };
+    naechste(0);
   });
 
   document.getElementById("noten-koerper").addEventListener("click", async (ev) => {
