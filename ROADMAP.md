@@ -256,6 +256,11 @@ Bewerten-Dialog (9 Bereiche, Live-Ergebnis), Noten-Liste, Zeugnis. Smoke-geteste
   Abtippen der in Excel gesammelten Punkte; speist Gesamtnote, Zeugnis,
   Auswertungen. Chromium-getestet (Treffer/ohne Treffer/unvollständig gezählt,
   Datei-Upload im Dialog setzt Bewertungen, Mobile 390px).
+- ✅ **Aufgeräumte Noten-Toolbar**: die drei CSV-Aktionen (Bewertungsvorlage,
+  Noten importieren, Noten als CSV) liegen jetzt in einer aufklappbaren Gruppe
+  „CSV & Vorlagen" (natives `<details>`, `.bw-disclosure`) — die Reihen-Bewertung
+  bleibt als Hauptaktion sichtbar. Reduziert die Knopf-Flut, besonders mobil.
+  Chromium-getestet (Gruppierung, Knopf-Funktion erhalten, Mobile 390px).
 - ✅ **Bewertungsvorlage (CSV) — Round-Trip**: „Bewertungsvorlage (CSV)" in der
   Noten-Ansicht exportiert alle (ggf. termingefilterten) Prüflinge mit
   vorausgefülltem Namen und leeren, **import-kompatiblen** Notenspalten (Praxis

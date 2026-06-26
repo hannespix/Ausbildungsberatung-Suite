@@ -1358,9 +1358,14 @@ async function renderNoten(pruefungId = null) {
       ${gefiltert && rows.some((r) => r.gesamt == null)
         ? `<button class="bw-btn bw-btn--gelb" type="button" id="reihen-btn">Reihen-Bewertung (${zahl(rows.filter((r) => r.gesamt == null).length)} offen)</button>`
         : ""}
-      <button class="bw-btn bw-btn--sekundaer" type="button" id="noten-vorlage" ${rows.length ? "" : "disabled"}>Bewertungsvorlage (CSV)</button>
-      <button class="bw-btn bw-btn--sekundaer" type="button" id="noten-import">Noten importieren (CSV)</button>
-      <button class="bw-btn bw-btn--sekundaer" type="button" id="noten-csv" ${bewertet ? "" : "disabled"}>Noten als CSV</button>
+      <details class="bw-disclosure">
+        <summary class="bw-btn bw-btn--sekundaer">CSV &amp; Vorlagen</summary>
+        <div class="bw-disclosure__panel">
+          <button class="bw-btn bw-btn--sekundaer" type="button" id="noten-vorlage" ${rows.length ? "" : "disabled"}>Bewertungsvorlage (CSV)</button>
+          <button class="bw-btn bw-btn--sekundaer" type="button" id="noten-import">Noten importieren (CSV)</button>
+          <button class="bw-btn bw-btn--sekundaer" type="button" id="noten-csv" ${bewertet ? "" : "disabled"}>Noten als CSV</button>
+        </div>
+      </details>
     </div>` : ""}
 
     <div class="bw-tablewrap">
