@@ -65,7 +65,8 @@ function navAufbauen() {
   if (!ul) return;
   const route = aktiveRoute();
   const punkte = [{ key: "uebersicht", label: "Übersicht" }]
-    .concat(NAV_REIHENFOLGE.map((k) => ({ key: k, label: ENTITAETEN[k].plural })));
+    .concat(NAV_REIHENFOLGE.map((k) => ({ key: k, label: ENTITAETEN[k].plural })))
+    .concat([{ key: "planung", label: "Planung" }]);
   ul.innerHTML = punkte.map((p) => {
     const aktiv = p.key === route ? ' aria-current="page"' : "";
     return `<li><a href="#/${p.key === "uebersicht" ? "" : p.key}"${aktiv}>${esc(p.label)}</a></li>`;
@@ -203,6 +204,120 @@ async function renderListe(key) {
   zeichne();
 }
 
+/* ----------------------------------------------------- Prüfungstag-Planung */
+
+function terminLabel(t) {
+  const datum = t.datum ? new Date(t.datum).toLocaleDateString("de-DE") : "ohne Datum";
+  return `${t.titel} — ${datum}${t.ort ? " · " + t.ort : ""}`;
+}
+
+async function renderPlanung() {
+  const termine = await store.liste("pruefungen");
+  if (!termine.length) {
+    appEl().innerHTML = `
+      <h1>Prüfungstag-Planung</h1>
+      <p class="bw-hinweis">Noch keine Prüfungstermine vorhanden.
+        Bitte zuerst unter <a href="#/pruefungen">Prüfungstermine</a> einen Termin anlegen.</p>`;
+    return;
+  }
+
+  appEl().innerHTML = `
+    <h1>Prüfungstag-Planung</h1>
+    <p class="bw-unterzeile">Prüflinge den Prüfungsterminen zuteilen und den Tagesablauf planen</p>
+    <div class="bw-field" style="max-width:36rem">
+      <label for="pruefungswahl">Prüfungstermin</label>
+      <select id="pruefungswahl">
+        ${termine.map((t) => `<option value="${t.id}">${esc(terminLabel(t))}</option>`).join("")}
+      </select>
+    </div>
+    <div id="plan" aria-live="polite"></div>
+  `;
+
+  const wahl = document.getElementById("pruefungswahl");
+
+  async function planZeichnen() {
+    const id = Number(wahl.value);
+    const termin = termine.find((t) => t.id === id);
+    const zugeteilt = await store.zuteilungenFuer(id);
+    const offen = await store.nichtZugeteilt(id);
+
+    document.getElementById("plan").innerHTML = `
+      <div class="bw-card" style="margin-bottom:var(--bw-space-3)">
+        <strong>${esc(termin.titel)}</strong>
+        <div class="bw-klein bw-leise">
+          ${termin.datum ? esc(new Date(termin.datum).toLocaleDateString("de-DE")) : "ohne Datum"}
+          ${termin.zeit_von ? " · " + esc(termin.zeit_von) + (termin.zeit_bis ? "–" + esc(termin.zeit_bis) : "") : ""}
+          ${termin.ort ? " · " + esc(termin.ort) : ""}${termin.raum ? ", " + esc(termin.raum) : ""}
+          ${termin.beruf ? " · " + esc(termin.beruf) : ""}
+        </div>
+      </div>
+
+      <h2>Zugeteilte Prüflinge (${zahl(zugeteilt.length)})</h2>
+      <table class="bw-table">
+        <thead><tr><th>Uhrzeit</th><th>Name</th><th>Beruf</th><th>Betrieb</th><th>Aktion</th></tr></thead>
+        <tbody>
+          ${zugeteilt.map((z) => `
+            <tr>
+              <td>${esc(z.slot || "—")}</td>
+              <td>${esc((z.nachname || "") + ", " + (z.vorname || ""))}</td>
+              <td>${esc(z.beruf || "")}</td>
+              <td>${esc(z.betrieb || "")}</td>
+              <td class="bw-actions">
+                <button class="bw-iconbtn" type="button" data-remove="${z.zuteilung_id}"
+                        aria-label="Zuteilung von ${esc((z.vorname || "") + " " + (z.nachname || ""))} entfernen" title="Entfernen">🗑</button>
+              </td>
+            </tr>`).join("")}
+        </tbody>
+      </table>
+      <p id="plan-leer" class="bw-hinweis"${zugeteilt.length ? " hidden" : ""}>Noch keine Prüflinge zugeteilt.</p>
+
+      <h2 style="margin-top:var(--bw-space-4)">Prüfling zuteilen</h2>
+      <div class="bw-toolbar">
+        <div class="bw-field" style="flex:1 1 18rem;margin:0">
+          <label for="pruefling-wahl" class="bw-skip-link">Prüfling</label>
+          <select id="pruefling-wahl"${offen.length ? "" : " disabled"}>
+            ${offen.length
+              ? offen.map((p) => `<option value="${p.id}">${esc((p.nachname || "") + ", " + (p.vorname || "") + (p.beruf ? " (" + p.beruf + ")" : ""))}</option>`).join("")
+              : '<option value="">Alle Prüflinge bereits zugeteilt</option>'}
+          </select>
+        </div>
+        <div class="bw-field" style="margin:0">
+          <label for="slot-wahl" class="bw-skip-link">Uhrzeit</label>
+          <input id="slot-wahl" type="time" aria-label="Uhrzeit (optional)"${offen.length ? "" : " disabled"}>
+        </div>
+        <button class="bw-btn bw-btn--gelb" type="button" id="zuteilen-btn"${offen.length ? "" : " disabled"}>Zuteilen</button>
+      </div>
+    `;
+
+    document.getElementById("zuteilen-btn")?.addEventListener("click", async () => {
+      const pid = Number(document.getElementById("pruefling-wahl").value);
+      if (!pid) { meldung("Bitte einen Prüfling wählen.", "fehler"); return; }
+      const slot = document.getElementById("slot-wahl").value || null;
+      try {
+        const konflikte = await store.terminkonflikte(pid, id);
+        if (konflikte.length) {
+          const liste = konflikte.map((k) => `„${k.titel}"`).join(", ");
+          if (!confirm(`Dieser Prüfling ist am selben Tag bereits zugeteilt (${liste}). Trotzdem zuteilen?`)) return;
+        }
+        await store.zuteilen(id, pid, slot);
+        meldung("Prüfling zugeteilt.");
+        planZeichnen();
+      } catch (e) { console.error(e); meldung("Zuteilen fehlgeschlagen: " + e.message, "fehler"); }
+    });
+
+    document.querySelector("#plan tbody")?.addEventListener("click", async (ev) => {
+      const rid = ev.target.closest("[data-remove]")?.getAttribute("data-remove");
+      if (!rid) return;
+      await store.entferneZuteilung(Number(rid));
+      meldung("Zuteilung entfernt.");
+      planZeichnen();
+    });
+  }
+
+  wahl.addEventListener("change", planZeichnen);
+  planZeichnen();
+}
+
 /* ------------------------------------------------------------- CRUD-Dialog */
 
 function feldHtml(f, value, refOptionen) {
@@ -328,6 +443,7 @@ async function route() {
   const r = aktiveRoute();
   try {
     if (r === "uebersicht") await renderUebersicht();
+    else if (r === "planung") await renderPlanung();
     else if (ENTITAETEN[r]) await renderListe(r);
     else { location.hash = "#/"; return; }
   } catch (e) {
