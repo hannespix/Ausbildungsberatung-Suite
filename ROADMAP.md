@@ -241,6 +241,12 @@ dem Schließen). `store.prueferAkte()`. Nebenbei behoben: breite Tabellen in
 jetzt im `.bw-tablewrap` horizontal scrollen. Chromium-getestet (Einsatz-
 Sprung, Abwesenheit, Mobile 390px ohne Overflow).
 
+### Prüfling ↔ Betrieb beidseitig verlinkt ✅
+Die Prüflings-Akte verlinkt den Ausbildungsbetrieb (über den Namen aufgelöst)
+direkt zur Betriebs-Akte; die Betriebs-Akte führt bereits zurück zu jedem
+Prüfling. Lässt sich der Name keinem Betrieb zuordnen, bleibt er reiner Text.
+`prueflingAkte().betriebId`. Chromium-getestet (beidseitig, Nicht-Treffer, Mobile).
+
 ### Betriebs-Akte (Betrieb ↔ Prüflinge) ✅
 Detailansicht je Ausbildungsbetrieb (`#/betrieb/<id>`, „📋" in der Betriebs-
 liste): Kontaktdaten (Anschrift, Ansprechpartner, klickbare Mail/Tel) und alle

@@ -1264,7 +1264,16 @@ export async function prueflingAkte(prueflingId) {
        FROM prueflinge p LEFT JOIN bewertungen b ON b.pruefling_id = p.id WHERE p.id = $1`,
     [prueflingId]
   )).rows[0];
-  return { pruefling: p, termine, passend, bewertung, phase: ph ? ph.phase : "angemeldet" };
+  // Betriebs-Id (über den Namen), damit die Akte direkt zur Betriebs-Akte verlinkt.
+  let betriebId = null;
+  if (p.betrieb && String(p.betrieb).trim()) {
+    const br = (await _pg.query(
+      `SELECT id FROM betriebe WHERE lower(btrim(name)) = lower(btrim($1)) ORDER BY id LIMIT 1`,
+      [p.betrieb]
+    )).rows[0];
+    betriebId = br ? br.id : null;
+  }
+  return { pruefling: p, termine, passend, bewertung, betriebId, phase: ph ? ph.phase : "angemeldet" };
 }
 
 /**
