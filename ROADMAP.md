@@ -136,8 +136,16 @@ Bewerten-Dialog (9 Bereiche, Live-Ergebnis), Noten-Liste, Zeugnis. Smoke-geteste
   Pflanzenkenntnisse-Feld; Teilwerte werden gespeichert und beim Wiederöffnen
   vorbelegt. Nebenbei behoben: Dezimalnoten gingen beim Wiederöffnen verloren
   (`type=number` akzeptiert kein Komma). Smoke-getestet.
-- Offen: Mündliche Ergänzungsprüfung ((U+U+V)/3, nur schriftliche Fächer),
-  „eine einzige 6 → durchgefallen" explizit, weitere Fachrichtungen.
+- ✅ **Mündliche Ergänzungsprüfung**: im Bewerten-Dialog optional ein
+  Kenntnisbereich wählbar + mündliche Note; die Bereichsnote wird zu
+  TRUNC((2·schriftlich + 1·mündlich)/3, 1) gewichtet und fließt so in
+  Kenntnis-Schnitt, Gesamtnote und Bestehen ein (Live-Vorschau weist die
+  Ergänzung aus). Die schriftlichen Bereichsnoten k1..k4 bleiben dokumentiert;
+  Bereich + Note werden gespeichert, beim Wiederöffnen vorbefüllt und sind in
+  der Datensicherung enthalten. Über die Zulassung entscheidet der
+  Prüfungsausschuss (keine Automatik). `store.ergaenzteKenntnis()`, unit- und
+  Chromium-getestet (Kenntnis 4,2 → 4,0; Persistenz; Mobile 390px).
+- Offen: „eine einzige 6 → durchgefallen" explizit, weitere Fachrichtungen.
 
 ### M7 — Excel-/CSV-Import (teils ✅)
 - ✅ **CSV-Import von Prüflingen**: offline-Parser (Trennzeichen-Erkennung ; / ,,
