@@ -125,5 +125,17 @@ Persistenz nach Reload).
 DB-Datei-Export/-Import (`dumpDataDir`/`loadDataDir`) für „DB-Datei daneben";
 Single-File in der CI bauen; Größe optimieren.
 
+### Beispieldaten-Generator ✅
+Großer fiktiver Datensatz per Knopf (Übersicht): ~155 Prüflinge nach
+Fachrichtungs-Verteilung (GaLaBau 100, Gemüsebau 20, Zierpflanzenbau 10,
+Baumschule 10, Friedhofsgärtnerei 5, Obstbau 5, Staudengärtnerei 5), Betriebe
+mit 1–10 Azubis, passende Prüfer:innen und Prüfungstermine je Fachrichtung;
+„Alle Daten löschen" zum Zurücksetzen. Smoke-getestet (Verteilung geprüft).
+
+### Workflow-Ausbau (offen, Loop)
+„Von der Vorbereitung bis zum Zeugnis": Auto-Zuteilung Prüflinge→Termine je
+Fachrichtung, Ausschuss-Vorschlag, Zeitraster/Slots automatisch, Status-Workflow
+(angemeldet→zugelassen→geprüft→bestanden), Serien-Zeugnisdruck, Auswertungen.
+
 ### Laufend
 Datensicherung (DB-Export/-Import als Datei), Robustheit, Tests, Performance.

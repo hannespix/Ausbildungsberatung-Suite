@@ -536,3 +536,124 @@ export async function beispieldatenEinmalig() {
 
   return true;
 }
+
+/* ----------------------------------------------- Großer Beispieldatensatz */
+
+const DEMO_VORNAMEN = ["Lena","Tim","Sara","Jonas","Mara","Noah","Emma","Luca","Mia","Paul",
+  "Lea","Finn","Hannah","Ben","Lisa","Jan","Nele","Tom","Marie","Max","Sophie","Leon","Anna",
+  "Felix","Laura","Niklas","Julia","David","Clara","Erik","Pia","Moritz","Johanna","Simon",
+  "Greta","Jakob","Ida","Elias","Frieda","Linus","Mira","Aaron","Helena","Theo","Romy"];
+const DEMO_NACHNAMEN = ["Albrecht","Brenner","Conrad","Dietz","Engel","Fischer","Graf","Huber",
+  "Imhof","Jung","Keller","Lang","Maier","Naumann","Ott","Pfeiffer","Quandt","Reber","Schmid",
+  "Trapp","Ulrich","Vogt","Weber","Xander","Zimmermann","Bauer","Schäfer","Wolf","Krause","Lehmann",
+  "Sommer","Winkler","Hofmann","Bayer","Roth","Seitz","Frey","Kaiser","Arnold","Busch","Decker"];
+const DEMO_ORTE = [["Freiburg","79098"],["Emmendingen","79312"],["Lahr","77933"],["Offenburg","77652"],
+  ["Müllheim","79379"],["Breisach","79206"],["Waldkirch","79183"],["Kehl","77694"],["Lörrach","79539"],
+  ["Bad Säckingen","79713"],["Titisee-Neustadt","79822"],["Ihringen","79241"],["Merzhausen","79249"],
+  ["Gundelfingen","79194"],["Bahlingen","79353"]];
+const DEMO_STATUS = ["angemeldet","zugelassen","zugelassen","zugelassen"];
+
+/** Fachrichtung -> {anzahl, betriebTyp} für den großen Beispieldatensatz. */
+const DEMO_VERTEILUNG = [
+  { beruf: "Garten- und Landschaftsbau", anzahl: 100, typ: "GaLaBau" },
+  { beruf: "Gemüsebau",          anzahl: 20, typ: "Gemüsebau" },
+  { beruf: "Zierpflanzenbau",    anzahl: 10, typ: "Zierpflanzengärtnerei" },
+  { beruf: "Baumschule",         anzahl: 10, typ: "Baumschule" },
+  { beruf: "Friedhofsgärtnerei", anzahl: 5,  typ: "Friedhofsgärtnerei" },
+  { beruf: "Obstbau",            anzahl: 5,  typ: "Obstbau" },
+  { beruf: "Staudengärtnerei",   anzahl: 5,  typ: "Staudengärtnerei" },
+];
+
+function rngFactory(seed) {
+  let s = seed >>> 0;
+  return () => (s = (s * 1664525 + 1013904223) >>> 0) / 2 ** 32;
+}
+
+async function bulkInsert(table, cols, rows) {
+  for (let i = 0; i < rows.length; i += 200) {
+    const teil = rows.slice(i, i + 200);
+    const ph = teil.map((_, r) => "(" + cols.map((_, c) => `$${r * cols.length + c + 1}`).join(",") + ")").join(",");
+    const params = teil.flatMap((row) => cols.map((c) => (row[c] === undefined ? null : row[c])));
+    await _pg.query(`INSERT INTO ${table} (${cols.join(", ")}) VALUES ${ph}`, params);
+  }
+}
+
+/** Löscht alle fachlichen Daten (Reset). */
+export async function alleLoeschen() {
+  await _pg.exec(`
+    TRUNCATE bewertungen, zuteilungen, pruefer_zuteilungen RESTART IDENTITY;
+    TRUNCATE prueflinge RESTART IDENTITY;
+    TRUNCATE betriebe RESTART IDENTITY;
+    TRUNCATE pruefer RESTART IDENTITY;
+    TRUNCATE pruefungen RESTART IDENTITY;
+  `);
+}
+
+/**
+ * Erzeugt einen großen, fiktiven Beispieldatensatz (ersetzt vorhandene Daten):
+ * ~155 Prüflinge nach Fachrichtungs-Verteilung, Betriebe mit 1–10 Azubis je
+ * Betrieb, passende Prüfer:innen und je Fachrichtung Prüfungstermine.
+ * Keine echten personenbezogenen Daten.
+ */
+export async function demodatenGenerieren() {
+  await alleLoeschen();
+  const rng = rngFactory(20260701);
+  const wahl = (arr) => arr[Math.floor(rng() * arr.length)];
+  const tel = () => "07" + String(600 + Math.floor(rng() * 99)) + " " + String(1000 + Math.floor(rng() * 8999));
+
+  const betriebe = [];
+  const prueflinge = [];
+  let bIdx = 0;
+
+  for (const fr of DEMO_VERTEILUNG) {
+    let rest = fr.anzahl;
+    while (rest > 0) {
+      const groesse = Math.min(rest, 1 + Math.floor(rng() * 10)); // 1..10 Azubis
+      rest -= groesse;
+      bIdx += 1;
+      const [ort, plz] = wahl(DEMO_ORTE);
+      const name = `${fr.typ} ${["Betrieb","GmbH","Hof","Gärtnerei","& Co. KG","Anlagen"][bIdx % 6]} ${ort} ${bIdx}`;
+      const ap = `${wahl(DEMO_VORNAMEN)[0]}. ${wahl(DEMO_NACHNAMEN)}`;
+      betriebe.push({
+        name, strasse: `${wahl(["Garten","Feld","Industrie","Ringstr.","Talweg","Au"])}str. ${1 + Math.floor(rng() * 80)}`,
+        plz, ort, ansprechpartner: ap,
+        email: `ausbildung@betrieb${bIdx}.example`, telefon: tel(),
+      });
+      for (let a = 0; a < groesse; a++) {
+        prueflinge.push({
+          nachname: wahl(DEMO_NACHNAMEN), vorname: wahl(DEMO_VORNAMEN),
+          beruf: fr.beruf, betrieb: name, pruefungsjahr: 2026, status: wahl(DEMO_STATUS),
+          email: "", telefon: tel(),
+        });
+      }
+    }
+  }
+
+  // Prüfer:innen — Ausschuss-Pool (Vorsitz/Beisitz/Lehrkraft), ~1 je 5 Prüflinge.
+  const ROLLEN = ["Vorsitz", "Beisitz Arbeitgeber", "Beisitz Arbeitnehmer", "Lehrkraft", "Stv. Vorsitz"];
+  const ORGAS = ["RP Freiburg", "GBA Freiburg", "Kreis Emmendingen", "Kreis Breisgau-Hochschwarzwald", "GaLaBau-Verband", "Ortenaukreis"];
+  const prueferN = Math.max(15, Math.ceil(prueflinge.length / 5));
+  const pruefer = Array.from({ length: prueferN }, (_, i) => ({
+    nachname: wahl(DEMO_NACHNAMEN), vorname: wahl(DEMO_VORNAMEN),
+    organisation: wahl(ORGAS), funktion: ROLLEN[i % ROLLEN.length],
+    email: `pruefer${i + 1}@rpf.example`, telefon: tel(),
+  }));
+
+  // Prüfungstermine je Fachrichtung (Vorbereitung der Tagesplanung).
+  const pruefungen = [];
+  DEMO_VERTEILUNG.forEach((fr, i) => {
+    const tag = 13 + i; // Juli 2026
+    pruefungen.push({
+      titel: `Praktische AP ${fr.beruf}`, beruf: fr.beruf,
+      datum: `2026-07-${String(tag).padStart(2, "0")}`, zeit_von: "08:00", zeit_bis: "16:00",
+      ort: "Übungsgelände GBA Freiburg", raum: `Bereich ${i + 1}`,
+    });
+  });
+
+  await bulkInsert("betriebe", ["name", "strasse", "plz", "ort", "ansprechpartner", "email", "telefon"], betriebe);
+  await bulkInsert("prueflinge", ["nachname", "vorname", "beruf", "betrieb", "pruefungsjahr", "status", "email", "telefon"], prueflinge);
+  await bulkInsert("pruefer", ["nachname", "vorname", "organisation", "funktion", "email", "telefon"], pruefer);
+  await bulkInsert("pruefungen", ["titel", "beruf", "datum", "zeit_von", "zeit_bis", "ort", "raum"], pruefungen);
+
+  return { betriebe: betriebe.length, prueflinge: prueflinge.length, pruefer: pruefer.length, pruefungen: pruefungen.length };
+}
