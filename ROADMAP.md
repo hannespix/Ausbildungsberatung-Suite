@@ -217,6 +217,13 @@ Bewerten-Dialog (9 Bereiche, Live-Ergebnis), Noten-Liste, Zeugnis. Smoke-geteste
   Ergänzung), identisch zur Live-Vorschau im Bewerten-Dialog, ohne zusätzliche
   Speicherung (`store.bewertungGruende`). Chromium-getestet (Sperrfach-Fall in
   Akte und Niederschrift, bestandener ohne Grund-Zeile, Mobile 390px).
+- ✅ **Noten-Arbeitsansicht zeigt Ergebnislage**: die Notenliste nennt in der
+  Kopfzeile zusätzlich „… · N bestanden" und blendet bei nicht bestandenen
+  Prüflingen den **Grund** (Sperrfach, Schnitt/Gesamt ≥ 4,5, ≥ 2 Bereiche ≥ 4,5)
+  direkt unter dem Ergebnis ein — so sieht der Ausschuss beim Erfassen sofort,
+  wer wieso durchgefallen ist (gleiche Quelle wie Akte/Niederschrift/Mitteilung,
+  `bewertungGruende`). Chromium-getestet (2 von 2 bewertet · 1 bestanden, Grund
+  Sperrfach in der Zeile, gefiltert wie ungefiltert, Mobile 390px).
 - Offen: „eine einzige 6 → durchgefallen" explizit, weitere Fachrichtungen.
 
 ### M7 — Excel-/CSV-Import (teils ✅)
