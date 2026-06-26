@@ -43,6 +43,12 @@ E-Mail-Format-Validierung mit deutscher Meldung; Dublettenwarnung (bestätigbar)
 - ✅ **Format-Validierung** (modellgetrieben): PLZ 5-stellig, Prüfungsjahr
   4-stellig — mit deutscher Meldung, leere Nicht-Pflichtfelder bleiben erlaubt.
   Über `muster`/`musterText` je Feld erweiterbar. Smoke-getestet.
+- ✅ **Prüfungstag-Spalte in der Prüflingsliste**: neben Fortschritt zeigt die
+  Liste den zugeteilten Prüfungstag (frühester, Datum · Uhrzeit-Slot) als
+  abgeleitete Spalte — ohne Akte-Umweg sichtbar, wer wann dran ist; „—" ohne
+  Zuteilung. Im CSV-Export und Druck enthalten. Verknüpft Planung und
+  Stammdaten (`prueflingTermin()`). Chromium-getestet (zugeteilt „16.07.2026 ·
+  08:20" vs. „—", Spaltenkopf, Mobile 390px).
 - Offen: Berufe-Lookup, Inline-Bearbeitung.
 
 ### Suche & Adressliste mit Akten verknüpft ✅
