@@ -787,10 +787,15 @@ export async function alleZeugnisDaten(pruefungId = null) {
   return rows;
 }
 
-/** Verteilung der GESAMTNOTE nach Wortstufe (für Auswertungen/Diagramme). */
-export async function notenVerteilung() {
+/**
+ * Verteilung der GESAMTNOTE nach Wortstufe (Notenspiegel). Optional auf ein
+ * Prüfungsjahr (über den Prüfling) eingeschränkt.
+ */
+export async function notenVerteilung(jahr = null) {
   const res = await _pg.query(
-    `SELECT gesamt FROM bewertungen WHERE gesamt IS NOT NULL`
+    `SELECT b.gesamt FROM bewertungen b JOIN prueflinge p ON p.id = b.pruefling_id
+      WHERE b.gesamt IS NOT NULL AND ($1::int IS NULL OR p.pruefungsjahr = $1::int)`,
+    [jahr]
   );
   const stufen = ["sehr gut", "gut", "befriedigend", "ausreichend", "mangelhaft", "ungenügend"];
   const map = {};

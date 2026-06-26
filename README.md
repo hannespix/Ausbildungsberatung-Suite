@@ -72,10 +72,10 @@ im aktuellen Landes-Corporate-Design Baden-Württemberg
   aller bewerteten Zeugnisse, wahlweise **auf einen Prüfungstermin gefiltert**
   (Druck/PDF).
 - **Auswertungen** — Auslastung je Termin (mit Balkendiagramm „Prüflinge je
-  Prüfungstermin"), Bestehensquoten je Fachrichtung, **Prüfer-Einsätze** (Last
-  je Prüfer:in) und Prüfer-Doppelbelegungen; CI-konforme Diagramme,
-  Prüfungsjahr-Filter, CSV-Export und **druckbarer Auswertungsbericht**
-  (Jahresbericht).
+  Prüfungstermin"), Bestehensquoten je Fachrichtung, **Notenspiegel** der
+  Gesamtnoten, **Prüfer-Einsätze** (Last je Prüfer:in) und
+  Prüfer-Doppelbelegungen; CI-konforme Diagramme, Prüfungsjahr-Filter,
+  CSV-Export und **druckbarer Auswertungsbericht** (Jahresbericht).
 - **Adress- & Telefonliste** — konsolidiert Betriebe und Prüfer:innen, druckbar
   und als **CSV-/vCard-Export** (Outlook/Telefon).
 - **Outlook-/Kalender-Export** — **ICS-Export** der Prüfungstage (offline, kein
