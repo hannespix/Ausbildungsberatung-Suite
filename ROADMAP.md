@@ -35,6 +35,14 @@ E-Mail-Format-Validierung mit deutscher Meldung; Dublettenwarnung (bestätigbar)
 ### M2b — Weitere Stammdaten-Politur (offen)
 Berufe-Lookup, PLZ-Format, Inline-Bearbeitung, Sortierung per Spaltenkopf.
 
+### Prüflings-Akte (verbindende Klammer) ✅
+Eigene Detailansicht je Prüfling (`#/pruefling/<id>`, „📋"-Symbol in der Liste):
+bündelt Stammdaten, zugeteilten Prüfungstag (Datum/Uhrzeit-Slot, Ort, Ausschuss),
+Bewertung (Schnitte/Gesamtnote/Ergebnis) und den abgeleiteten Fortschritt an
+einem Ort. Direkt-Aktionen: Bewerten (Noten-Dialog), Zeugnis drucken,
+Stammdaten bearbeiten — eine Ansicht bedient Planung, Noten und Zeugnis.
+Smoke-getestet (inkl. Mobile 390px).
+
 ### M3 — Prüfungstag-Planung (Zuteilung) ✅
 Neue Ansicht „Planung": Prüflinge je Prüfungstermin **zuteilen** (mit Uhrzeit-
 Slot), Tagesliste mit Entfernen, Konflikt-/Doppelbelegungswarnung am selben Tag,

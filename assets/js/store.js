@@ -882,6 +882,39 @@ export async function fortschrittAlle() {
 }
 
 /**
+ * Gesamtakte eines Prüflings: Stammdaten, zugeteilte Termine (mit Slot und
+ * Ausschuss), Bewertung und abgeleitete Phase — die verbindende Klammer über
+ * Stammdaten, Planung, Noten und Zeugnis in einer Ansicht.
+ */
+export async function prueflingAkte(prueflingId) {
+  const p = (await _pg.query(`SELECT * FROM prueflinge WHERE id = $1`, [prueflingId])).rows[0];
+  if (!p) return null;
+  const termine = (await _pg.query(
+    `SELECT pr.id, pr.titel, pr.beruf, pr.datum, pr.zeit_von, pr.ort, pr.raum, z.slot
+       FROM zuteilungen z JOIN pruefungen pr ON pr.id = z.pruefung_id
+      WHERE z.pruefling_id = $1
+      ORDER BY pr.datum NULLS LAST, z.slot NULLS LAST, pr.id`,
+    [prueflingId]
+  )).rows;
+  for (const t of termine) {
+    t.ausschuss = (await _pg.query(
+      `SELECT pz.rolle, coalesce(pz.status,'offen') AS status, pp.nachname, pp.vorname
+         FROM pruefer_zuteilungen pz JOIN pruefer pp ON pp.id = pz.pruefer_id
+        WHERE pz.pruefung_id = $1
+        ORDER BY pz.rolle NULLS LAST, pp.nachname`,
+      [t.id]
+    )).rows;
+  }
+  const bewertung = (await _pg.query(`SELECT * FROM bewertungen WHERE pruefling_id = $1`, [prueflingId])).rows[0] || null;
+  const ph = (await _pg.query(
+    `SELECT ${_FORTSCHRITT_CASE} AS phase
+       FROM prueflinge p LEFT JOIN bewertungen b ON b.pruefling_id = p.id WHERE p.id = $1`,
+    [prueflingId]
+  )).rows[0];
+  return { pruefling: p, termine, bewertung, phase: ph ? ph.phase : "angemeldet" };
+}
+
+/**
  * Funnel der Prüfungs-Fortschritte in fachlicher Reihenfolge. Kernstufen werden
  * immer gezeigt, Sonderstufen (nicht bestanden, zurückgezogen) nur bei Bedarf.
  * @returns {Array<{key:string,label:string,wert:number}>}

@@ -243,8 +243,12 @@ function zeileHtml(ent, row, query, phase) {
     return `<td>${f.such ? hl(roh, query) : esc(roh)}</td>`;
   }).join("");
   const fortschrittTd = phase !== undefined ? `<td>${fortschrittTag(phase)}</td>` : "";
+  const akte = ent.key === "prueflinge"
+    ? `<a class="bw-iconbtn" href="#/pruefling/${row.id}" aria-label="Akte von ${esc((row.vorname || "") + " " + (row.nachname || ""))} öffnen" title="Akte öffnen">📋</a>`
+    : "";
   return `<tr>${tds}${fortschrittTd}
     <td class="bw-actions">
+      ${akte}
       <button class="bw-iconbtn" type="button" data-edit="${row.id}" aria-label="${esc(ent.singular)} bearbeiten" title="Bearbeiten">✎</button>
       <button class="bw-iconbtn" type="button" data-del="${row.id}" aria-label="${esc(ent.singular)} löschen" title="Löschen">🗑</button>
     </td></tr>`;
@@ -1092,6 +1096,90 @@ async function serienZeugnisDruck() {
   window.print();
 }
 
+/* --------------------------------------------------------- Prüflings-Akte */
+
+async function renderPrueflingAkte(id) {
+  let a;
+  try { a = await store.prueflingAkte(Number(id)); }
+  catch (e) { console.error(e); appEl().innerHTML = `<div class="bw-hinweis bw-hinweis--fehler">Akte konnte nicht geladen werden: ${esc(e.message)}</div>`; return; }
+  if (!a) { appEl().innerHTML = `<div class="bw-hinweis">Prüfling nicht gefunden. <a href="#/prueflinge">Zur Liste</a></div>`; return; }
+
+  const p = a.pruefling;
+  const name = `${p.vorname || ""} ${p.nachname || ""}`.trim() || "Prüfling";
+  const b = a.bewertung;
+  const bewertet = b && b.gesamt != null;
+  const geb = p.geburtsdatum ? new Date(p.geburtsdatum).toLocaleDateString("de-DE") : "—";
+
+  const terminCard = (t) => `
+    <div class="bw-card" style="margin-bottom:var(--bw-space-2)">
+      <strong>${esc(t.titel || "Termin")}</strong>
+      <div class="bw-klein bw-leise" style="margin:var(--bw-space-1) 0">
+        ${t.datum ? esc(new Date(t.datum).toLocaleDateString("de-DE")) : "ohne Datum"}${t.slot ? " · " + esc(t.slot) + " Uhr" : (t.zeit_von ? " · ab " + esc(t.zeit_von) : "")}
+        ${t.ort ? " · " + esc(t.ort) : ""}${t.raum ? ", " + esc(t.raum) : ""}${t.beruf ? " · " + esc(t.beruf) : ""}
+      </div>
+      ${t.ausschuss.length
+        ? `<div class="bw-klein">Ausschuss: ${t.ausschuss.map((x) => esc((x.nachname || "") + (x.rolle ? " (" + x.rolle + ")" : ""))).join(", ")}</div>`
+        : '<div class="bw-klein bw-leise">Noch kein Ausschuss zugeteilt.</div>'}
+    </div>`;
+
+  appEl().innerHTML = `
+    <p class="bw-klein"><a href="#/prueflinge">← Prüflinge</a></p>
+    <h1 style="margin-bottom:var(--bw-space-1)">${esc(name)} ${fortschrittTag(a.phase)}</h1>
+    <p class="bw-unterzeile">Gesamtakte — Stammdaten, Prüfungstag, Note und Zeugnis an einem Ort</p>
+
+    <div class="bw-toolbar" style="margin-bottom:var(--bw-space-3)">
+      <button class="bw-btn bw-btn--gelb" type="button" id="akte-bewerten">${bewertet ? "Note ändern" : "Bewerten"}</button>
+      <button class="bw-btn bw-btn--sekundaer" type="button" id="akte-zeugnis" ${bewertet ? "" : "disabled title=\"Erst bewerten\""}>Zeugnis drucken</button>
+      <button class="bw-btn bw-btn--sekundaer" type="button" id="akte-bearbeiten">Stammdaten bearbeiten</button>
+    </div>
+
+    <div class="bw-flaechen">
+      <section class="bw-card" aria-labelledby="akte-stamm">
+        <h2 id="akte-stamm" style="margin-top:0">Stammdaten</h2>
+        <table class="bw-table"><tbody>
+          <tr><th scope="row">Beruf</th><td>${esc(p.beruf || "—")}</td></tr>
+          <tr><th scope="row">Geburtsdatum</th><td>${esc(geb)}</td></tr>
+          <tr><th scope="row">Ausbildungsbetrieb</th><td>${esc(p.betrieb || "—")}</td></tr>
+          <tr><th scope="row">Prüfungsjahr</th><td>${esc(p.pruefungsjahr || "—")}</td></tr>
+          <tr><th scope="row">E-Mail</th><td>${p.email ? `<a href="mailto:${esc(p.email)}">${esc(p.email)}</a>` : "—"}</td></tr>
+          <tr><th scope="row">Telefon</th><td>${p.telefon ? `<a href="tel:${esc(String(p.telefon).replace(/[^\d+]/g, ""))}">${esc(p.telefon)}</a>` : "—"}</td></tr>
+          <tr><th scope="row">Status</th><td>${esc(p.status || "—")}</td></tr>
+        </tbody></table>
+      </section>
+
+      <section aria-labelledby="akte-pruefung">
+        <h2 id="akte-pruefung">Prüfungstag</h2>
+        ${a.termine.length ? a.termine.map(terminCard).join("")
+          : `<p class="bw-hinweis">Noch keinem Prüfungstermin zugeteilt. In der <a href="#/planung">Planung</a> zuteilen.</p>`}
+
+        <h2 style="margin-top:var(--bw-space-3)">Bewertung</h2>
+        <div class="bw-card">
+          ${bewertet ? `
+            <table class="bw-table"><tbody>
+              <tr><th scope="row">Praxis-Schnitt</th><td>${formatNote(b.praxis)}</td></tr>
+              <tr><th scope="row">Kenntnis-Schnitt</th><td>${formatNote(b.kenntnis)}</td></tr>
+              <tr><th scope="row">Gesamtnote</th><td><strong>${formatNote(b.gesamt)}</strong></td></tr>
+              <tr><th scope="row">Ergebnis</th><td>${ergebnisBadge(b.bestanden)}</td></tr>
+            </tbody></table>`
+          : '<p class="bw-leise">Noch nicht bewertet.</p>'}
+        </div>
+      </section>
+    </div>
+  `;
+
+  document.getElementById("akte-bewerten").addEventListener("click", () => {
+    const row = Object.assign({ pruefling_id: p.id, nachname: p.nachname, vorname: p.vorname }, b || {});
+    notenDialog(row, () => renderPrueflingAkte(id));
+  });
+  document.getElementById("akte-zeugnis").addEventListener("click", async () => {
+    try { await zeugnisDrucken(p.id); }
+    catch (e) { console.error(e); meldung("Zeugnis konnte nicht erstellt werden: " + e.message, "fehler"); }
+  });
+  document.getElementById("akte-bearbeiten").addEventListener("click", () => {
+    formularOeffnen("prueflinge", p, () => renderPrueflingAkte(id));
+  });
+}
+
 /* --------------------------------------------------------- Auswertungen */
 
 async function renderAuswertungen() {
@@ -1625,6 +1713,7 @@ async function route() {
     else if (r === "zeugnisse") await renderZeugnisse();
     else if (r === "auswertungen") await renderAuswertungen();
     else if (r === "kontakte") await renderKontakte();
+    else if (r.startsWith("pruefling/")) await renderPrueflingAkte(r.slice("pruefling/".length));
     else if (ENTITAETEN[r]) await renderListe(r);
     else { location.hash = "#/"; return; }
   } catch (e) {
