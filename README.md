@@ -59,8 +59,9 @@ im aktuellen Landes-Corporate-Design Baden-Württemberg
   Prüfungstag: Prüflinge in Uhrzeit-Reihenfolge, Zähler „X von Y bewertet").
 - **Zeugnisse** — druckbares Prüfungszeugnis je Prüfling sowie **Serien-Druck**
   aller bewerteten Zeugnisse (Druck/PDF).
-- **Auswertungen** — Auslastung je Termin, Bestehensquoten je Fachrichtung,
-  Prüfer-Doppelbelegungen; CI-konforme Diagramme.
+- **Auswertungen** — Auslastung je Termin (mit Balkendiagramm „Prüflinge je
+  Prüfungstermin"), Bestehensquoten je Fachrichtung, Prüfer-Doppelbelegungen;
+  CI-konforme Diagramme, Prüfungsjahr-Filter, CSV-Export.
 - **Adress- & Telefonliste** — konsolidiert Betriebe und Prüfer:innen, druckbar
   und als **CSV-/vCard-Export** (Outlook/Telefon).
 - **Outlook-/Kalender-Export** — **ICS-Export** der Prüfungstage (offline, kein

@@ -1732,7 +1732,12 @@ async function renderAuswertungen(jahr = null) {
     <section aria-labelledby="auslast-h" style="margin-top:var(--bw-space-4)">
       <h2 id="auslast-h">Auslastung je Prüfungstermin</h2>
       ${ohneAusschuss ? `<p class="bw-hinweis bw-hinweis--fehler">${zahl(ohneAusschuss)} belegte(r) Termin(e) ohne Ausschuss — bitte im <a href="#/planung">Planung</a> besetzen.</p>` : ""}
-      <div class="bw-tablewrap">
+      <div id="auslast-diagramm" class="bw-card"></div>
+      <ul class="bw-legend"${belegt.length ? "" : " hidden"}>
+        <li><span class="swatch" style="background:var(--bw-cat-1)"></span> Prüflinge je Termin</li>
+        <li><span class="swatch" style="background:var(--bw-gelb);outline:1.5px solid var(--bw-schwarz)"></span> stärkste Auslastung</li>
+      </ul>
+      <div class="bw-tablewrap" style="margin-top:var(--bw-space-2)">
         <table class="bw-table">
           <thead><tr><th>Termin</th><th>Datum</th><th>Fachrichtung</th><th style="text-align:right">Prüflinge</th><th style="text-align:right">Ausschuss</th></tr></thead>
           <tbody>${auslast.length ? auslast.map(terminZeile).join("") : '<tr><td colspan="5" class="bw-leise">Noch keine Prüfungstermine. Erst unter <a href="#/">Übersicht</a> „Automatische Prüfungsplanung" starten.</td></tr>'}</tbody>
@@ -1751,6 +1756,22 @@ async function renderAuswertungen(jahr = null) {
     );
   } else {
     document.getElementById("quote-diagramm").innerHTML = '<p class="bw-leise">Noch keine Bewertungen — Quote erscheint, sobald unter <a href="#/noten">Noten</a> bewertet wurde.</p>';
+  }
+
+  const auslastDia = document.getElementById("auslast-diagramm");
+  if (window.bwChart && belegt.length) {
+    const maxPl = Math.max.apply(null, belegt.map((t) => t.prueflinge));
+    window.bwChart.bars(
+      auslastDia,
+      belegt.map((t) => ({
+        label: t.datum ? new Date(t.datum).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" }) : kurzBeruf(t.titel || "—"),
+        value: t.prueflinge,
+        highlight: t.prueflinge === maxPl,
+      })),
+      { titel: "Prüflinge je Prüfungstermin", max: Math.max(1, maxPl) }
+    );
+  } else {
+    auslastDia.innerHTML = '<p class="bw-leise">Noch keine belegten Prüfungstermine — erst Prüflinge zuteilen (Planung).</p>';
   }
 
   document.getElementById("jahr-filter")?.addEventListener("change", (ev) => {

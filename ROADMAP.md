@@ -213,7 +213,11 @@ für Excel, deutsche Dezimalkommas) — für Berichte/Weiterverarbeitung. Smoke-
 ✅ **Prüfungsjahr-Filter**: Auswertungen lassen sich auf ein Prüfungsjahr
 einschränken (Quoten nach `pruefungsjahr`, Auslastung nach Termin-Jahr); CSV
 trägt das Jahr im Dateinamen. Smoke-getestet.
-Offen: Stichtagsauswertung, Auslastungs-Diagramm.
+✅ **Auslastungs-Diagramm**: Balkendiagramm „Prüflinge je Prüfungstermin"
+(CI-konform, stärkste Auslastung gelb hervorgehoben) über der Auslastungs-
+tabelle — über/unterbelegte Tage auf einen Blick, folgt dem Prüfungsjahr-Filter.
+Chromium-getestet (Balken, Hervorhebung, Mobile 390px).
+Offen: Stichtagsauswertung.
 
 ### M11 — Barrierefreiheit & Feinschliff
 WCAG-AA-Audit, Tastatur-/Screenreader-Durchgang, Leer-/Fehlerzustände,
