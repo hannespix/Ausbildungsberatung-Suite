@@ -146,7 +146,11 @@ mit 1–10 Azubis, passende Prüfer:innen und Prüfungstermine je Fachrichtung;
   Tagesplanung und Bewertung ohne manuelle Pflege zusammenführt. Funnel mit
   Bestehensquote auf der Übersicht, Status-Pill je Zeile in der Prüflinge-Liste;
   eine gespeicherte Bewertung setzt den Prüfling-Status automatisch. Smoke-getestet.
-- Offen: Zeitraster/Slots mit Gruppen, Auswertungen je Tag/Beruf,
+- ✅ **Automatisches Zeitraster**: die Gesamtplanung vergibt je Termin
+  fortlaufende Uhrzeiten (Beginn aus dem Termin, 20-Minuten-Takt); in der
+  Planung lässt sich das Raster je Termin neu erzeugen (Beginn/Takt wählbar)
+  oder löschen. Speist den druckbaren Tagesablauf. Smoke-getestet.
+- Offen: Auswertungen je Tag/Beruf,
   Prüfer-Verfügbarkeiten/Konfliktprüfung bei der Ausschuss-Besetzung.
 
 ### Laufend
