@@ -76,6 +76,13 @@ beim Löschen aufgeräumt. Smoke-getestet (Chromium).
 tintensparend) mit Kopf, Prüflingen inkl. Slots und Ausschuss; über den
 Druckdialog auch als PDF. Smoke-getestet (Chromium, `window.print` gestubbt).
 
+### M3e — Tagesablauf-Phasen (GaLaBau) ✅
+Der druckbare Tagesablauf zeigt für GaLaBau-Termine zusätzlich den festen
+Ablauf des handlungsorientierten Prüfungstags (Gewerk 4,5 Std., Fachgespräch
+10 Min., Mittagspause, Pflanzenbestimmung 20 Pfl./20 Min., Zeugnisübergabe) —
+Grundlage: offizielle RPF-Präsentation. Andere Fachrichtungen ohne diese
+Phasen. Smoke-getestet.
+
 ### M3d — Ergebnis-Niederschrift je Termin ✅
 „Ergebnis-Niederschrift" in der Planung: druckbares Protokoll je Prüfungstag,
 das Planung und Noten verbindet — alle zugeteilten Prüflinge in Slot-Reihenfolge
