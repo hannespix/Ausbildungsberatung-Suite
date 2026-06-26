@@ -43,6 +43,10 @@ im aktuellen Landes-Corporate-Design Baden-Württemberg
 - **Durchführung** — druckbarer **Tagesablauf** (für GaLaBau inkl. festem
   Prüfungstag-Ablauf) und **Ergebnis-Niederschrift** je Termin mit Noten,
   Ausschuss und Unterschriftenspalte.
+- **Prüflings-Einladungen** — druckbares **Einladungsschreiben** je Prüfling mit
+  persönlichem Prüfungstermin (Datum, Uhrzeit-Slot, Ort, Raum) und
+  Mitbringliste; einzeln aus der Akte oder als **Serien-Druck** aller
+  zugeteilten Prüflinge.
 - **Notenberechnung (Gärtner/Galabau)** — offizielles Sammelbewertungs-Schema:
   5 praktische Bereiche + 4 Kenntnisbereiche, **Gesamtnote = Praxis · 0,6 +
   Kenntnis · 0,4** (auf 1 Stelle abgeschnitten), Bestehensregeln (Schnitt/Gesamt

@@ -637,6 +637,7 @@ async function renderPlanung() {
         </select>
       </div>
       <button class="bw-btn bw-btn--sekundaer" type="button" id="ics-alle">Alle Termine als Kalender (.ics)</button>
+      <button class="bw-btn bw-btn--sekundaer" type="button" id="einladungen-alle">Alle Einladungen drucken</button>
     </div>
     <div id="plan" aria-live="polite"></div>
   `;
@@ -650,6 +651,11 @@ async function renderPlanung() {
       icsDownload("Pruefungstermine-Gaertner.ics", icsBauen(daten));
       meldung(`Kalender exportiert: ${zahl(daten.length)} Termine (.ics). In Outlook über „Datei → Öffnen/Importieren" einlesen.`);
     } catch (e) { console.error(e); meldung("Kalender-Export fehlgeschlagen: " + e.message, "fehler"); }
+  });
+
+  document.getElementById("einladungen-alle").addEventListener("click", async () => {
+    try { await einladungenSerienDruck(); }
+    catch (e) { console.error(e); meldung("Einladungs-Druck fehlgeschlagen: " + e.message, "fehler"); }
   });
 
   async function planZeichnen() {
@@ -1262,6 +1268,69 @@ async function serienZeugnisDruck() {
   window.print();
 }
 
+/* ------------------------------------------------ Prüflings-Einladung */
+
+/**
+ * Standard-Mitbringliste zur praktischen Prüfung. Ergänzend gilt stets die
+ * offizielle Werkzeug-/Mitbringliste der Ausbildungsberatung.
+ */
+const MITBRINGLISTE = [
+  "Gültiger Lichtbildausweis (Personalausweis)",
+  "Wetterfeste Arbeitskleidung und Sicherheitsschuhe",
+  "Persönliche Schutzausrüstung (Arbeitshandschuhe)",
+  "Gliedermaßstab (Zollstock), Bandmaß und Wasserwaage",
+  "Schreibzeug (Bleistift, Kugelschreiber)",
+  "Verpflegung für den Prüfungstag",
+];
+
+/** Inneres HTML einer Einladung (für Einzel- und Serien-Druck). */
+function einladungHtml(d) {
+  const name = `${d.vorname || ""} ${d.nachname || ""}`.trim();
+  const datum = d.datum
+    ? new Date(d.datum).toLocaleDateString("de-DE", { weekday: "long", year: "numeric", month: "long", day: "numeric" })
+    : "—";
+  const uhrzeit = d.slot || d.zeit_von || "";
+  const heute = new Date().toLocaleDateString("de-DE");
+  return `
+    <p class="bw-klein bw-leise">Regierungspräsidium Freiburg · Ausbildungsberatung</p>
+    <p>${esc(name) || "Prüfling"}${d.betrieb ? "<br>" + esc(d.betrieb) : ""}</p>
+    <p class="bw-klein bw-leise" style="text-align:right">Freiburg, den ${esc(heute)}</p>
+    <h1>Einladung zur praktischen Abschlussprüfung</h1>
+    <p>Sehr geehrte Auszubildende, sehr geehrter Auszubildender,</p>
+    <p>hiermit laden wir Sie zur praktischen Abschlussprüfung im Ausbildungsberuf
+       Gärtner/in${d.beruf ? ", Fachrichtung " + esc(d.beruf) : ""} ein.</p>
+    <table class="bw-table bw-zeugnis"><tbody>
+      <tr><th scope="row">Termin</th><td>${esc(datum)}</td></tr>
+      ${uhrzeit ? `<tr><th scope="row">Uhrzeit</th><td>${esc(uhrzeit)} Uhr</td></tr>` : ""}
+      <tr><th scope="row">Ort</th><td>${esc(d.ort || "—")}${d.raum ? ", " + esc(d.raum) : ""}</td></tr>
+    </tbody></table>
+    <p>Bitte erscheinen Sie pünktlich und bringen Sie Folgendes mit:</p>
+    <ul>${MITBRINGLISTE.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>
+    <p class="bw-klein bw-leise">Ergänzend gilt die offizielle Werkzeug-/Mitbringliste der Ausbildungsberatung.</p>
+    <p>Sind Sie aus wichtigem Grund verhindert, teilen Sie uns dies bitte
+       unverzüglich mit und legen Sie einen Nachweis (z. B. ärztliches Attest) vor.</p>
+    <p>Mit freundlichen Grüßen<br>Ausbildungsberatung<br>Regierungspräsidium Freiburg</p>
+    <p class="bw-klein bw-leise">Erstellt mit der Ausbildungsberatung-Suite — Regierungspräsidium Freiburg</p>`;
+}
+
+/** Druckt die Einladung(en) eines Prüflings (eine Seite je Termin). */
+async function einladungDrucken(prueflingId) {
+  const liste = await store.einladungsListe(Number(prueflingId));
+  if (!liste.length) { meldung("Erst einem Prüfungstermin zuteilen (unter Planung).", "fehler"); return; }
+  druckbereich().innerHTML = liste
+    .map((d) => `<section class="bw-zeugnisblatt">${einladungHtml(d)}</section>`).join("");
+  window.print();
+}
+
+/** Serien-Druck aller Einladungen (eine Seite je zugeteiltem Prüfling). */
+async function einladungenSerienDruck() {
+  const liste = await store.einladungsListe();
+  if (!liste.length) { meldung("Noch keine Prüflinge einem Termin zugeteilt.", "fehler"); return; }
+  druckbereich().innerHTML = liste
+    .map((d) => `<section class="bw-zeugnisblatt">${einladungHtml(d)}</section>`).join("");
+  window.print();
+}
+
 /* --------------------------------------------------------- Schnellsuche */
 
 async function renderSuche() {
@@ -1364,6 +1433,7 @@ async function renderPrueflingAkte(id) {
 
     <div class="bw-toolbar" style="margin-bottom:var(--bw-space-3)">
       <button class="bw-btn bw-btn--gelb" type="button" id="akte-bewerten">${bewertet ? "Note ändern" : "Bewerten"}</button>
+      <button class="bw-btn bw-btn--sekundaer" type="button" id="akte-einladung" ${a.termine.length ? "" : "disabled title=\"Erst einem Termin zuteilen\""}>Einladung drucken</button>
       <button class="bw-btn bw-btn--sekundaer" type="button" id="akte-zeugnis" ${bewertet ? "" : "disabled title=\"Erst bewerten\""}>Zeugnis drucken</button>
       <button class="bw-btn bw-btn--sekundaer" type="button" id="akte-bearbeiten">Stammdaten bearbeiten</button>
     </div>
@@ -1410,6 +1480,10 @@ async function renderPrueflingAkte(id) {
   document.getElementById("akte-zeugnis").addEventListener("click", async () => {
     try { await zeugnisDrucken(p.id); }
     catch (e) { console.error(e); meldung("Zeugnis konnte nicht erstellt werden: " + e.message, "fehler"); }
+  });
+  document.getElementById("akte-einladung").addEventListener("click", async () => {
+    try { await einladungDrucken(p.id); }
+    catch (e) { console.error(e); meldung("Einladung konnte nicht erstellt werden: " + e.message, "fehler"); }
   });
   document.getElementById("akte-bearbeiten").addEventListener("click", () => {
     formularOeffnen("prueflinge", p, () => renderPrueflingAkte(id));
