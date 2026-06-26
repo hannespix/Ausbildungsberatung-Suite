@@ -1227,6 +1227,7 @@ async function renderNoten(pruefungId = null) {
       ${gefiltert && rows.some((r) => r.gesamt == null)
         ? `<button class="bw-btn bw-btn--gelb" type="button" id="reihen-btn">Reihen-Bewertung (${zahl(rows.filter((r) => r.gesamt == null).length)} offen)</button>`
         : ""}
+      <button class="bw-btn bw-btn--sekundaer" type="button" id="noten-csv" ${bewertet ? "" : "disabled"}>Noten als CSV</button>
     </div>` : ""}
 
     <div class="bw-tablewrap">
@@ -1276,6 +1277,24 @@ async function renderNoten(pruefungId = null) {
   document.getElementById("noten-termin")?.addEventListener("change", (ev) => {
     const v = ev.target.value;
     renderNoten(v ? Number(v) : null);
+  });
+
+  document.getElementById("noten-csv")?.addEventListener("click", () => {
+    const deDez = (n) => n == null ? "" : String(n).replace(".", ",");
+    const kopf = (gefiltert ? ["Uhrzeit"] : [])
+      .concat(["Nachname", "Vorname", "Fachrichtung"])
+      .concat(GALABAU_BEREICHE.praxis.map((b, i) => `P${i + 1} ${b}`))
+      .concat(GALABAU_BEREICHE.kenntnis)
+      .concat(["Praxis-Schnitt", "Kenntnis-Schnitt", "Gesamtnote", "Ergebnis"]);
+    const zeilen = rows.map((r) => (gefiltert ? [r.slot || ""] : [])
+      .concat([r.nachname || "", r.vorname || "", r.beruf || ""])
+      .concat([r.p1, r.p2, r.p3, r.p4, r.p5, r.k1, r.k2, r.k3, r.k4].map(deDez))
+      .concat([deDez(r.praxis), deDez(r.kenntnis), deDez(r.gesamt),
+        r.bestanden === true ? "bestanden" : r.bestanden === false ? "nicht bestanden" : ""]));
+    const termin = gefiltert ? (termine.find((t) => String(t.id) === String(pruefungId)) || {}) : null;
+    const datei = "Noten" + (termin && termin.titel ? "-" + termin.titel.replace(/[^\wäöüÄÖÜß-]+/g, "_") : "") + ".csv";
+    dateiDownload(datei, csvText(kopf, zeilen), "text/csv;charset=utf-8");
+    meldung(`Noten exportiert: ${zahl(rows.length)} Prüflinge.`);
   });
 
   // Reihen-Bewertung: nach dem Speichern öffnet sich der nächste unbewertete

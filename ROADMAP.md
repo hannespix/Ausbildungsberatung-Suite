@@ -177,6 +177,11 @@ Bewerten-Dialog (9 Bereiche, Live-Ergebnis), Noten-Liste, Zeugnis. Smoke-geteste
   Abbrechen stoppt jederzeit. Nutzt den vorhandenen, mobil bedienbaren
   Bewerten-Dialog (kein Raster). Chromium-getestet (Auto-Weiterschaltung,
   Abbruch, offene Zahl sinkt, Mobile 390px).
+- ✅ **Noten als CSV**: Export der (ggf. termingefilterten) Notenliste mit allen
+  9 Bereichsnoten, Praxis-/Kenntnis-Schnitt, Gesamtnote und Ergebnis —
+  Semikolon + BOM für Excel, deutsche Dezimalkommas; bei Termin-Filter zusätzlich
+  Uhrzeit-Spalte und Termin im Dateinamen. Für Archiv/Übergabe.
+  Chromium-getestet (Kopf, Dezimalkomma, gefilterter Export).
 - ✅ **Zeugnis spiegelt die Ergänzung**: hatte ein Kenntnisbereich eine
   mündliche Ergänzungsprüfung, zeigt das Zeugnis die gewichtete (effektive)
   Bereichsnote mit Fußnote „* nach mündlicher Ergänzungsprüfung" — passend zum
