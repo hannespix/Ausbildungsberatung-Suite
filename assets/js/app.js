@@ -1212,6 +1212,8 @@ async function renderKontakte() {
                aria-label="Kontakte durchsuchen" autocomplete="off">
         <button type="button" id="suche-btn">Suchen</button>
       </div>
+      <button class="bw-btn bw-btn--sekundaer" type="button" id="csv-export">CSV (.csv)</button>
+      <button class="bw-btn bw-btn--sekundaer" type="button" id="vcard-export">vCard (.vcf)</button>
       <button class="bw-btn bw-btn--sekundaer" type="button" id="drucken-btn">Liste drucken</button>
     </div>
 
@@ -1252,8 +1254,56 @@ async function renderKontakte() {
   eingabe.addEventListener("input", debounce(zeichne, 180));
   document.getElementById("suche-btn").addEventListener("click", zeichne);
   document.getElementById("drucken-btn").addEventListener("click", () => kontakteDrucken(letzte));
+  document.getElementById("csv-export").addEventListener("click", () => {
+    if (!letzte.length) { meldung("Keine Kontakte zum Exportieren.", "fehler"); return; }
+    dateiDownload("Adressliste.csv", kontakteCsv(letzte), "text/csv;charset=utf-8");
+    meldung(`CSV exportiert: ${zahl(letzte.length)} Kontakte.`);
+  });
+  document.getElementById("vcard-export").addEventListener("click", () => {
+    if (!letzte.length) { meldung("Keine Kontakte zum Exportieren.", "fehler"); return; }
+    dateiDownload("Adressliste.vcf", kontakteVcard(letzte), "text/vcard;charset=utf-8");
+    meldung(`vCard exportiert: ${zahl(letzte.length)} Kontakte — in Outlook/Telefon importierbar.`);
+  });
 
   zeichne();
+}
+
+/** CSV-Feld maskieren (Semikolon-Trennung, deutsches Excel). */
+function csvFeld(v) {
+  const s = String(v == null ? "" : v);
+  return /[";\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+/** Adressliste als CSV (Semikolon, BOM für Excel-Umlaute). */
+function kontakteCsv(rows) {
+  const kopf = ["Typ", "Name", "Organisation/Ort", "Funktion/Ansprechpartner", "Telefon", "E-Mail"];
+  const zeilen = rows.map((r) =>
+    [r.typ, r.bezeichnung, r.zusatz || "", r.person || "", r.telefon || "", r.email || ""].map(csvFeld).join(";"));
+  return "﻿" + [kopf.join(";")].concat(zeilen).join("\r\n") + "\r\n";
+}
+/** vCard-Wert maskieren (RFC 6350: ; , \ und Zeilenumbruch). */
+function vcardEscape(s) {
+  return String(s == null ? "" : s).replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
+}
+/** Adressliste als vCard 3.0 (ein VCARD je Kontakt). */
+function kontakteVcard(rows) {
+  return rows.map((r) => {
+    const istPruefer = r.typ === "Prüfer:in";
+    let nachname = r.bezeichnung || "", vorname = "";
+    if (istPruefer && /,/.test(r.bezeichnung || "")) {
+      const teile = r.bezeichnung.split(",");
+      nachname = teile[0].trim(); vorname = (teile[1] || "").trim();
+    }
+    const fn = istPruefer ? (vorname ? vorname + " " + nachname : nachname) : (r.bezeichnung || "");
+    const z = ["BEGIN:VCARD", "VERSION:3.0"];
+    z.push("N:" + vcardEscape(nachname) + ";" + vcardEscape(vorname) + ";;;");
+    z.push("FN:" + vcardEscape(fn));
+    if (r.zusatz) z.push("ORG:" + vcardEscape(r.zusatz));
+    if (r.person) z.push((istPruefer ? "TITLE:" : "NOTE:") + vcardEscape(r.person));
+    if (r.telefon) z.push("TEL;TYPE=WORK,VOICE:" + vcardEscape(r.telefon));
+    if (r.email) z.push("EMAIL;TYPE=INTERNET:" + vcardEscape(r.email));
+    z.push("END:VCARD");
+    return z.join("\r\n");
+  }).join("\r\n") + "\r\n";
 }
 
 /** Druckbare Adress- und Telefonliste (aktuelle Auswahl). */
