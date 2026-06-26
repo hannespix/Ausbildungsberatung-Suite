@@ -134,8 +134,16 @@ erzeugt die doppelklickbare **`download/Ausbildungsberatung-Suite.html`**
 (offline, ~23 MB). Unter Chromium `file://` verifiziert (Boot, DB, Fuzzy-Suche,
 Persistenz nach Reload).
 
+### Datensicherung (Export/Import als Datei) ✅
+Vollständige Sicherung aller Tabellen als JSON-Datei und Wiederherstellung
+(Übersicht → „Datensicherung"): bewahrt IDs/Beziehungen (OVERRIDING SYSTEM
+VALUE), lässt generierte Spalten (`such_text`) aus und schreibt die
+Identity-Sequenzen fort; die Fuzzy-Suche steht nach dem Import sofort wieder.
+Offline per Datei-Download/-Upload, ohne externe Requests. Smoke-getestet
+(Round-Trip mit 155 Prüflingen inkl. Zuteilungen und Bewertungen).
+
 ### Single-File — offen
-DB-Datei-Export/-Import (`dumpDataDir`/`loadDataDir`) für „DB-Datei daneben";
+Roh-DB-Export (`dumpDataDir`/`loadDataDir`) als Alternative zur JSON-Sicherung;
 Single-File in der CI bauen; Größe optimieren.
 
 ### Beispieldaten-Generator ✅
