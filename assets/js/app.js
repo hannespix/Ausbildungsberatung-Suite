@@ -1217,6 +1217,11 @@ function formatNote(n) {
   return Number(n).toLocaleString("de-DE", { minimumFractionDigits: 1, maximumFractionDigits: 2 });
 }
 
+/** Note mit Wortstufe, z. B. „2,4 (gut)" — für die Zeugnis-Schnitte/Gesamtnote. */
+function noteMitWort(n) {
+  return n == null ? "—" : `${formatNote(n)} (${store.wortStufe(Number(n))})`;
+}
+
 function ergebnisBadge(bestanden) {
   if (bestanden === true || bestanden === "t" || bestanden === "true")
     return '<span class="bw-status-do">bestanden</span>';
@@ -1571,18 +1576,18 @@ function zeugnisHtml(d) {
     <h2>Praktische Prüfung</h2>
     <table class="bw-table"><tbody>
       ${GALABAU_BEREICHE.praxis.map((b, i) => bereichZeile(roem(i + 1) + ". " + b, P[i])).join("")}
-      <tr><th scope="row">Praxis-Schnitt</th><td style="text-align:right"><strong>${formatNote(d.praxis)}</strong></td></tr>
+      <tr><th scope="row">Praxis-Schnitt</th><td style="text-align:right"><strong>${noteMitWort(d.praxis)}</strong></td></tr>
     </tbody></table>
 
     <h2>Kenntnisprüfung</h2>
     <table class="bw-table"><tbody>
       ${GALABAU_BEREICHE.kenntnis.map((b, i) => bereichZeile(b + (i === ergIdx ? " *" : ""), Keff[i])).join("")}
-      <tr><th scope="row">Kenntnis-Schnitt</th><td style="text-align:right"><strong>${formatNote(d.kenntnis)}</strong></td></tr>
+      <tr><th scope="row">Kenntnis-Schnitt</th><td style="text-align:right"><strong>${noteMitWort(d.kenntnis)}</strong></td></tr>
     </tbody></table>
     ${ergIdx != null ? '<p class="bw-klein">* Note nach mündlicher Ergänzungsprüfung: (2 × schriftlich + 1 × mündlich) ÷ 3.</p>' : ""}
 
     <table class="bw-table bw-zeugnis"><tbody>
-      <tr><th scope="row">Gesamtnote</th><td><strong>${formatNote(d.gesamt)}</strong></td></tr>
+      <tr><th scope="row">Gesamtnote</th><td><strong>${noteMitWort(d.gesamt)}</strong></td></tr>
       <tr><th scope="row">Ergebnis</th><td><strong>${d.bestanden === true ? "bestanden" : d.bestanden === false ? "nicht bestanden" : "—"}</strong></td></tr>
     </tbody></table>
     <p>Freiburg, den ${esc(heute)}</p>
