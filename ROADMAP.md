@@ -181,6 +181,8 @@ Bestehensquote gesamt), **Bestehensquote je Fachrichtung** (CI-konformes
 Balkendiagramm + Tabelle mit Ø Note) und **Auslastung je Prüfungstermin**
 (Prüflinge/Ausschuss, Warnung bei Terminen ohne Ausschuss). Alles abgeleitet,
 keine neue Eingabe. Smoke-getestet (inkl. Mobile 390px).
+✅ **CSV-Export**: „Quoten als CSV" und „Auslastung als CSV" (Semikolon + BOM
+für Excel, deutsche Dezimalkommas) — für Berichte/Weiterverarbeitung. Smoke-getestet.
 Offen: Filter/Stichtagsauswertung, Auslastungs-Diagramm.
 
 ### M11 — Barrierefreiheit & Feinschliff

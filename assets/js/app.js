@@ -1431,6 +1431,10 @@ async function renderAuswertungen() {
   appEl().innerHTML = `
     <h1>Auswertungen</h1>
     <p class="bw-unterzeile">Auslastung der Prüfungstage und Bestehensquoten je Fachrichtung — automatisch aus den vorhandenen Daten</p>
+    <div class="bw-toolbar">
+      <button class="bw-btn bw-btn--sekundaer" type="button" id="csv-quoten" ${quoten.length ? "" : "disabled"}>Quoten als CSV</button>
+      <button class="bw-btn bw-btn--sekundaer" type="button" id="csv-auslastung" ${auslast.length ? "" : "disabled"}>Auslastung als CSV</button>
+    </div>
 
     <div class="bw-flaechen bw-stat-grid">
       <div class="bw-card bw-stat"><span class="bw-stat__zahl">${zahl(belegt.length)}</span><span class="bw-stat__label">belegte Termine</span></div>
@@ -1495,6 +1499,20 @@ async function renderAuswertungen() {
   } else {
     document.getElementById("quote-diagramm").innerHTML = '<p class="bw-leise">Noch keine Bewertungen — Quote erscheint, sobald unter <a href="#/noten">Noten</a> bewertet wurde.</p>';
   }
+
+  const deDez = (n) => n == null ? "" : String(n).replace(".", ",");
+  document.getElementById("csv-quoten")?.addEventListener("click", () => {
+    const kopf = ["Fachrichtung", "Prüflinge", "bewertet", "bestanden", "Quote %", "Ø Note"];
+    const zeilen = quoten.map((r) => [r.beruf, r.gesamt, r.bewertet, r.bestanden, r.quote == null ? "" : r.quote, r.schnitt == null ? "" : deDez(Math.round(r.schnitt * 10) / 10)]);
+    dateiDownload("Bestehensquoten.csv", csvText(kopf, zeilen), "text/csv;charset=utf-8");
+    meldung(`Quoten exportiert: ${zahl(quoten.length)} Fachrichtungen.`);
+  });
+  document.getElementById("csv-auslastung")?.addEventListener("click", () => {
+    const kopf = ["Termin", "Datum", "Beginn", "Fachrichtung", "Ort", "Prüflinge", "Ausschuss"];
+    const zeilen = auslast.map((t) => [t.titel || "", t.datum ? new Date(t.datum).toLocaleDateString("de-DE") : "", t.zeit_von || "", t.beruf || "", t.ort || "", t.prueflinge, t.ausschuss]);
+    dateiDownload("Auslastung.csv", csvText(kopf, zeilen), "text/csv;charset=utf-8");
+    meldung(`Auslastung exportiert: ${zahl(auslast.length)} Termine.`);
+  });
 }
 
 /** Kürzt lange Fachrichtungsnamen für Diagramm-Achsen. */
@@ -1594,6 +1612,11 @@ async function renderKontakte() {
 function csvFeld(v) {
   const s = String(v == null ? "" : v);
   return /[";\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+/** Tabelle (Kopf + Zeilen) als CSV-Text (Semikolon, BOM für Excel, CRLF). */
+function csvText(kopf, zeilen) {
+  const z = [kopf.map(csvFeld).join(";")].concat(zeilen.map((r) => r.map(csvFeld).join(";")));
+  return "﻿" + z.join("\r\n") + "\r\n";
 }
 /** Adressliste als CSV (Semikolon, BOM für Excel-Umlaute). */
 function kontakteCsv(rows) {
