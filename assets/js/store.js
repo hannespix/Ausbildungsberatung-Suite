@@ -9,8 +9,8 @@ import { initDB, createTable, globaleSuche } from "./db.js";
 import { ENTITAETEN, suchspalten } from "./model.js";
 
 const ABLAGEN = [
-  { uri: "opfs-ahp://rpf-ausbildungspruefung", modus: "OPFS", persistent: true },
   { uri: "idb://rpf-ausbildungspruefung",      modus: "IndexedDB", persistent: true },
+  { uri: "opfs-ahp://rpf-ausbildungspruefung", modus: "OPFS", persistent: true },
   { uri: "memory://",                          modus: "Arbeitsspeicher", persistent: false },
 ];
 

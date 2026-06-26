@@ -40,19 +40,36 @@ Auswertungen.
 
 - **Vanilla JS, ES-Module**, kein Framework-Zwang; datengetriebenes Modell
   (`assets/js/model.js` → Tabellen, Formulare und Listen entstehen daraus).
-- **PGlite** (Postgres als WebAssembly), Persistenz in **OPFS** mit
-  automatischem Fallback (IndexedDB → Arbeitsspeicher). DB-seitige Fuzzy-Suche
-  über `pg_trgm`/`unaccent`/`fuzzystrmatch`.
+- **PGlite** (Postgres als WebAssembly), Persistenz in **IndexedDB** (mit
+  Fallback OPFS → Arbeitsspeicher). DB-seitige Fuzzy-Suche über
+  `pg_trgm`/`unaccent`/`fuzzystrmatch`.
 - **Komplett offline / Zero-Trust:** keine CDNs, keine fremden Web-Fonts, kein
   `fetch`/`import` gegen externe URLs. Alle Abhängigkeiten lokal **vendored**
   (`assets/vendor/pglite/`, inkl. WASM).
 
 ---
 
-## Lokal starten
+## Fertige Einzeldatei (Doppelklick, ohne Server)
 
-WASM und ES-Module laufen **nicht** per Doppelklick (`file://`), sondern über
-einen lokalen Webserver:
+Für Zero-Trust-/administrierte PCs ohne lokalen Server gibt es eine
+**doppelklickbare Einzeldatei** mit eingebettetem PGlite/WASM:
+
+**[`download/Ausbildungsberatung-Suite.html`](download/Ausbildungsberatung-Suite.html)**
+herunterladen (in GitHub: Datei öffnen → „Download raw file") und **per
+Doppelklick** öffnen. Läuft vollständig offline; Daten werden im Browser
+(IndexedDB) gespeichert. Neu bauen:
+
+```
+npm i @electric-sql/pglite esbuild
+node tools/build_standalone.mjs        # -> download/Ausbildungsberatung-Suite.html
+```
+
+> Hinweis: Unter `file://` ist die Persistenz die Browser-Datenbank (IndexedDB).
+> Ein Datei-Export/-Import der DB („DB-Datei daneben") folgt (ROADMAP).
+
+## Lokal starten (Entwicklung)
+
+Die Ordner-Variante läuft über einen lokalen Webserver:
 
 ```
 python3 -m http.server 8000     # im Projektordner

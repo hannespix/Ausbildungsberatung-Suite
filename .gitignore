@@ -18,3 +18,8 @@ Thumbs.db
 # Bei public Repo die folgenden Zeilen aktivieren:
 # assets/fonts/
 # assets/logo/
+
+# Build-Abhängigkeiten / Zwischenstände
+/node_modules/
+node_modules
+tools/standalone/pgbin/
