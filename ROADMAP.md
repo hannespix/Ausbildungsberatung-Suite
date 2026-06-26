@@ -243,6 +243,14 @@ Bewerten-Dialog (9 Bereiche, Live-Ergebnis), Noten-Liste, Zeugnis. Smoke-geteste
   `dublette`-Felder der Entität. Generische `store.datensaetzeImportieren(key,…)`.
   Chromium-getestet (Betriebe + Prüfer, Auto-Mapping, Komma-/Semikolon-CSV,
   Dubletten-Re-Import, Mobile 390px).
+- ✅ **Noten-Import per CSV (Punktedaten)**: in der Noten-Ansicht „Noten
+  importieren (CSV)" — Spalten Nach-/Vorname + 9 Bereichsnoten (Praxis I–V,
+  Kenntnis 1–4, Dezimalkomma erlaubt), automatische Spaltenzuordnung mit
+  Vorschau. Jeder Satz wird über den Namen einem Prüfling zugeordnet; gespeichert
+  wird nur bei vollständigen 9 Noten (`store.notenImportieren`). Spart das
+  Abtippen der in Excel gesammelten Punkte; speist Gesamtnote, Zeugnis,
+  Auswertungen. Chromium-getestet (Treffer/ohne Treffer/unvollständig gezählt,
+  Datei-Upload im Dialog setzt Bewertungen, Mobile 390px).
 - Offen: SheetJS lokal vendoren für `.xlsx/.xlsm`-Sammelbögen (Punktedaten).
 
 ### M6 — Zeugnis-Erstellung ✅

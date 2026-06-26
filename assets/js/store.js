@@ -786,6 +786,36 @@ export async function bewertungenListe(pruefungId = null) {
   return res.rows;
 }
 
+/**
+ * Noten-Import aus einer Liste von Sätzen {nachname, vorname, praxis[5],
+ * kenntnis[4]}. Ordnet jeden Satz über Nach-/Vorname einem Prüfling zu und
+ * speichert die Bewertung (nur wenn alle 9 Bereichsnoten vorhanden sind). So
+ * lassen sich in Excel gesammelte Punktedaten ohne Tippen übernehmen.
+ * @returns {{gesetzt:number, nichtGefunden:number, unvollstaendig:number}}
+ */
+export async function notenImportieren(saetze) {
+  let gesetzt = 0, nichtGefunden = 0, unvollstaendig = 0;
+  for (const s of saetze || []) {
+    const nm = String(s.nachname || "").trim();
+    const vn = String(s.vorname || "").trim();
+    if (!nm) { nichtGefunden++; continue; }
+    const r = (await _pg.query(
+      `SELECT id FROM prueflinge
+        WHERE lower(btrim(nachname)) = lower(btrim($1))
+          AND ($2 = '' OR lower(btrim(coalesce(vorname,''))) = lower(btrim($2)))
+        ORDER BY id LIMIT 1`,
+      [nm, vn]
+    )).rows[0];
+    if (!r) { nichtGefunden++; continue; }
+    const P = s.praxis || [], K = s.kenntnis || [];
+    const da = (x) => x !== "" && x != null && zahlOderNull(x) !== null;
+    if (P.length !== 5 || K.length !== 4 || !P.every(da) || !K.every(da)) { unvollstaendig++; continue; }
+    await setzeBewertung(r.id, P, K);
+    gesetzt++;
+  }
+  return { gesetzt, nichtGefunden, unvollstaendig };
+}
+
 /** Alle Daten für ein Zeugnis: Prüfling + Bewertung + (erster) Prüfungstermin. */
 export async function zeugnisDaten(prueflingId) {
   const p = (await _pg.query(
