@@ -21,8 +21,10 @@ im aktuellen Landes-Corporate-Design Baden-Württemberg
 - **Übersicht / Kommandozentrum** — Kennzahlen, automatisch abgeleiteter
   **Prüfungsfortschritt** (Funnel) und ein Panel **„Was ist zu tun?"**, das
   offenen Handlungsbedarf über alle Stationen erkennt (Termine ohne Ausschuss,
-  offene Zusagen, unbewertete Prüflinge, Doppelbelegungen …) und direkt dorthin
-  verlinkt. Großer **fiktiver Beispieldatensatz** per Knopfdruck.
+  offene Zusagen, unbewertete Prüflinge, Doppelbelegungen, Prüflinge ohne
+  Fachrichtung …) und direkt dorthin verlinkt. Der Fortschritt-Funnel ist
+  **klickbar** — je Phase öffnet sich die Prüflingsliste gefiltert. Großer
+  **fiktiver Beispieldatensatz** per Knopfdruck.
 - **Stammdaten** — Prüflinge, Ausbildungsbetriebe, Prüfer:innen und
   Prüfungstermine anlegen/bearbeiten/löschen; Betriebs-Vorschlagsliste,
   E-Mail-Validierung, Dublettenwarnung, **Spalten-Sortierung** und
