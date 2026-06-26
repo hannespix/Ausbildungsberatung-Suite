@@ -37,6 +37,9 @@ E-Mail-Format-Validierung mit deutscher Meldung; Dublettenwarnung (bestätigbar)
   einen Spaltenkopf sortiert auf-/absteigend, typbewusst (Text de-locale,
   Zahlen, Datum; leere Werte ans Ende), `aria-sort` gesetzt, mit Suche
   kombinierbar. Smoke-getestet (inkl. Mobile).
+- ✅ **CSV-Export & Druck jeder Liste**: „CSV exportieren" und „Liste drucken"
+  in allen Stammdaten-Listen — folgt der aktuellen Suche und Sortierung,
+  Prüflinge inkl. abgeleiteter Fortschritt-Spalte. Smoke-getestet (inkl. Mobile).
 - Offen: Berufe-Lookup, PLZ-Format, Inline-Bearbeitung.
 
 ### Globale Schnellsuche ✅

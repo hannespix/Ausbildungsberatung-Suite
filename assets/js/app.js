@@ -306,6 +306,8 @@ async function renderListe(key) {
         <button type="button" id="suche-btn">Suchen</button>
       </div>
       ${key === "prueflinge" ? '<button class="bw-btn bw-btn--sekundaer" type="button" id="csv-btn">CSV importieren</button>' : ""}
+      <button class="bw-btn bw-btn--sekundaer" type="button" id="csv-export-btn">CSV exportieren</button>
+      <button class="bw-btn bw-btn--sekundaer" type="button" id="drucken-btn">Liste drucken</button>
       <button class="bw-btn bw-btn--gelb" type="button" id="neu-btn">＋ Neuer Eintrag</button>
     </div>
 
@@ -319,6 +321,7 @@ async function renderListe(key) {
   `;
 
   const eingabe = document.getElementById("modulsuche");
+  let aktuelleRows = [], aktuellePhasen = null;
   const zeichne = async () => {
     const q = eingabe.value;
     let rows;
@@ -336,6 +339,7 @@ async function renderListe(key) {
         phaseMap = new Map(ph.map((r) => [String(r.id), r.phase]));
       } catch (e) { console.warn("Fortschritt nicht verfügbar:", e); }
     }
+    aktuelleRows = rows; aktuellePhasen = phaseMap;
     document.getElementById("zeilen").innerHTML = rows
       .map((r) => zeileHtml(ent, r, q, phaseMap ? (phaseMap.get(String(r.id)) || "angemeldet") : undefined))
       .join("");
@@ -354,6 +358,29 @@ async function renderListe(key) {
   document.getElementById("suche-btn").addEventListener("click", zeichne);
   document.getElementById("neu-btn").addEventListener("click", () => formularOeffnen(key, null, zeichne));
   document.getElementById("csv-btn")?.addEventListener("click", () => csvImportDialog(zeichne));
+
+  // Spalten der aktuellen Liste (sichtbare Felder + ggf. Fortschritt) für Export/Druck.
+  const exportKopf = () => spalten.map((f) => f.label).concat(zeigtFortschritt ? ["Fortschritt"] : []);
+  const exportZeile = (r) => spalten.map((f) => formatWert(f, r[f.name]))
+    .concat(zeigtFortschritt ? [FORTSCHRITT_LABELS[(aktuellePhasen && aktuellePhasen.get(String(r.id))) || "angemeldet"] || ""] : []);
+
+  document.getElementById("csv-export-btn").addEventListener("click", () => {
+    if (!aktuelleRows.length) { meldung("Keine Einträge zum Exportieren.", "fehler"); return; }
+    dateiDownload(`${ent.plural}.csv`, csvText(exportKopf(), aktuelleRows.map(exportZeile)), "text/csv;charset=utf-8");
+    meldung(`CSV exportiert: ${zahl(aktuelleRows.length)} ${ent.plural}.`);
+  });
+  document.getElementById("drucken-btn").addEventListener("click", () => {
+    if (!aktuelleRows.length) { meldung("Keine Einträge zum Drucken.", "fehler"); return; }
+    const kopf = exportKopf();
+    druckbereich().innerHTML = `
+      <h1>${esc(ent.plural)} (${zahl(aktuelleRows.length)})</h1>
+      <table class="bw-table">
+        <thead><tr>${kopf.map((h) => `<th>${esc(h)}</th>`).join("")}</tr></thead>
+        <tbody>${aktuelleRows.map((r) => `<tr>${exportZeile(r).map((c) => `<td>${esc(c)}</td>`).join("")}</tr>`).join("")}</tbody>
+      </table>
+      <p class="bw-klein bw-leise">Erstellt mit der Ausbildungsberatung-Suite — Regierungspräsidium Freiburg</p>`;
+    window.print();
+  });
 
   const sortieren = (name) => {
     if (sortName === name) sortDir = -sortDir; else { sortName = name; sortDir = 1; }
