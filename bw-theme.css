@@ -280,10 +280,47 @@ mark.bw-treffer { background: var(--bw-gelb); color: var(--bw-schwarz); padding:
 .bw-skip-link:focus { left: var(--bw-space-2); top: var(--bw-space-2); z-index: 10; }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 
+/* ===================== Treffermarkierung ========================= */
+/* Gelb als Hervorhebungsfläche, Text darauf schwarz (Gelb-Regel). */
+.bw-treffer { background: var(--bw-gelb); color: var(--bw-schwarz); padding: 0 0.1em; border-radius: 2px; }
+
+/* ===================== Toolbar (Suche + Aktion) ================== */
+.bw-toolbar {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: var(--bw-space-2); margin-bottom: var(--bw-space-3);
+}
+.bw-toolbar .bw-search { flex: 1 1 18rem; }
+
+/* ===================== Kennzahl-Kacheln ========================== */
+.bw-stat-grid { grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); }
+.bw-stat {
+  display: flex; flex-direction: column; gap: var(--bw-space-1);
+  text-decoration: none; color: var(--bw-text);
+}
+.bw-stat:hover { background: var(--bw-grau-50); }
+.bw-stat__zahl { font-family: var(--bw-font-serif); font-weight: 700; font-size: var(--bw-fs-titel); line-height: 1.05; }
+.bw-stat__label { font-weight: 700; font-size: var(--bw-fs-klein); }
+
+/* ===================== Tabellen-Aktionen ========================= */
+.bw-actions { white-space: nowrap; text-align: right; }
+.bw-actions .bw-iconbtn { width: 2.25rem; height: 2.25rem; font-size: 1rem; }
+
+/* ===================== Dialog (Erfassen/Bearbeiten) ============== */
+.bw-dialog {
+  border: 2px solid var(--bw-schwarz); border-radius: var(--bw-radius);
+  padding: var(--bw-space-4); max-width: 42rem; width: calc(100% - 2 * var(--bw-rand));
+  background: var(--bw-weiss); color: var(--bw-text);
+}
+.bw-dialog::backdrop { background: rgba(42, 38, 35, 0.45); }
+.bw-dialog__felder { display: grid; grid-template-columns: 1fr 1fr; gap: 0 var(--bw-space-3); }
+.bw-dialog__felder .bw-field:has(textarea) { grid-column: 1 / -1; }
+.bw-dialog__aktionen { display: flex; justify-content: flex-end; gap: var(--bw-space-2); margin-top: var(--bw-space-2); }
+
 /* ===================== Responsive ================================ */
 @media (max-width: 640px) {
   :root { --bw-rand: var(--bw-space-3); }
   .bw-flaechen.bw-halb, .bw-flaechen.bw-drittel { grid-template-columns: 1fr; }
   .bw-header { flex-wrap: wrap; }
   .bw-logo { height: 36px; }
+  .bw-dialog__felder { grid-template-columns: 1fr; }
 }
