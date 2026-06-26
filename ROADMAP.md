@@ -516,5 +516,16 @@ mit 1–10 Azubis, passende Prüfer:innen und Prüfungstermine je Fachrichtung;
 - Offen: Auswertungen je Tag/Beruf,
   Prüfer-Verfügbarkeiten/Konfliktprüfung bei der Ausschuss-Besetzung.
 
+### Qualität — Notenlogik isoliert + Unit-Tests ✅
+Der rechtlich kritische Notenkern liegt jetzt in einem eigenen, DB-freien Modul
+`assets/js/galabau.js` (gesamtGalabau, ergaenzteKenntnis, noteAusPunkten,
+wortStufe, bewertungGruende, pflanzenkenntnisNote, TRUNC-Schlüssel, Bestehens-/
+Sperrfach-Regeln). `store.js` importiert und re-exportiert die Funktionen — die
+UI bleibt unverändert (`store.gesamtGalabau` etc.). Dazu `tools/test_galabau.mjs`
+(35 Prüfungen: TRUNC, Bandgrenzen, 60/40-Gewichtung, Sperrfach, 2×≥4,5,
+mündliche Ergänzung, Pflanzenkenntnisse) — läuft in Node und als Schritt im
+CI-Job „App-Bundle", blockiert bei Regression den Merge. Chromium-Smoke
+bestätigt Re-Export und Bewertungs-Pfad.
+
 ### Laufend
 Datensicherung (DB-Export/-Import als Datei), Robustheit, Tests, Performance.
