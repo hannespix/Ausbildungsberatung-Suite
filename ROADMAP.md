@@ -79,6 +79,11 @@ Bewertung (Schnitte/Gesamtnote/Ergebnis) und den abgeleiteten Fortschritt an
 einem Ort. Direkt-Aktionen: Bewerten (Noten-Dialog), Einladung/Zeugnis drucken,
 Stammdaten bearbeiten — eine Ansicht bedient Planung, Noten und Zeugnis.
 Smoke-getestet (inkl. Mobile 390px).
+✅ **Einzel-Bereichsnoten in der Akte**: die Bewertungs-Sektion zeigt unter
+„Einzelnoten anzeigen" (aufklappbar) alle 9 Bereiche (Praxis I–V + 4 Kenntnis)
+mit ihren Noten — inkl. mündlicher Ergänzung (effektive Note + Fußnote „*"),
+identisch zum Zeugnis. Alles zur Bewertung an einem Ort, ohne Zeugnis-Druck.
+Chromium-getestet (9 Zeilen, k1 effektiv 4,0 mit „*", Fußnote, Mobile 390px).
 ✅ **Status-Schnellaktionen**: kontextabhängige Knöpfe in der Akte — „Zulassen"
 (bei Angemeldeten), „Zurückziehen" und „Reaktivieren" — setzen den Status
 direkt, was Fortschritt-Funnel, Filter und „Was ist zu tun?" sofort
