@@ -538,8 +538,7 @@ const GALABAU_TAGESPHASEN = [
   { phase: "Zeugnisübergabe", dauer: "" },
 ];
 
-function tagesablaufDrucken(termin, zugeteilt, prueferZug) {
-  const root = druckbereich();
+function tagesablaufHtml(termin, zugeteilt, prueferZug) {
   const datum = termin.datum ? new Date(termin.datum).toLocaleDateString("de-DE") : "—";
   const kopf = [
     datum,
@@ -549,7 +548,7 @@ function tagesablaufDrucken(termin, zugeteilt, prueferZug) {
   ].filter(Boolean).join(" · ");
   const istGalabau = termin.beruf === "Garten- und Landschaftsbau";
 
-  root.innerHTML = `
+  return `
     <h1>Tagesablauf — ${esc(termin.titel)}</h1>
     <p>${kopf}</p>
     ${istGalabau ? `
@@ -568,14 +567,16 @@ function tagesablaufDrucken(termin, zugeteilt, prueferZug) {
       <thead><tr><th>Rolle</th><th>Name</th><th>Organisation</th></tr></thead>
       <tbody>${prueferZug.map((p) => `<tr><td>${esc(p.rolle || "—")}</td><td>${esc((p.nachname || "") + ", " + (p.vorname || ""))}</td><td>${esc(p.organisation || "")}</td></tr>`).join("")}</tbody>
     </table>
-    <p class="bw-klein bw-leise">Erstellt mit der Ausbildungsberatung-Suite — Regierungspräsidium Freiburg</p>
-  `;
+    <p class="bw-klein bw-leise">Erstellt mit der Ausbildungsberatung-Suite — Regierungspräsidium Freiburg</p>`;
+}
+
+function tagesablaufDrucken(termin, zugeteilt, prueferZug) {
+  druckbereich().innerHTML = tagesablaufHtml(termin, zugeteilt, prueferZug);
   window.print();
 }
 
-/** Druckbare Ergebnis-Niederschrift je Termin: Prüflinge mit Note + Ergebnis. */
-function niederschriftDrucken(termin, ergebnisse, prueferZug) {
-  const root = druckbereich();
+/** Inneres HTML der Ergebnis-Niederschrift je Termin (Prüflinge mit Note). */
+function niederschriftHtml(termin, ergebnisse, prueferZug) {
   const datum = termin.datum ? new Date(termin.datum).toLocaleDateString("de-DE") : "—";
   const kopf = [
     datum,
@@ -585,7 +586,7 @@ function niederschriftDrucken(termin, ergebnisse, prueferZug) {
   const bestanden = ergebnisse.filter((r) => r.bestanden === true).length;
   const bewertet = ergebnisse.filter((r) => r.gesamt != null).length;
 
-  root.innerHTML = `
+  return `
     <h1>Ergebnis-Niederschrift — ${esc(termin.titel)}</h1>
     <p>${kopf}</p>
     <p class="bw-klein">Praktische Abschlussprüfung Gärtner/in · ${zahl(ergebnisse.length)} Prüflinge · ${zahl(bewertet)} bewertet · ${zahl(bestanden)} bestanden</p>
@@ -611,8 +612,11 @@ function niederschriftDrucken(termin, ergebnisse, prueferZug) {
         <tr><td>${esc(p.rolle || "—")}</td><td>${esc(((p.nachname || "") + (p.vorname ? ", " + p.vorname : "")) || "—")}</td><td style="min-width:8rem"> </td></tr>`).join("")}</tbody>
     </table>
     <p>Ort, Datum: ${esc(termin.ort || "")}${termin.ort ? ", " : ""}den ${esc(datum)}</p>
-    <p class="bw-klein bw-leise">Erstellt mit der Ausbildungsberatung-Suite — Regierungspräsidium Freiburg</p>
-  `;
+    <p class="bw-klein bw-leise">Erstellt mit der Ausbildungsberatung-Suite — Regierungspräsidium Freiburg</p>`;
+}
+
+function niederschriftDrucken(termin, ergebnisse, prueferZug) {
+  druckbereich().innerHTML = niederschriftHtml(termin, ergebnisse, prueferZug);
   window.print();
 }
 
@@ -662,6 +666,22 @@ function bewertungsboegenDrucken(termin, zugeteilt) {
   if (!zugeteilt.length) { meldung("Keine Prüflinge zugeteilt.", "fehler"); return; }
   druckbereich().innerHTML = zugeteilt
     .map((p) => `<section class="bw-zeugnisblatt">${bewertungsbogenHtml(termin, p)}</section>`).join("");
+  window.print();
+}
+
+/**
+ * Komplette Prüfungstag-Mappe in einem Druck: Tagesablauf, je Prüfling ein
+ * leerer Bewertungsbogen und die Ergebnis-Niederschrift — eine Aktion für die
+ * gesamte Durchführung (je Abschnitt eine Seite).
+ */
+async function mappeDrucken(termin, zugeteilt, prueferZug) {
+  if (!zugeteilt.length) { meldung("Keine Prüflinge zugeteilt.", "fehler"); return; }
+  const ergebnisse = await store.terminErgebnisse(termin.id);
+  const blatt = (html) => `<section class="bw-zeugnisblatt">${html}</section>`;
+  druckbereich().innerHTML =
+    blatt(tagesablaufHtml(termin, zugeteilt, prueferZug)) +
+    zugeteilt.map((p) => blatt(bewertungsbogenHtml(termin, p))).join("") +
+    blatt(niederschriftHtml(termin, ergebnisse, prueferZug));
   window.print();
 }
 
@@ -736,6 +756,8 @@ async function renderPlanung() {
                   ${zugeteilt.length ? "" : "disabled title=\"Keine Prüflinge zugeteilt\""}>Bewertungsbögen drucken</button>
           <button class="bw-btn bw-btn--sekundaer" type="button" id="niederschrift-btn"
                   ${zugeteilt.length ? "" : "disabled title=\"Keine Prüflinge zugeteilt\""}>Ergebnis-Niederschrift</button>
+          <button class="bw-btn bw-btn--gelb" type="button" id="mappe-btn"
+                  ${zugeteilt.length ? "" : "disabled title=\"Keine Prüflinge zugeteilt\""}>Prüfungstag-Mappe drucken</button>
         </div>
       </div>
 
@@ -916,6 +938,11 @@ async function renderPlanung() {
 
     document.getElementById("boegen-btn")?.addEventListener("click", () => {
       bewertungsboegenDrucken(termin, zugeteilt);
+    });
+
+    document.getElementById("mappe-btn")?.addEventListener("click", async () => {
+      try { await mappeDrucken(termin, zugeteilt, prueferZug); }
+      catch (e) { console.error(e); meldung("Prüfungstag-Mappe fehlgeschlagen: " + e.message, "fehler"); }
     });
 
     document.getElementById("niederschrift-btn")?.addEventListener("click", async () => {
