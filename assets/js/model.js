@@ -11,6 +11,37 @@
  *   pflicht?:boolean,tabelle?:boolean,optionen?:string[],hinweis?:string,
  *   suffix?:string}} Feld */
 
+/** Gärtner-Fachrichtungen (Ausbildungsberatung RP Freiburg). */
+export const GAERTNER_FACHRICHTUNGEN = [
+  "Garten- und Landschaftsbau",
+  "Zierpflanzenbau",
+  "Baumschule",
+  "Staudengärtnerei",
+  "Gemüsebau",
+  "Obstbau",
+  "Friedhofsgärtnerei",
+];
+
+/**
+ * Prüfungsbereiche der Abschlussprüfung „Gärtner/in BW, Fachrichtung Garten- und
+ * Landschaftsbau" (Sammelbewertungsbogen). Praxis 60 %, Kenntnis 40 %.
+ */
+export const GALABAU_BEREICHE = {
+  praxis: [
+    "Ausführungspläne sowie Leistungsverzeichnisse lesen und auf die Baustelle übertragen",
+    "Herstellen von befestigten Flächen",
+    "Be- und Verarbeiten von Naturstein",
+    "Pflanzungen vorbereiten und durchführen",
+    "Flächen für Ansaaten vorbereiten und ansäen",
+  ],
+  kenntnis: [
+    "Landschaftsgärtnerische Arbeiten",
+    "Pflanzenkenntnisse",
+    "Betriebliche Zusammenhänge",
+    "Wirtschafts- und Sozialkunde",
+  ],
+};
+
 export const ENTITAETEN = {
   prueflinge: {
     key: "prueflinge",
@@ -23,7 +54,8 @@ export const ENTITAETEN = {
       { name: "nachname",     label: "Nachname",        input: "text",     typ: "text",    such: true, pflicht: true, tabelle: true },
       { name: "vorname",      label: "Vorname",         input: "text",     typ: "text",    such: true, pflicht: true, tabelle: true },
       { name: "geburtsdatum", label: "Geburtsdatum",    input: "date",     typ: "date" },
-      { name: "beruf",        label: "Ausbildungsberuf",input: "text",     typ: "text",    such: true, tabelle: true },
+      { name: "beruf",        label: "Fachrichtung (Gärtner/in)", input: "select", typ: "text", such: true, tabelle: true,
+        optionen: GAERTNER_FACHRICHTUNGEN },
       { name: "betrieb",      label: "Ausbildungsbetrieb", input: "reftext", typ: "text",  such: true, tabelle: true,
         ref: { entitaet: "betriebe", feld: "name" }, hinweis: "Aus bestehenden Betrieben wählen oder neu eintippen." },
       { name: "pruefungsjahr",label: "Prüfungsjahr",    input: "number",   typ: "integer", tabelle: true },
@@ -82,7 +114,8 @@ export const ENTITAETEN = {
     dublette: ["titel", "datum"],
     felder: [
       { name: "titel",     label: "Bezeichnung",   input: "text",     typ: "text", such: true, pflicht: true, tabelle: true },
-      { name: "beruf",     label: "Ausbildungsberuf", input: "text",  typ: "text", such: true, tabelle: true },
+      { name: "beruf",     label: "Fachrichtung",  input: "select",   typ: "text", such: true, tabelle: true,
+        optionen: GAERTNER_FACHRICHTUNGEN },
       { name: "datum",     label: "Datum",         input: "date",     typ: "date", pflicht: true, tabelle: true },
       { name: "zeit_von",  label: "Beginn",        input: "time",     typ: "text", tabelle: true },
       { name: "zeit_bis",  label: "Ende",          input: "time",     typ: "text" },

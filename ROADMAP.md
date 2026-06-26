@@ -64,11 +64,17 @@ Maximalpunktzahl)** als Dezimalnote (1,0–6,0), wählbare Maximalpunktzahl
 (40/60/80/100/120/150/200), Wortstufen (sehr gut … ungenügend). Grundlage:
 Notenberechnungs-Vorlage „Gärtner AP S 2026" (RP Freiburg). Smoke-getestet.
 
-### M5b — Volles Gärtner-Gesamtschema (offen, Fachentscheidung)
-Prüfungsbereiche praktische Prüfung (I–V) + Kenntnisprüfung (Landschaftsgärtn.
-Arbeiten, Pflanzenkenntnisse, Betriebl. Zusammenhänge, WiSo), **Gewichtung**,
-GESAMTNOTE, **Bestehensregeln/Sperrfach** und Nachprüfung. Gewichte/Regeln aus
-der Vorlage extrahieren und VOR dem Verdrahten mit dem Fachbereich bestätigen.
+### M5b — Galabau-Gesamtschema ✅
+Aus der Vorlage „Notenberechnung Gärtner AP S 2026" reverse-engineert und
+integriert: 5 praktische Bereiche (I–V) + 4 Kenntnisbereiche, Praxis-Schnitt
+(TRUNC,1), Kenntnis-Schnitt, **GESAMTNOTE = Praxis·0,6 + Kenntnis·0,4** (TRUNC,1),
+**Bestehensregeln** (Schnitt/Gesamt < 4,5; Sperrfach ≥ 5,5; max. ein Bereich ≥ 4,5).
+Bewerten-Dialog (9 Bereiche, Live-Ergebnis), Noten-Liste, Zeugnis. Smoke-getestet
+(inkl. 60/40, Sperrfach, 2×≥4,5). Tool jetzt auf **Gärtner-Fachrichtungen** fokussiert.
+
+### M5c — Notenberechnung-Detail (offen)
+Theorie-Finals aus schriftlich (doppelt) + mündlich/Nachprüfung ((U+U+V)/3),
+Punkte→Note je Bereich mit eigenem Schlüssel, weitere Fachrichtungen.
 
 ### M7 — Excel-Import der Bewertungsbögen (offen)
 SheetJS lokal vendoren; Azubi-/Punktedaten aus den `.xlsm/.xlsx`-Sammelbögen

@@ -64,22 +64,31 @@ export async function oeffnen() {
       UNIQUE (pruefung_id, pruefer_id)
     );
   `);
-  // Gesamtbewertung je Prüfling (Punkte -> Dezimalnote über linearen Schlüssel).
+  // Bewertung je Prüfling nach dem Galabau-Sammelbewertungsbogen:
+  // 5 praktische Bereiche (p1..p5) + 4 Kenntnisbereiche (k1..k4) als Dezimalnoten,
+  // dazu die berechneten Schnitte und das Gesamtergebnis.
   await _pg.exec(`
     CREATE TABLE IF NOT EXISTS bewertungen (
       id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
       pruefling_id bigint NOT NULL UNIQUE,
-      punkte int,
-      max_punkte int DEFAULT 100,
-      note numeric,
-      note_wort text,
-      status text,
+      p1 numeric, p2 numeric, p3 numeric, p4 numeric, p5 numeric,
+      k1 numeric, k2 numeric, k3 numeric, k4 numeric,
+      praxis numeric, kenntnis numeric, gesamt numeric, bestanden boolean,
       bemerkung text
     );
-    -- Migration bestehender Datenbanken auf das lineare Dezimal-Schema
-    ALTER TABLE bewertungen ADD COLUMN IF NOT EXISTS max_punkte int DEFAULT 100;
-    ALTER TABLE bewertungen ADD COLUMN IF NOT EXISTS note_wort text;
-    ALTER TABLE bewertungen ALTER COLUMN note TYPE numeric USING note::numeric;
+    ALTER TABLE bewertungen ADD COLUMN IF NOT EXISTS p1 numeric;
+    ALTER TABLE bewertungen ADD COLUMN IF NOT EXISTS p2 numeric;
+    ALTER TABLE bewertungen ADD COLUMN IF NOT EXISTS p3 numeric;
+    ALTER TABLE bewertungen ADD COLUMN IF NOT EXISTS p4 numeric;
+    ALTER TABLE bewertungen ADD COLUMN IF NOT EXISTS p5 numeric;
+    ALTER TABLE bewertungen ADD COLUMN IF NOT EXISTS k1 numeric;
+    ALTER TABLE bewertungen ADD COLUMN IF NOT EXISTS k2 numeric;
+    ALTER TABLE bewertungen ADD COLUMN IF NOT EXISTS k3 numeric;
+    ALTER TABLE bewertungen ADD COLUMN IF NOT EXISTS k4 numeric;
+    ALTER TABLE bewertungen ADD COLUMN IF NOT EXISTS praxis numeric;
+    ALTER TABLE bewertungen ADD COLUMN IF NOT EXISTS kenntnis numeric;
+    ALTER TABLE bewertungen ADD COLUMN IF NOT EXISTS gesamt numeric;
+    ALTER TABLE bewertungen ADD COLUMN IF NOT EXISTS bestanden boolean;
   `);
   return { pg: _pg, modus: _modus };
 }
@@ -282,27 +291,82 @@ export function noteAusPunkten(punkte, max = 100) {
   return { punkte: p, max: m, note, wort, ausreichend: note <= 4.4 };
 }
 
-/** Setzt/aktualisiert die Gesamtbewertung eines Prüflings. */
-export async function setzeBewertung(prueflingId, punkte, max = 100, bemerkung = null) {
-  const r = noteAusPunkten(punkte, max);
-  const status = r.ausreichend ? "ausreichend" : "nicht bestanden";
+/** Wortstufe öffentlich (für UI). */
+export const wortStufe = noteWort;
+
+/** TRUNC(x, 1) wie in Excel: zur Null hin auf 1 Nachkommastelle abschneiden. */
+function trunc1(x) {
+  return Math.trunc(x * 10 + (x >= 0 ? 1e-9 : -1e-9)) / 10;
+}
+
+function zahlOderNull(v) {
+  if (v === null || v === undefined || v === "") return null;
+  const n = Number(String(v).replace(",", "."));
+  return Number.isFinite(n) ? n : null;
+}
+
+/**
+ * Galabau-Gesamtbewertung nach dem Sammelbewertungsbogen
+ * „Abschlussprüfung Gärtner/in BW, FR Garten- und Landschaftsbau":
+ *  - Praxis-Schnitt  O  = TRUNC(Mittel der 5 praktischen Bereiche, 1)
+ *  - Kenntnis-Schnitt AA = TRUNC(Mittel der 4 Kenntnisbereiche, 1)
+ *  - GESAMTNOTE      AB = TRUNC(O·0,6 + AA·0,4, 1)   (Praxis 60 %, Kenntnis 40 %)
+ *  - bestanden = Nein, wenn O≥4,5 ODER AA≥4,5 ODER AB≥4,5
+ *    ODER ein Bereich ≥5,5 (Sperrfach) ODER ≥2 Bereiche ≥4,5.
+ * @param praxis   Array[5] Dezimalnoten (oder null)
+ * @param kenntnis Array[4] Dezimalnoten (oder null)
+ */
+export function gesamtGalabau(praxis, kenntnis) {
+  const P = praxis.map(zahlOderNull);
+  const K = kenntnis.map(zahlOderNull);
+  const pVoll = P.every((n) => n !== null);
+  const kVoll = K.every((n) => n !== null);
+  const O = pVoll ? trunc1(P.reduce((a, b) => a + b, 0) / 5) : null;
+  const AA = kVoll ? trunc1(K.reduce((a, b) => a + b, 0) / 4) : null;
+  const AB = O !== null && AA !== null ? trunc1(O * 0.6 + AA * 0.4) : null;
+
+  const bereiche = [...P, ...K].filter((n) => n !== null);
+  const anzahl55 = bereiche.filter((n) => n >= 5.5).length;
+  const anzahl45 = bereiche.filter((n) => n >= 4.5).length;
+
+  let bestanden = null;
+  const gruende = [];
+  if (O !== null && AA !== null && AB !== null) {
+    if (O >= 4.5) gruende.push("Praxis-Schnitt ≥ 4,5");
+    if (AA >= 4.5) gruende.push("Kenntnis-Schnitt ≥ 4,5");
+    if (AB >= 4.5) gruende.push("Gesamtnote ≥ 4,5");
+    if (anzahl55 >= 1) gruende.push("Sperrfach: Bereich ≥ 5,5 (ungenügend)");
+    if (anzahl45 >= 2) gruende.push("≥ 2 Bereiche ≥ 4,5 (mangelhaft)");
+    bestanden = gruende.length === 0;
+  }
+  return { praxis: O, kenntnis: AA, gesamt: AB, bestanden, anzahl55, anzahl45, gruende };
+}
+
+/** Setzt/aktualisiert die Galabau-Bewertung eines Prüflings. */
+export async function setzeBewertung(prueflingId, praxis, kenntnis, bemerkung = null) {
+  const g = gesamtGalabau(praxis, kenntnis);
+  const P = praxis.map(zahlOderNull);
+  const K = kenntnis.map(zahlOderNull);
   await _pg.query(
-    `INSERT INTO bewertungen (pruefling_id, punkte, max_punkte, note, note_wort, status, bemerkung)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
-       ON CONFLICT (pruefling_id) DO UPDATE
-         SET punkte = EXCLUDED.punkte, max_punkte = EXCLUDED.max_punkte,
-             note = EXCLUDED.note, note_wort = EXCLUDED.note_wort,
-             status = EXCLUDED.status, bemerkung = EXCLUDED.bemerkung`,
-    [prueflingId, r.punkte, r.max, r.note, r.wort, status, bemerkung || null]
+    `INSERT INTO bewertungen
+       (pruefling_id, p1,p2,p3,p4,p5, k1,k2,k3,k4, praxis,kenntnis,gesamt,bestanden, bemerkung)
+       VALUES ($1, $2,$3,$4,$5,$6, $7,$8,$9,$10, $11,$12,$13,$14, $15)
+       ON CONFLICT (pruefling_id) DO UPDATE SET
+         p1=EXCLUDED.p1,p2=EXCLUDED.p2,p3=EXCLUDED.p3,p4=EXCLUDED.p4,p5=EXCLUDED.p5,
+         k1=EXCLUDED.k1,k2=EXCLUDED.k2,k3=EXCLUDED.k3,k4=EXCLUDED.k4,
+         praxis=EXCLUDED.praxis,kenntnis=EXCLUDED.kenntnis,gesamt=EXCLUDED.gesamt,
+         bestanden=EXCLUDED.bestanden,bemerkung=EXCLUDED.bemerkung`,
+    [prueflingId, ...P, ...K, g.praxis, g.kenntnis, g.gesamt, g.bestanden, bemerkung || null]
   );
-  return r;
+  return g;
 }
 
 /** Alle Prüflinge mit (optionaler) Bewertung, fachlich sortiert. */
 export async function bewertungenListe() {
   const res = await _pg.query(
     `SELECT p.id AS pruefling_id, p.nachname, p.vorname, p.beruf,
-            b.punkte, b.max_punkte, b.note, b.note_wort, b.status, b.bemerkung
+            b.p1,b.p2,b.p3,b.p4,b.p5, b.k1,b.k2,b.k3,b.k4,
+            b.praxis, b.kenntnis, b.gesamt, b.bestanden, b.bemerkung
        FROM prueflinge p LEFT JOIN bewertungen b ON b.pruefling_id = p.id
       ORDER BY p.nachname, p.vorname`
   );
@@ -312,7 +376,8 @@ export async function bewertungenListe() {
 /** Alle Daten für ein Zeugnis: Prüfling + Bewertung + (erster) Prüfungstermin. */
 export async function zeugnisDaten(prueflingId) {
   const p = (await _pg.query(
-    `SELECT p.*, b.punkte, b.max_punkte, b.note, b.note_wort, b.status
+    `SELECT p.*, b.p1,b.p2,b.p3,b.p4,b.p5, b.k1,b.k2,b.k3,b.k4,
+            b.praxis, b.kenntnis, b.gesamt, b.bestanden
        FROM prueflinge p LEFT JOIN bewertungen b ON b.pruefling_id = p.id
       WHERE p.id = $1`,
     [prueflingId]
@@ -327,15 +392,17 @@ export async function zeugnisDaten(prueflingId) {
   return { ...p, termin: t };
 }
 
-/** Notenverteilung nach Wortstufe für Auswertungen/Diagramme. */
+/** Verteilung der GESAMTNOTE nach Wortstufe (für Auswertungen/Diagramme). */
 export async function notenVerteilung() {
   const res = await _pg.query(
-    `SELECT note_wort, count(*)::int AS wert FROM bewertungen
-      WHERE note_wort IS NOT NULL GROUP BY note_wort`
+    `SELECT gesamt FROM bewertungen WHERE gesamt IS NOT NULL`
   );
-  const map = {};
-  res.rows.forEach((r) => { map[r.note_wort] = r.wert; });
   const stufen = ["sehr gut", "gut", "befriedigend", "ausreichend", "mangelhaft", "ungenügend"];
+  const map = {};
+  res.rows.forEach((r) => {
+    const w = noteWort(Number(r.gesamt));
+    map[w] = (map[w] || 0) + 1;
+  });
   return stufen.map((s) => ({ label: s, wert: map[s] || 0 }));
 }
 
@@ -437,20 +504,20 @@ export async function beispieldatenEinmalig() {
   if (summe > 0) return false;
 
   const betriebe = [
-    { name: "Weingut am Kaiserstuhl", strasse: "Rebenweg 3", plz: "79206", ort: "Breisach", ansprechpartner: "C. Vogt", email: "ausbildung@weingut-kaiserstuhl.example", telefon: "07667 1234" },
-    { name: "Gärtnerei Ihringen",     strasse: "Blumenstr. 12", plz: "79241", ort: "Ihringen", ansprechpartner: "M. Bauer", email: "info@gaertnerei-ihringen.example", telefon: "07668 5678" },
-    { name: "Schäfer & Söhne GbR",    strasse: "Feldweg 8", plz: "79379", ort: "Müllheim", ansprechpartner: "T. Schäfer", email: "kontakt@schaefer-soehne.example", telefon: "07631 4321" },
-    { name: "Hof Sonnenhalde",        strasse: "Sonnenhalde 1", plz: "79249", ort: "Merzhausen", ansprechpartner: "A. Lehmann", email: "hof@sonnenhalde.example", telefon: "0761 99887" },
+    { name: "Grünwerk Garten- und Landschaftsbau GmbH", strasse: "Industriestr. 7", plz: "79108", ort: "Freiburg", ansprechpartner: "C. Vogt", email: "ausbildung@gruenwerk.example", telefon: "0761 12340" },
+    { name: "Baumschule Ihringen",     strasse: "Blumenstr. 12", plz: "79241", ort: "Ihringen", ansprechpartner: "M. Bauer", email: "info@baumschule-ihringen.example", telefon: "07668 5678" },
+    { name: "GaLaBau Schäfer & Söhne GbR", strasse: "Feldweg 8", plz: "79379", ort: "Müllheim", ansprechpartner: "T. Schäfer", email: "kontakt@galabau-schaefer.example", telefon: "07631 4321" },
+    { name: "Stadtgärtnerei Merzhausen", strasse: "Sonnenhalde 1", plz: "79249", ort: "Merzhausen", ansprechpartner: "A. Lehmann", email: "gaertnerei@merzhausen.example", telefon: "0761 99887" },
   ];
   for (const b of betriebe) await anlegen("betriebe", b);
 
   const prueflinge = [
-    { nachname: "Albrecht", vorname: "Lena", beruf: "Winzer/in", betrieb: "Weingut am Kaiserstuhl", pruefungsjahr: 2026, status: "zugelassen" },
-    { nachname: "Brenner",  vorname: "Tim",  beruf: "Gärtner/in", betrieb: "Gärtnerei Ihringen", pruefungsjahr: 2026, status: "angemeldet" },
-    { nachname: "Conrad",   vorname: "Sara", beruf: "Landwirt/in", betrieb: "Schäfer & Söhne GbR", pruefungsjahr: 2026, status: "zugelassen" },
-    { nachname: "Dietz",    vorname: "Jonas",beruf: "Winzer/in", betrieb: "Weingut am Kaiserstuhl", pruefungsjahr: 2025, status: "bestanden" },
-    { nachname: "Engel",    vorname: "Mara", beruf: "Hauswirtschafter/in", betrieb: "Hof Sonnenhalde", pruefungsjahr: 2026, status: "angemeldet" },
-    { nachname: "Fischer",  vorname: "Noah", beruf: "Gärtner/in", betrieb: "Gärtnerei Ihringen", pruefungsjahr: 2026, status: "zugelassen" },
+    { nachname: "Albrecht", vorname: "Lena", beruf: "Garten- und Landschaftsbau", betrieb: "Grünwerk Garten- und Landschaftsbau GmbH", pruefungsjahr: 2026, status: "zugelassen" },
+    { nachname: "Brenner",  vorname: "Tim",  beruf: "Baumschule", betrieb: "Baumschule Ihringen", pruefungsjahr: 2026, status: "angemeldet" },
+    { nachname: "Conrad",   vorname: "Sara", beruf: "Garten- und Landschaftsbau", betrieb: "GaLaBau Schäfer & Söhne GbR", pruefungsjahr: 2026, status: "zugelassen" },
+    { nachname: "Dietz",    vorname: "Jonas",beruf: "Garten- und Landschaftsbau", betrieb: "Grünwerk Garten- und Landschaftsbau GmbH", pruefungsjahr: 2026, status: "zugelassen" },
+    { nachname: "Engel",    vorname: "Mara", beruf: "Zierpflanzenbau", betrieb: "Stadtgärtnerei Merzhausen", pruefungsjahr: 2026, status: "angemeldet" },
+    { nachname: "Fischer",  vorname: "Noah", beruf: "Garten- und Landschaftsbau", betrieb: "GaLaBau Schäfer & Söhne GbR", pruefungsjahr: 2026, status: "zugelassen" },
   ];
   for (const p of prueflinge) await anlegen("prueflinge", p);
 
@@ -462,8 +529,8 @@ export async function beispieldatenEinmalig() {
   for (const p of pruefer) await anlegen("pruefer", p);
 
   const pruefungen = [
-    { titel: "Praktische AP Winzer/in", beruf: "Winzer/in", datum: "2026-07-14", zeit_von: "08:00", zeit_bis: "16:00", ort: "Weingut am Kaiserstuhl", raum: "Kelterhalle" },
-    { titel: "Praktische AP Gärtner/in", beruf: "Gärtner/in", datum: "2026-07-16", zeit_von: "08:30", zeit_bis: "15:30", ort: "Gärtnerei Ihringen", raum: "Gewächshaus 2" },
+    { titel: "Praktische AP GaLaBau", beruf: "Garten- und Landschaftsbau", datum: "2026-07-14", zeit_von: "08:00", zeit_bis: "16:00", ort: "Übungsgelände GBA Freiburg", raum: "Freifläche A" },
+    { titel: "Praktische AP Zierpflanzenbau", beruf: "Zierpflanzenbau", datum: "2026-07-16", zeit_von: "08:30", zeit_bis: "15:30", ort: "Stadtgärtnerei Merzhausen", raum: "Gewächshaus 2" },
   ];
   for (const p of pruefungen) await anlegen("pruefungen", p);
 
