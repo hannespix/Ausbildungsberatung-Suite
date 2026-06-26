@@ -128,6 +128,32 @@ export async function gruppiert(key, spalte) {
   return res.rows;
 }
 
+/** Distinkte, nicht-leere Werte einer Spalte (für Vorschlagslisten/datalist). */
+export async function werteFuer(key, feld) {
+  const e = ent(key);
+  const res = await _pg.query(
+    `SELECT DISTINCT ${feld} AS v FROM ${e.key}
+       WHERE ${feld} IS NOT NULL AND btrim(${feld}::text) <> '' ORDER BY 1`
+  );
+  return res.rows.map((r) => r.v);
+}
+
+/**
+ * Sucht mögliche Dubletten anhand der Identitätsfelder (case-insensitive,
+ * exakt nach Trimmen). Optional eine id ausschließen (beim Bearbeiten).
+ */
+export async function findeDubletten(key, daten, ausschlussId = null) {
+  const e = ent(key);
+  const felder = e.dublette;
+  if (!felder || !felder.length) return [];
+  const teile = felder.map((f, i) => `lower(btrim(${f}::text)) = lower(btrim($${i + 1}))`);
+  const params = felder.map((f) => String(daten[f] == null ? "" : daten[f]));
+  let sql = `SELECT * FROM ${e.key} WHERE ${teile.join(" AND ")}`;
+  if (ausschlussId != null) { params.push(ausschlussId); sql += ` AND id <> $${params.length}`; }
+  const res = await _pg.query(sql, params);
+  return res.rows;
+}
+
 /**
  * Legt einmalig fiktive Beispieldaten an (nur wenn alle Tabellen leer sind).
  * Bewusst erfundene Daten — keine echten personenbezogenen Daten im Repo.

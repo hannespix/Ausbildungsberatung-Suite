@@ -23,13 +23,17 @@ CRUD-/Such-Schicht (`store.js`); SPA mit Router, Übersicht (Kennzahlen +
 Diagramm) und CRUD für **Prüflinge, Betriebe, Prüfer:innen, Prüfungstermine**;
 DB-seitige globale Fuzzy-Suche; Beispiel­daten (fiktiv). Smoke-getestet (Chromium).
 
+### M2 — Saubere Stammdaten ✅
+Betrieb-Auswahl per Vorschlagsliste (`datalist`, neues `reftext`-Feldmuster);
+E-Mail-Format-Validierung mit deutscher Meldung; Dublettenwarnung (bestätigbar)
+über Identitätsfelder je Entität. Smoke-getestet (Chromium).
+
 ---
 
 ## Geplant (Loop-Backlog — Reihenfolge flexibel)
 
-### M2 — Beziehungen & saubere Stammdaten
-Prüfling↔Betrieb als Auswahl (statt Freitext), Berufe-Lookup, Dublettenwarnung,
-Pflichtfeld-/Format-Validierung (E-Mail, PLZ), Inline-Bearbeitung.
+### M2b — Weitere Stammdaten-Politur (offen)
+Berufe-Lookup, PLZ-Format, Inline-Bearbeitung, Sortierung per Spaltenkopf.
 
 ### M3 — Prüfungstage & Tagesplanung
 Prüfungstermine mit Prüflings- und Prüfer-**Zuteilung**, Zeitslots je Prüfling,

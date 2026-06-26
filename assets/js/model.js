@@ -18,12 +18,14 @@ export const ENTITAETEN = {
     plural: "Prüflinge",
     icon: "user",
     ordnung: "nachname, vorname",
+    dublette: ["nachname", "vorname"],
     felder: [
       { name: "nachname",     label: "Nachname",        input: "text",     typ: "text",    such: true, pflicht: true, tabelle: true },
       { name: "vorname",      label: "Vorname",         input: "text",     typ: "text",    such: true, pflicht: true, tabelle: true },
       { name: "geburtsdatum", label: "Geburtsdatum",    input: "date",     typ: "date" },
       { name: "beruf",        label: "Ausbildungsberuf",input: "text",     typ: "text",    such: true, tabelle: true },
-      { name: "betrieb",      label: "Ausbildungsbetrieb", input: "text",  typ: "text",    such: true, tabelle: true },
+      { name: "betrieb",      label: "Ausbildungsbetrieb", input: "reftext", typ: "text",  such: true, tabelle: true,
+        ref: { entitaet: "betriebe", feld: "name" }, hinweis: "Aus bestehenden Betrieben wählen oder neu eintippen." },
       { name: "pruefungsjahr",label: "Prüfungsjahr",    input: "number",   typ: "integer", tabelle: true },
       { name: "status",       label: "Status",          input: "select",   typ: "text",    tabelle: true,
         optionen: ["angemeldet", "zugelassen", "geprüft", "bestanden", "nicht bestanden", "zurückgezogen"] },
@@ -39,6 +41,7 @@ export const ENTITAETEN = {
     plural: "Ausbildungsbetriebe",
     icon: "building",
     ordnung: "name",
+    dublette: ["name"],
     felder: [
       { name: "name",           label: "Name",            input: "text",     typ: "text", such: true, pflicht: true, tabelle: true },
       { name: "strasse",        label: "Straße / Nr.",    input: "text",     typ: "text" },
@@ -57,6 +60,7 @@ export const ENTITAETEN = {
     plural: "Prüfer:innen",
     icon: "users",
     ordnung: "nachname, vorname",
+    dublette: ["nachname", "vorname"],
     felder: [
       { name: "nachname",     label: "Nachname",      input: "text",     typ: "text", such: true, pflicht: true, tabelle: true },
       { name: "vorname",      label: "Vorname",       input: "text",     typ: "text", such: true, pflicht: true, tabelle: true },
@@ -75,6 +79,7 @@ export const ENTITAETEN = {
     plural: "Prüfungstermine",
     icon: "calendar",
     ordnung: "datum, zeit_von",
+    dublette: ["titel", "datum"],
     felder: [
       { name: "titel",     label: "Bezeichnung",   input: "text",     typ: "text", such: true, pflicht: true, tabelle: true },
       { name: "beruf",     label: "Ausbildungsberuf", input: "text",  typ: "text", such: true, tabelle: true },
