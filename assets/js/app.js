@@ -610,6 +610,7 @@ function icsBauen(termine) {
   termine.forEach((t) => {
     const beschreibung = [
       t.beruf ? "Fachrichtung: " + t.beruf : "",
+      t.rolle ? "Rolle: " + t.rolle : "",
       t.prueflinge != null ? "Prüflinge: " + t.prueflinge : "",
       t.ausschuss ? "Ausschuss: " + t.ausschuss : "",
     ].filter(Boolean).join("\n");
@@ -2069,6 +2070,8 @@ async function renderPrueferAkte(id) {
     <p class="bw-unterzeile">Prüfer:in — Kontakt, Ausschuss-Einsätze und Abwesenheiten an einem Ort</p>
 
     <div class="bw-toolbar" style="margin-bottom:var(--bw-space-3)">
+      <button class="bw-btn bw-btn--sekundaer" type="button" id="pruefer-ics"
+              ${eins.some((e) => e.datum) ? "" : "disabled title=\"Keine datierten Einsätze\""}>Einsätze als Kalender (.ics)</button>
       <button class="bw-btn bw-btn--sekundaer" type="button" id="pruefer-abw">Abwesenheiten bearbeiten</button>
       <button class="bw-btn bw-btn--sekundaer" type="button" id="pruefer-bearbeiten">Stammdaten bearbeiten</button>
     </div>
@@ -2113,6 +2116,16 @@ async function renderPrueferAkte(id) {
     </div>
   `;
 
+  document.getElementById("pruefer-ics")?.addEventListener("click", () => {
+    const termine = eins.filter((e) => e.datum).map((e) => ({
+      id: e.pruefung_id, titel: e.titel, beruf: e.beruf, datum: e.datum,
+      zeit_von: e.zeit_von, ort: e.ort, rolle: e.rolle,
+    }));
+    if (!termine.length) { meldung("Keine datierten Einsätze für den Kalender-Export.", "fehler"); return; }
+    const dn = `Einsaetze-${(p.nachname || "Pruefer").replace(/[^\wäöüÄÖÜß-]/g, "_")}.ics`;
+    icsDownload(dn, icsBauen(termine));
+    meldung(`Kalender exportiert: ${zahl(termine.length)} Einsatz/Einsätze (.ics). In Outlook über „Datei → Öffnen/Importieren" einlesen.`);
+  });
   document.getElementById("pruefer-bearbeiten").addEventListener("click", () => {
     formularOeffnen("pruefer", p, () => renderPrueferAkte(id));
   });
