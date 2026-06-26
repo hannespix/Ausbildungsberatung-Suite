@@ -81,9 +81,13 @@ Bewerten-Dialog (9 Bereiche, Live-Ergebnis), Noten-Liste, Zeugnis. Smoke-geteste
 Theorie-Finals aus schriftlich (doppelt) + mündlich/Nachprüfung ((U+U+V)/3),
 Punkte→Note je Bereich mit eigenem Schlüssel, weitere Fachrichtungen.
 
-### M7 — Excel-Import der Bewertungsbögen (offen)
-SheetJS lokal vendoren; Azubi-/Punktedaten aus den `.xlsm/.xlsx`-Sammelbögen
-einlesen (Mapping-Vorschau, Dublettenabgleich).
+### M7 — Excel-/CSV-Import (teils ✅)
+- ✅ **CSV-Import von Prüflingen**: offline-Parser (Trennzeichen-Erkennung ; / ,,
+  Anführungszeichen, Umlaute), automatische Spaltenzuordnung (überschreibbar),
+  Vorschau und Dublettenschutz (Nach-/Vorname). Button in der Prüflingsliste.
+  Smoke-getestet (inkl. quoted Feld mit Komma, Dublette, leere Zeile).
+- Offen: SheetJS lokal vendoren für `.xlsx/.xlsm`-Sammelbögen (Punktedaten),
+  CSV-Import auch für Betriebe/Prüfer:innen.
 
 ### M6 — Zeugnis-Erstellung ✅
 Neue Ansicht „Zeugnisse": druckbares Prüfungszeugnis je Prüfling aus Stammdaten
