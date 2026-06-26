@@ -114,6 +114,10 @@ Einladungs-/Bestätigungsstatus ✅ (Prüfer-Plan).
 - ✅ **Abwesenheits-Konflikte sichtbar**: Warnung bei manueller Prüfer-Zuteilung
   an einem Abwesenheitstag; verbleibende Verstöße erscheinen als Hinweis in
   „Was ist zu tun?" (`prueferAbwesenheitsKonflikte`, `istAbwesend`). Smoke-getestet.
+- ✅ **Prüfer-Einladung drucken**: je Termin eine persönliche, druckbare
+  Einladung pro Ausschussmitglied (Rolle, Datum, Ort, Prüflingszahl, Bitte um
+  Zu-/Absage) — eine Seite je Mitglied, ergänzt die `mailto`-Anfrage für
+  Mitglieder ohne E-Mail. Chromium-getestet (Seitenzahl = Mitglieder, Mobile).
 
 ### M5 — Notenberechnung ✅
 Neue Ansicht „Noten": Gesamtbewertung je Prüfling, Bewerten-Dialog mit

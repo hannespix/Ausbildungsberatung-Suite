@@ -41,8 +41,8 @@ im aktuellen Landes-Corporate-Design Baden-Württemberg
   legt fehlende Termine an, vergibt **Uhrzeiten (Zeitraster)** und besetzt je
   Termin **konfliktfrei einen Ausschuss** (keine Doppelbelegung am selben Tag).
 - **Prüfer-Plan & Zusagen** — Ausschüsse je Termin informieren
-  (`mailto:`-Einladung) und Zu-/Absagen verwalten (offen → angefragt →
-  zugesagt/abgesagt).
+  (`mailto:`-Einladung oder druckbare **persönliche Einladung** je Mitglied) und
+  Zu-/Absagen verwalten (offen → angefragt → zugesagt/abgesagt).
 - **Durchführung** — druckbarer **Tagesablauf** (für GaLaBau inkl. festem
   Prüfungstag-Ablauf), leere **Bewertungsbögen** je Prüfling (Sammelbewertungs-
   bogen zum handschriftlichen Ausfüllen) und **Ergebnis-Niederschrift** je Termin
