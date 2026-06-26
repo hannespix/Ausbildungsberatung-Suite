@@ -105,7 +105,33 @@ async function renderUebersicht() {
         <li><span class="swatch" style="background:var(--bw-gelb);outline:1.5px solid var(--bw-schwarz)"></span> größter Wert</li>
       </ul>
     </section>
+
+    <section aria-labelledby="demo-h" style="margin-top:var(--bw-space-4)">
+      <h2 id="demo-h">Beispieldaten</h2>
+      <div class="bw-card">
+        <p class="bw-klein bw-leise">Fiktiver Datensatz zum Ausprobieren: ~155 Prüflinge über alle Gärtner-Fachrichtungen, Betriebe mit 1–10 Azubis, Prüfer:innen und Prüfungstermine.</p>
+        <div class="bw-toolbar" style="margin-top:var(--bw-space-2)">
+          <button class="bw-btn bw-btn--gelb" type="button" id="demo-erzeugen">Beispieldatensatz erzeugen</button>
+          <button class="bw-btn bw-btn--sekundaer" type="button" id="demo-loeschen">Alle Daten löschen</button>
+        </div>
+      </div>
+    </section>
   `;
+
+  document.getElementById("demo-erzeugen").addEventListener("click", async () => {
+    if (!confirm("Großen Beispieldatensatz erzeugen? Vorhandene Daten werden dabei ersetzt.")) return;
+    meldung("Beispieldaten werden erzeugt…");
+    try {
+      const n = await store.demodatenGenerieren();
+      meldung(`Beispieldaten erzeugt: ${zahl(n.prueflinge)} Prüflinge, ${zahl(n.betriebe)} Betriebe, ${zahl(n.pruefer)} Prüfer:innen.`);
+      renderUebersicht();
+    } catch (e) { console.error(e); meldung("Erzeugen fehlgeschlagen: " + e.message, "fehler"); }
+  });
+  document.getElementById("demo-loeschen").addEventListener("click", async () => {
+    if (!confirm("Wirklich ALLE Daten löschen? Das kann nicht rückgängig gemacht werden.")) return;
+    try { await store.alleLoeschen(); meldung("Alle Daten gelöscht."); renderUebersicht(); }
+    catch (e) { console.error(e); meldung("Löschen fehlgeschlagen: " + e.message, "fehler"); }
+  });
 
   if (window.bwChart && jeStatus.length) {
     const maxWert = Math.max.apply(null, jeStatus.map((r) => r.wert));
