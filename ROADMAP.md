@@ -91,6 +91,11 @@ saubere Aufräumung abhängiger Zuteilungen beim Löschen. Smoke-getestet (Chrom
 In der Planung zusätzlich **Prüfer:innen** einem Termin zuteilen (mit Rolle:
 Vorsitz/Beisitz/Lehrkraft), Liste mit Entfernen; abhängige Zuteilungen werden
 beim Löschen aufgeräumt. Smoke-getestet (Chromium).
+- ✅ **Prüfungstag-Status**: je gewähltem Termin eine kompakte Readiness-Zeile
+  (Ausschuss x/3, Zusagen zugesagt/offen, Uhrzeiten vergeben x/n, Bewertet x/n)
+  mit Ampel-Punkt je Kriterium — bündelt Signale aus Planung, Zusagen und Noten
+  auf einen Blick („ist der Tag fertig vorbereitet?"). Chromium-getestet
+  (Counts, Aktualisierung nach Bewertung, Mobile 390px).
 
 ### M3c — Druckbarer Tagesablauf ✅
 „Tagesablauf drucken" je Termin: CI-konforme Druckvorlage (`@media print`,

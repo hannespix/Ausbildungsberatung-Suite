@@ -819,6 +819,26 @@ async function renderPlanung() {
     const prueferOff = await store.prueferOffen(id);
     const ROLLEN = (ENTITAETEN.pruefer.felder.find((f) => f.name === "funktion") || {}).optionen || [];
 
+    // Prüfungstag-Status: Readiness aus Ausschuss, Zusagen, Uhrzeiten und Noten.
+    const ergebnisse = await store.terminErgebnisse(id);
+    const mitSlot = zugeteilt.filter((z) => z.slot).length;
+    const zugesagtN = prueferZug.filter((p) => (p.status || "offen") === "zugesagt").length;
+    const offenZ = prueferZug.filter((p) => ["offen", "angefragt"].includes(p.status || "offen")).length;
+    const bewertetN = ergebnisse.filter((r) => r.gesamt != null).length;
+    const pill = (ok) => ok
+      ? '<span class="bw-status-do" aria-hidden="true">●</span>'
+      : '<span class="bw-leise" aria-hidden="true">○</span>';
+    const statusHtml = zugeteilt.length ? `
+      <div class="bw-card" style="margin-bottom:var(--bw-space-3)">
+        <strong class="bw-klein">Prüfungstag-Status</strong>
+        <div class="bw-klein" style="margin-top:var(--bw-space-1);display:flex;flex-wrap:wrap;gap:var(--bw-space-3)">
+          <span>${pill(prueferZug.length >= 3)} Ausschuss ${zahl(prueferZug.length)}/3</span>
+          <span>${pill(prueferZug.length > 0 && offenZ === 0)} Zusagen: ${zahl(zugesagtN)} zugesagt, ${zahl(offenZ)} offen</span>
+          <span>${pill(mitSlot === zugeteilt.length)} Uhrzeiten ${zahl(mitSlot)}/${zahl(zugeteilt.length)}</span>
+          <span>${pill(bewertetN === zugeteilt.length)} Bewertet ${zahl(bewertetN)}/${zahl(zugeteilt.length)}</span>
+        </div>
+      </div>` : "";
+
     document.getElementById("plan").innerHTML = `
       <div class="bw-card bw-toolbar" style="margin-bottom:var(--bw-space-3)">
         <div>
@@ -848,6 +868,8 @@ async function renderPlanung() {
           </details>
         </div>
       </div>
+
+      ${statusHtml}
 
       <h2>Zugeteilte Prüflinge (${zahl(zugeteilt.length)})</h2>
       <div class="bw-toolbar" style="margin-bottom:var(--bw-space-2)"${zugeteilt.length ? "" : " hidden"}>
