@@ -269,11 +269,32 @@ function zeileHtml(ent, row, query, phase) {
     </td></tr>`;
 }
 
+/** Typbewusster Vergleich zweier Datensätze nach Feld f (leere Werte ans Ende). */
+function vergleichWert(f, a, b) {
+  const x = a[f.name], y = b[f.name];
+  const leerX = x == null || x === "", leerY = y == null || y === "";
+  if (leerX && leerY) return 0;
+  if (leerX) return 1;
+  if (leerY) return -1;
+  if (f.typ === "integer" || f.typ === "numeric") return Number(x) - Number(y);
+  if (f.typ === "date") return new Date(x) - new Date(y);
+  return String(x).localeCompare(String(y), "de", { sensitivity: "base", numeric: true });
+}
+
 async function renderListe(key) {
   const ent = ENTITAETEN[key];
   if (!ent) { location.hash = "#/"; return; }
   const spalten = tabellenSpalten(ent);
   const zeigtFortschritt = key === "prueflinge";
+  let sortName = null, sortDir = 1;
+
+  const kopfRow = () => spalten.map((f) => {
+    const aktiv = f.name === sortName;
+    const marker = aktiv ? (sortDir === 1 ? " ▲" : " ▼") : "";
+    const aria = aktiv ? (sortDir === 1 ? "ascending" : "descending") : "none";
+    return `<th class="bw-th-sort" data-sort="${f.name}" role="button" tabindex="0" aria-sort="${aria}"
+                title="Nach ${esc(f.label)} sortieren">${esc(f.label)}<span aria-hidden="true">${marker}</span></th>`;
+  }).join("") + `${zeigtFortschritt ? "<th>Fortschritt</th>" : ""}<th>Aktionen</th>`;
 
   appEl().innerHTML = `
     <h1>${esc(ent.plural)}</h1>
@@ -290,7 +311,7 @@ async function renderListe(key) {
 
     <div id="liste-bereich" aria-live="polite">
       <table class="bw-table">
-        <thead><tr>${spalten.map((f) => `<th>${esc(f.label)}</th>`).join("")}${zeigtFortschritt ? "<th>Fortschritt</th>" : ""}<th>Aktionen</th></tr></thead>
+        <thead><tr id="kopf">${kopfRow()}</tr></thead>
         <tbody id="zeilen"></tbody>
       </table>
       <p id="leer" class="bw-hinweis" hidden></p>
@@ -303,6 +324,11 @@ async function renderListe(key) {
     let rows;
     try { rows = await store.suche(key, q); }
     catch (e) { console.error(e); meldung("Suche fehlgeschlagen: " + e.message, "fehler"); return; }
+    if (sortName) {
+      const f = spalten.find((s) => s.name === sortName);
+      if (f) rows = rows.slice().sort((a, b) => vergleichWert(f, a, b) * sortDir);
+    }
+    document.getElementById("kopf").innerHTML = kopfRow();
     let phaseMap = null;
     if (zeigtFortschritt) {
       try {
@@ -328,6 +354,20 @@ async function renderListe(key) {
   document.getElementById("suche-btn").addEventListener("click", zeichne);
   document.getElementById("neu-btn").addEventListener("click", () => formularOeffnen(key, null, zeichne));
   document.getElementById("csv-btn")?.addEventListener("click", () => csvImportDialog(zeichne));
+
+  const sortieren = (name) => {
+    if (sortName === name) sortDir = -sortDir; else { sortName = name; sortDir = 1; }
+    zeichne();
+  };
+  document.getElementById("kopf").addEventListener("click", (ev) => {
+    const th = ev.target.closest("[data-sort]");
+    if (th) sortieren(th.getAttribute("data-sort"));
+  });
+  document.getElementById("kopf").addEventListener("keydown", (ev) => {
+    if (ev.key !== "Enter" && ev.key !== " ") return;
+    const th = ev.target.closest("[data-sort]");
+    if (th) { ev.preventDefault(); sortieren(th.getAttribute("data-sort")); }
+  });
 
   document.getElementById("zeilen").addEventListener("click", async (ev) => {
     const editId = ev.target.closest("[data-edit]")?.getAttribute("data-edit");
