@@ -690,6 +690,65 @@ export async function prueferKonflikte() {
   return res.rows;
 }
 
+/* ----------------------------------------------------- Datensicherung -------
+   Vollständige Sicherung/Wiederherstellung als JSON-Datei („DB-Datei daneben").
+   Bewahrt IDs (für die Beziehungen) über OVERRIDING SYSTEM VALUE; generierte
+   Spalten (such_text) werden ausgelassen und automatisch neu berechnet. */
+
+const SICHERUNG_TABELLEN = {
+  prueflinge: null, betriebe: null, pruefer: null, pruefungen: null,
+  zuteilungen: ["pruefung_id", "pruefling_id", "slot", "reihenfolge"],
+  pruefer_zuteilungen: ["pruefung_id", "pruefer_id", "rolle", "status"],
+  bewertungen: ["pruefling_id", "p1", "p2", "p3", "p4", "p5", "k1", "k2", "k3", "k4",
+                "praxis", "kenntnis", "gesamt", "bestanden", "bemerkung"],
+};
+function sicherungSpalten(tab) {
+  return SICHERUNG_TABELLEN[tab] || ENTITAETEN[tab].felder.map((f) => f.name);
+}
+
+/** Komplette Sicherung aller fachlichen Tabellen (für Datei-Export). */
+export async function sicherungErstellen() {
+  const tabellen = {};
+  for (const tab of Object.keys(SICHERUNG_TABELLEN)) {
+    const cols = ["id", ...sicherungSpalten(tab)];
+    const res = await _pg.query(`SELECT ${cols.join(", ")} FROM ${tab} ORDER BY id`);
+    tabellen[tab] = res.rows;
+  }
+  return { app: "Ausbildungsberatung-Suite", version: 1, erstellt: new Date().toISOString(), tabellen };
+}
+
+/** Spielt eine Sicherung ein (ersetzt alle Daten). */
+export async function sicherungEinspielen(daten) {
+  if (!daten || daten.app !== "Ausbildungsberatung-Suite" || !daten.tabellen)
+    throw new Error("Keine gültige Sicherungsdatei der Ausbildungsberatung-Suite.");
+  const tabs = Object.keys(SICHERUNG_TABELLEN);
+  await _pg.exec("TRUNCATE " + tabs.join(", ") + " RESTART IDENTITY;");
+  let gesamt = 0;
+  for (const tab of tabs) {
+    const rows = daten.tabellen[tab] || [];
+    if (!rows.length) continue;
+    const cols = ["id", ...sicherungSpalten(tab)];
+    const CHUNK = 200;
+    for (let off = 0; off < rows.length; off += CHUNK) {
+      const teil = rows.slice(off, off + CHUNK);
+      const werte = [], params = [];
+      teil.forEach((r, ri) => {
+        werte.push("(" + cols.map((_, ci) => `$${ri * cols.length + ci + 1}`).join(",") + ")");
+        cols.forEach((c) => params.push(r[c] === undefined ? null : r[c]));
+      });
+      await _pg.query(
+        `INSERT INTO ${tab} (${cols.join(",")}) OVERRIDING SYSTEM VALUE VALUES ${werte.join(",")}`,
+        params
+      );
+    }
+    await _pg.query(
+      `SELECT setval(pg_get_serial_sequence('${tab}','id'), GREATEST((SELECT coalesce(max(id),0) FROM ${tab}), 1))`
+    );
+    gesamt += rows.length;
+  }
+  return { tabellen: tabs.length, zeilen: gesamt };
+}
+
 /**
  * Termine mit allen Eckdaten für den Kalender-Export (ICS): Zeiten, Ort/Raum,
  * Fachrichtung, Prüflingszahl und Ausschuss. Nur Termine mit Datum.

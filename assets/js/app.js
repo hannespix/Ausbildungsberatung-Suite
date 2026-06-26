@@ -139,6 +139,18 @@ async function renderUebersicht() {
         </div>
       </div>
     </section>
+
+    <section aria-labelledby="sicherung-h" style="margin-top:var(--bw-space-4)">
+      <h2 id="sicherung-h">Datensicherung</h2>
+      <div class="bw-card">
+        <p class="bw-klein bw-leise">Alle Daten als Datei sichern und auf einem anderen Rechner oder im selben Browser wiederherstellen — vollständig offline. Empfohlen als regelmäßige Sicherung „daneben", da die Daten sonst nur im Browser dieses Geräts liegen.</p>
+        <div class="bw-toolbar" style="margin-top:var(--bw-space-2)">
+          <button class="bw-btn bw-btn--sekundaer" type="button" id="sicherung-export">Sicherung speichern (.json)</button>
+          <button class="bw-btn bw-btn--sekundaer" type="button" id="sicherung-import-btn">Sicherung einlesen…</button>
+          <input type="file" id="sicherung-datei" accept="application/json,.json" hidden>
+        </div>
+      </div>
+    </section>
   `;
 
   document.getElementById("demo-erzeugen").addEventListener("click", async () => {
@@ -166,6 +178,34 @@ async function renderUebersicht() {
       meldung(`Geplant: ${zahl(r.zuteilungen)} Prüflinge auf ${zahl(r.termine)} Termine, ${zahl(r.prueferZuteilungen)} Prüfer-Zuteilungen.`);
       location.hash = "#/planungsliste";
     } catch (e) { console.error(e); meldung("Planung fehlgeschlagen: " + e.message, "fehler"); }
+  });
+
+  document.getElementById("sicherung-export").addEventListener("click", async () => {
+    try {
+      const daten = await store.sicherungErstellen();
+      const heute = new Date().toISOString().slice(0, 10);
+      dateiDownload(`Ausbildungsberatung-Sicherung-${heute}.json`, JSON.stringify(daten), "application/json;charset=utf-8");
+      const n = Object.values(daten.tabellen).reduce((s, a) => s + a.length, 0);
+      meldung(`Sicherung gespeichert: ${zahl(n)} Datensätze. Datei sicher ablegen.`);
+    } catch (e) { console.error(e); meldung("Sicherung fehlgeschlagen: " + e.message, "fehler"); }
+  });
+  const dateiInput = document.getElementById("sicherung-datei");
+  document.getElementById("sicherung-import-btn").addEventListener("click", () => dateiInput.click());
+  dateiInput.addEventListener("change", async () => {
+    const datei = dateiInput.files && dateiInput.files[0];
+    if (!datei) return;
+    if (!confirm("Sicherung einlesen? ALLE aktuellen Daten werden dabei ersetzt.")) { dateiInput.value = ""; return; }
+    meldung("Sicherung wird eingelesen…");
+    try {
+      const text = await datei.text();
+      const daten = JSON.parse(text);
+      const r = await store.sicherungEinspielen(daten);
+      meldung(`Sicherung eingelesen: ${zahl(r.zeilen)} Datensätze wiederhergestellt.`);
+      renderUebersicht();
+    } catch (e) {
+      console.error(e);
+      meldung("Einlesen fehlgeschlagen: " + e.message, "fehler");
+    } finally { dateiInput.value = ""; }
   });
 
   if (window.bwChart && fGesamt) {
@@ -361,8 +401,8 @@ function icsBauen(termine) {
 }
 
 /** Lädt einen Text als Datei herunter (offline, ohne externe Requests). */
-function icsDownload(dateiname, text) {
-  const blob = new Blob([text], { type: "text/calendar;charset=utf-8" });
+function dateiDownload(dateiname, text, mime = "text/plain;charset=utf-8") {
+  const blob = new Blob([text], { type: mime });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -371,6 +411,9 @@ function icsDownload(dateiname, text) {
   a.click();
   document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+function icsDownload(dateiname, text) {
+  dateiDownload(dateiname, text, "text/calendar;charset=utf-8");
 }
 
 /** Liefert (und erzeugt bei Bedarf) den nur beim Drucken sichtbaren Bereich. */
