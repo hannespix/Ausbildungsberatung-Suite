@@ -67,6 +67,24 @@ export function prueferProRunde(stationen) {
 }
 
 /**
+ * Wie viele Prüflinge passen an EINEM Prüfungstag durch das Karussell? Eine volle
+ * Gruppe (m Prüflinge) braucht m Runden × Rundenlänge; in die Tageslänge passen
+ * floor(Tag / (m·Runde)) Gruppen (mindestens eine). Kapazität = Gruppen × m.
+ * @param {Array} stationen  Stationsdefinitionen.
+ * @param {number} tagMinuten  Verfügbare Tageslänge in Minuten.
+ * @returns {number} Maximale Prüflingszahl je Tag (0 ohne Stationen).
+ */
+export function kapazitaetProTag(stationen, tagMinuten) {
+  const st = normalisiereStationen(stationen);
+  const m = st.length;
+  if (!m) return 0;
+  const rundenDauer = Math.max.apply(null, st.map((s) => s.dauerMin));
+  const proGruppe = m * rundenDauer;
+  const gruppen = Math.max(1, Math.floor((Number(tagMinuten) || 0) / proGruppe));
+  return gruppen * m;
+}
+
+/**
  * Verteilt verfügbare Prüfer:innen auf die betreuten Stationen: bereits
  * zugeordnete (gültige) Personen bleiben erhalten, der Restbedarf wird der
  * Reihe nach mit noch freien Prüfer:innen aufgefüllt. Jede Person betreut

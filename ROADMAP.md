@@ -231,8 +231,14 @@ als eigene 20-Min-Station in Eigenregie des RP (ohne Ausschuss-Prüfer).
   ist entfernt. Chromium-getestet (Auto-Plan: 10 Prüflinge → 6×08:00 + 4×14:00,
   keine :20/:40-Slots, 6 Stationen, Ausschuss verteilt, Eigenregie frei,
   eindeutige Reihenfolge, Mobile 390px, Galabau-Mathe).
-- _Nächster Schritt:_ Kapazität je Tag aus dem Ablaufplan ableiten (Gruppen ×
-  Stationen × Rundenlänge gegen die Tageslänge), statt fester Kapazitätszahl.
+- ✅ **Kapazität je Tag aus dem Ablaufplan**: die automatische Planung leitet die
+  Prüflingszahl je Termin jetzt aus dem Ablaufplan ab — `kapazitaetProTag` rechnet
+  `floor(Tageslänge / (Stationen × Rundenlänge)) × Stationen` (mind. eine Gruppe),
+  basierend auf der Tageslänge des Termins (zeit_von/zeit_bis, sonst 08–16 Uhr).
+  Keine feste „12"-Zahl mehr; eine manuelle Vorgabe bleibt optional möglich
+  (Eingabe leer lassen = automatisch). Chromium-getestet (14 Prüflinge → automatisch
+  3 Termine à ≤6 [5/5/4]; manuell 12 → 2 Termine; Mobile 390px; Galabau-Mathe).
+  +5 Engine-Unit-Tests (67 gesamt).
 
 ### M3d — Ergebnis-Niederschrift je Termin ✅
 „Ergebnis-Niederschrift" in der Planung: druckbares Protokoll je Prüfungstag,

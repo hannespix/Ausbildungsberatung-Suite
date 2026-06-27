@@ -7,7 +7,7 @@
 
 import { initDB, createTable, globaleSuche } from "./db.js";
 import { ENTITAETEN, suchspalten, STANDARD_STATIONEN_GALABAU } from "./model.js";
-import { rotationsplan, minZuZeit, prueferVerteilen } from "./ablauf.js";
+import { rotationsplan, minZuZeit, prueferVerteilen, kapazitaetProTag } from "./ablauf.js";
 // Reine Notenlogik liegt in galabau.js (isoliert testbar). Intern genutzt und
 // für die UI über store re-exportiert.
 import {
@@ -517,8 +517,10 @@ export async function zeitrasterLoeschen(pruefungId) {
   await _pg.query(`UPDATE zuteilungen SET slot = NULL WHERE pruefung_id = $1`, [pruefungId]);
 }
 
-export async function planungAutomatisch(kapazitaet = 12) {
-  const cap = Math.max(1, Number(kapazitaet) || 12);
+export async function planungAutomatisch(kapazitaet = null) {
+  // Manuelle Kapazität nur, wenn ausdrücklich (>0) übergeben; sonst je Termin
+  // automatisch aus dem Ablaufplan (Tageslänge) abgeleitet.
+  const manualCap = Number(kapazitaet) > 0 ? Math.round(Number(kapazitaet)) : null;
   await _pg.exec(`TRUNCATE zuteilungen RESTART IDENTITY; TRUNCATE pruefer_zuteilungen RESTART IDENTITY; TRUNCATE stationen RESTART IDENTITY;`);
 
   const pruefer = (await _pg.query(`SELECT id FROM pruefer ORDER BY nachname, vorname`)).rows;
@@ -577,10 +579,15 @@ export async function planungAutomatisch(kapazitaet = 12) {
     )).rows;
     if (!pl.length) continue;
 
-    const needed = Math.ceil(pl.length / cap);
     let termine = (await _pg.query(
-      `SELECT id, zeit_von, datum FROM pruefungen WHERE beruf = $1 ORDER BY datum, id`, [beruf]
+      `SELECT id, zeit_von, zeit_bis, datum FROM pruefungen WHERE beruf = $1 ORDER BY datum, id`, [beruf]
     )).rows;
+    // Kapazität je Tag: manuell oder automatisch aus der Tageslänge + Ablaufplan.
+    const tagVon = (termine[0] && termine[0].zeit_von) || "08:00";
+    const tagBis = (termine[0] && termine[0].zeit_bis) || "16:00";
+    const tagMin = Math.max(60, hhmmToMin(tagBis) - hhmmToMin(tagVon));
+    const cap = manualCap || kapazitaetProTag(STANDARD_STATIONEN_GALABAU, tagMin);
+    const needed = Math.ceil(pl.length / cap);
 
     if (termine.length < needed) {
       const vorlage = (await _pg.query(
