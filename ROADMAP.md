@@ -521,10 +521,23 @@ Overlay-Dropdown, mobil als inline aufklappende Abschnitte im Hamburger
 Schatten). Chromium-getestet (5 Hauptpunkte, Dropdown öffnet/schließt,
 Navigation + aktiv-Markierung, alle 10 Routen erreichbar, Mobile 390px inline).
 
-Geplant (nächste Iterationen, prüfungstag-zentriert): ein **Prüfungstag-Dashboard**
-als Bulk-Cockpit (Ausschuss/Zusagen, Ablaufplan, Reihen-Noteneintragung,
-Serien-Zeugnis-/Mitteilungsdruck, Niederschrift) und **Prüferentschädigung**
-(Abrechnung je Einsatz, druckbar/CSV).
+### Prüfungstag-Cockpit (Tag-Dashboard) ✅
+Neue Seite „Tagescockpit" (`#/pruefungstag`, in der Prüfungstag-Gruppe; Deep-Link
+`?termin=…`): ein Prüfungstermin gewählt → alles für den Tag an einem Ort.
+- **Status-Ampel** (Ausschuss x/3, Zusagen, Uhrzeiten x/n, Bewertet x/n · bestanden).
+- **Dokumente für den Tag** (Bulk-Druck, wiederverwendete Funktionen):
+  Prüfungstag-Mappe, Tagesablauf, Anwesenheitsliste, Bewertungsbögen,
+  Ergebnis-Niederschrift, Serien-Zeugnisse/Mitteilungen, Termin als .ics.
+- **Weiter zu**: Noten erfassen, Zeugnisse, in der Planung bearbeiten
+  (Deep-Links). Ausschuss-Liste mit Zusage-Status, Prüflinge-Tabelle (Slot,
+  Note, Ergebnis).
+Keine Logik-Duplikate — bündelt vorhandene Druck-/Status-Funktionen und
+verlinkt die Stationen. Nebenbei: `#/zeugnisse?termin=…`-Deep-Link ergänzt.
+Chromium-getestet (Status, Tabelle, Weiter-Links, Niederschrift-Druck,
+Termin-ICS, Terminwechsel, Nav-Eintrag, Mobile 390px).
+
+Geplant: **Prüferentschädigung** (Abrechnung je Einsatz, druckbar/CSV) — sobald
+die Entschädigungssätze feststehen.
 
 ### M11 — Barrierefreiheit & Feinschliff
 WCAG-AA-Audit, Tastatur-/Screenreader-Durchgang, Leer-/Fehlerzustände,
