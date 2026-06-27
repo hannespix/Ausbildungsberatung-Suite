@@ -2,7 +2,7 @@
 // Läuft ohne Browser/DB in Node und in der CI. Aufruf: node tools/test_ablauf.mjs
 
 import {
-  minZuZeit, normalisiereStationen, prueferProRunde, rotationsplan, prueferVerteilen, kapazitaetProTag, stationsBelegung,
+  minZuZeit, normalisiereStationen, prueferProRunde, rotationsplan, prueferVerteilen, kapazitaetProTag, stationsBelegung, werktageNach,
 } from "../assets/js/ablauf.js";
 
 let fehler = 0, geprueft = 0;
@@ -172,6 +172,17 @@ eq(minZuZeit(bel[0][3].vonMin), "11:00", "Station A vierter Prüfling 11:00");
 // Mehrere Gruppen: Station sieht alle Prüflinge (8 bei 2 Gruppen).
 const bel8 = stationsBelegung(rotationsplan([{ name: "A" }, { name: "B" }], 4));
 eq(bel8[0].length, 4, "2 Stationen / 4 Prüflinge -> Station A sieht 4");
+
+// --- werktageNach: Wochenenden überspringen ---
+// Basis Freitag 2026-07-10 -> nächste 3 Werktage: Mo 13., Di 14., Mi 15.
+eq(werktageNach("2026-07-10", 3), ["2026-07-13", "2026-07-14", "2026-07-15"], "Fr -> Mo/Di/Mi (WE übersprungen)");
+// Basis Montag 2026-07-13 -> Di/Mi/Do/Fr, dann Mo 20. (WE 18./19. übersprungen).
+eq(werktageNach("2026-07-13", 5), ["2026-07-14", "2026-07-15", "2026-07-16", "2026-07-17", "2026-07-20"], "Mo -> 5 Werktage über WE");
+// Alle Ergebnisse sind Werktage und streng aufsteigend.
+const wt = werktageNach("2026-07-10", 10);
+ok(wt.every((s) => { const g = new Date(s + "T12:00:00").getDay(); return g >= 1 && g <= 5; }), "nur Werktage");
+ok(wt.every((s, i) => i === 0 || s > wt[i - 1]), "streng aufsteigend");
+eq(werktageNach("2026-07-10", 0), [], "anzahl 0 -> leer");
 
 console.log(`${geprueft} Prüfungen, ${fehler} Fehler.`);
 if (fehler) { console.error("ABLAUF-TESTS FEHLGESCHLAGEN"); process.exit(1); }

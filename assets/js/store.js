@@ -7,7 +7,7 @@
 
 import { initDB, createTable, globaleSuche } from "./db.js";
 import { ENTITAETEN, suchspalten, STANDARD_STATIONEN_GALABAU } from "./model.js";
-import { rotationsplan, minZuZeit, prueferVerteilen, kapazitaetProTag } from "./ablauf.js";
+import { rotationsplan, minZuZeit, prueferVerteilen, kapazitaetProTag, werktageNach } from "./ablauf.js";
 // Reine Notenlogik liegt in galabau.js (isoliert testbar). Intern genutzt und
 // für die UI über store re-exportiert.
 import {
@@ -593,18 +593,17 @@ export async function planungAutomatisch(kapazitaet = null) {
       const vorlage = (await _pg.query(
         `SELECT datum, ort, zeit_von, zeit_bis FROM pruefungen WHERE beruf = $1 ORDER BY datum DESC, id DESC LIMIT 1`, [beruf]
       )).rows[0] || { datum: "2026-07-13", ort: "Übungsgelände GBA Freiburg", zeit_von: "08:00", zeit_bis: "16:00" };
-      const basis = new Date(vorlage.datum || "2026-07-13");
-      const neu = [];
-      for (let i = termine.length; i < needed; i++) {
-        const d = new Date(basis);
-        d.setDate(d.getDate() + (i - termine.length + 1));
-        neu.push({
-          titel: `Praktische AP ${beruf} (Gruppe ${i + 1})`, beruf,
-          datum: d.toISOString().slice(0, 10),
+      // Folgetermine auf die nächsten Werktage legen (Wochenenden überspringen).
+      const basisISO = isoDatum(vorlage.datum) || "2026-07-13";
+      const tage = werktageNach(basisISO, needed - termine.length);
+      const neu = tage.map((datum, j) => {
+        const i = termine.length + j;
+        return {
+          titel: `Praktische AP ${beruf} (Gruppe ${i + 1})`, beruf, datum,
           zeit_von: vorlage.zeit_von || "08:00", zeit_bis: vorlage.zeit_bis || "16:00",
           ort: vorlage.ort || "Übungsgelände GBA Freiburg", raum: `Gruppe ${i + 1}`,
-        });
-      }
+        };
+      });
       await bulkInsert("pruefungen", ["titel", "beruf", "datum", "zeit_von", "zeit_bis", "ort", "raum"], neu);
       termine = (await _pg.query(`SELECT id, zeit_von, datum FROM pruefungen WHERE beruf = $1 ORDER BY datum, id`, [beruf])).rows;
     }
