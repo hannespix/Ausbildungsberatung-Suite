@@ -317,7 +317,7 @@ function fortschrittTag(phase) {
   return `<span class="bw-tag${cls}">${esc(FORTSCHRITT_LABELS[phase] || phase)}</span>`;
 }
 
-function zeileHtml(ent, row, query, phase, termin) {
+function zeileHtml(ent, row, query, phase, termin, belegung) {
   const tds = tabellenSpalten(ent).map((f) => {
     const roh = formatWert(f, row[f.name]);
     return `<td>${f.such ? hl(roh, query) : esc(roh)}</td>`;
@@ -325,17 +325,24 @@ function zeileHtml(ent, row, query, phase, termin) {
   const terminTd = termin !== undefined
     ? `<td>${termin ? esc(termin) : '<span class="bw-leise">—</span>'}</td>` : "";
   const fortschrittTd = phase !== undefined ? `<td>${fortschrittTag(phase)}</td>` : "";
+  // Belegung (nur Prüfungstermine): zugeteilte Prüflinge + Ausschussgröße.
+  const belegungTds = belegung !== undefined
+    ? `<td style="text-align:right">${zahl(belegung.prueflinge)}</td>`
+      + `<td style="text-align:right">${belegung.ausschuss ? zahl(belegung.ausschuss) : '<span class="bw-status-dont">0</span>'}</td>`
+    : "";
   const akte = ent.key === "prueflinge"
     ? `<a class="bw-iconbtn" href="#/pruefling/${row.id}" aria-label="Akte von ${esc((row.vorname || "") + " " + (row.nachname || ""))} öffnen" title="Akte öffnen">📋</a>`
     : ent.key === "betriebe"
     ? `<a class="bw-iconbtn" href="#/betrieb/${row.id}" aria-label="Betrieb ${esc(row.name || "")} öffnen" title="Betrieb öffnen">📋</a>`
     : ent.key === "pruefer"
     ? `<a class="bw-iconbtn" href="#/pruefer/${row.id}" aria-label="Akte von ${esc((row.vorname || "") + " " + (row.nachname || ""))} öffnen" title="Akte öffnen">📋</a>`
+    : ent.key === "pruefungen"
+    ? `<a class="bw-iconbtn" href="#/planung?termin=${row.id}" aria-label="In der Planung öffnen" title="In der Planung öffnen">📅</a>`
     : "";
   const abw = ent.key === "pruefer"
     ? `<button class="bw-iconbtn" type="button" data-abwesenheit="${row.id}" aria-label="Abwesenheiten von ${esc((row.vorname || "") + " " + (row.nachname || ""))}" title="Abwesenheiten">📅</button>`
     : "";
-  return `<tr>${tds}${terminTd}${fortschrittTd}
+  return `<tr>${tds}${terminTd}${fortschrittTd}${belegungTds}
     <td class="bw-actions">
       ${akte}${abw}
       <button class="bw-iconbtn" type="button" data-edit="${row.id}" aria-label="${esc(ent.singular)} bearbeiten" title="Bearbeiten">✎</button>
@@ -360,6 +367,7 @@ async function renderListe(key) {
   if (!ent) { location.hash = "#/"; return; }
   const spalten = tabellenSpalten(ent);
   const zeigtFortschritt = key === "prueflinge";
+  const zeigtBelegung = key === "pruefungen";
   let sortName = null, sortDir = 1;
   // Optionaler Fortschritt-Filter (nur Prüflinge), per Deep-Link aus der
   // Übersicht (#/prueflinge?phase=eingeplant) vorbelegt.
@@ -376,7 +384,7 @@ async function renderListe(key) {
     const aria = aktiv ? (sortDir === 1 ? "ascending" : "descending") : "none";
     return `<th class="bw-th-sort" data-sort="${f.name}" role="button" tabindex="0" aria-sort="${aria}"
                 title="Nach ${esc(f.label)} sortieren">${esc(f.label)}<span aria-hidden="true">${marker}</span></th>`;
-  }).join("") + `${zeigtFortschritt ? "<th>Prüfungstag</th><th>Fortschritt</th>" : ""}<th>Aktionen</th>`;
+  }).join("") + `${zeigtFortschritt ? "<th>Prüfungstag</th><th>Fortschritt</th>" : ""}${zeigtBelegung ? "<th style=\"text-align:right\">Prüflinge</th><th style=\"text-align:right\">Ausschuss</th>" : ""}<th>Aktionen</th>`;
 
   appEl().innerHTML = `
     <h1>${esc(ent.plural)}</h1>
@@ -421,12 +429,17 @@ async function renderListe(key) {
   `;
 
   const eingabe = document.getElementById("modulsuche");
-  let aktuelleRows = [], aktuellePhasen = null, aktuelleTermine = null;
+  let aktuelleRows = [], aktuellePhasen = null, aktuelleTermine = null, aktuelleBelegung = null;
   // Abgeleiteter Prüfungstag je Prüfling (frühester) als Klartext „TT.MM.JJJJ · HH:MM".
   const terminPlain = (r) => {
     const t = aktuelleTermine && aktuelleTermine.get(String(r.id));
     if (!t || !t.datum) return "";
     return new Date(t.datum).toLocaleDateString("de-DE") + (t.slot ? " · " + t.slot : "");
+  };
+  // Belegung je Prüfungstermin (Prüflinge/Ausschuss) aus der Auslastung.
+  const belegungVon = (r) => {
+    const b = aktuelleBelegung && aktuelleBelegung.get(String(r.id));
+    return { prueflinge: b ? b.prueflinge : 0, ausschuss: b ? b.ausschuss : 0 };
   };
   const zeichne = async () => {
     const q = eingabe.value;
@@ -449,6 +462,13 @@ async function renderListe(key) {
         terminMap = new Map(tm.map((r) => [String(r.id), r]));
       } catch (e) { console.warn("Prüfungstage nicht verfügbar:", e); }
     }
+    let belegungMap = null;
+    if (zeigtBelegung) {
+      try {
+        const a = await store.auslastung();
+        belegungMap = new Map(a.map((r) => [String(r.id), r]));
+      } catch (e) { console.warn("Belegung nicht verfügbar:", e); }
+    }
     if (phaseFilter && phaseMap) {
       rows = rows.filter((r) => (phaseMap.get(String(r.id)) || "angemeldet") === phaseFilter);
     }
@@ -457,11 +477,12 @@ async function renderListe(key) {
     } else if (jahrFilter) {
       rows = rows.filter((r) => String(r.pruefungsjahr || "") === String(jahrFilter));
     }
-    aktuelleRows = rows; aktuellePhasen = phaseMap; aktuelleTermine = terminMap;
+    aktuelleRows = rows; aktuellePhasen = phaseMap; aktuelleTermine = terminMap; aktuelleBelegung = belegungMap;
     document.getElementById("zeilen").innerHTML = rows
       .map((r) => zeileHtml(ent, r, q,
         phaseMap ? (phaseMap.get(String(r.id)) || "angemeldet") : undefined,
-        zeigtFortschritt ? terminPlain(r) : undefined))
+        zeigtFortschritt ? terminPlain(r) : undefined,
+        zeigtBelegung ? belegungVon(r) : undefined))
       .join("");
     const leer = document.getElementById("leer");
     if (!rows.length) {
@@ -502,9 +523,12 @@ async function renderListe(key) {
   document.getElementById("csv-btn")?.addEventListener("click", () => csvImportDialog(key, zeichne));
 
   // Spalten der aktuellen Liste (sichtbare Felder + ggf. Fortschritt) für Export/Druck.
-  const exportKopf = () => spalten.map((f) => f.label).concat(zeigtFortschritt ? ["Prüfungstag", "Fortschritt"] : []);
+  const exportKopf = () => spalten.map((f) => f.label)
+    .concat(zeigtFortschritt ? ["Prüfungstag", "Fortschritt"] : [])
+    .concat(zeigtBelegung ? ["Prüflinge", "Ausschuss"] : []);
   const exportZeile = (r) => spalten.map((f) => formatWert(f, r[f.name]))
-    .concat(zeigtFortschritt ? [terminPlain(r), FORTSCHRITT_LABELS[(aktuellePhasen && aktuellePhasen.get(String(r.id))) || "angemeldet"] || ""] : []);
+    .concat(zeigtFortschritt ? [terminPlain(r), FORTSCHRITT_LABELS[(aktuellePhasen && aktuellePhasen.get(String(r.id))) || "angemeldet"] || ""] : [])
+    .concat(zeigtBelegung ? [belegungVon(r).prueflinge, belegungVon(r).ausschuss] : []);
 
   document.getElementById("csv-export-btn").addEventListener("click", () => {
     if (!aktuelleRows.length) { meldung("Keine Einträge zum Exportieren.", "fehler"); return; }
