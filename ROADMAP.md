@@ -249,6 +249,14 @@ als eigene 20-Min-Station in Eigenregie des RP (ohne Ausschuss-Prüfer).
   Chromium-getestet (Pause nach Station 3/45 Min → Pause 11:00–11:45, Runde 4 auf
   11:45, Pause-Zeile in Raster & Laufzettel, Persistenz, Mobile 390px,
   Galabau-Mathe).
+- ✅ **Komplette Tagesmappe (ein Klick)**: „Prüfungstag-Mappe drucken" bündelt
+  jetzt das ganze Tagespaket in Ablaufreihenfolge — Übersicht, **Stationsplan**,
+  **Laufzettel je Prüfling**, **Stationskarten je Prüfer:in**, Bewertungsbögen
+  und Ergebnis-Niederschrift. Die Einzeldruck-Funktionen wurden in
+  HTML-Bausteine (`stationsplanHtml`/`laufzettelHtml`/`stationskartenHtml`)
+  zerlegt, die Mappe und Einzeldruck gemeinsam nutzen (kein Duplikat).
+  Chromium-getestet (Mappe enthält Stationsplan + Laufzettel + Stationskarten +
+  Niederschrift, Mobile 390px, Galabau-Mathe).
 - ✅ **Stationskarten für Prüfer:innen**: Gegenstück zum Laufzettel — je Station
   eine druckbare Karte mit der **Folge der Prüflinge** (Uhrzeit · Name · Betrieb ·
   Bewertungsspalte), den zugeordneten Prüfer:innen und dem Prüf-/Bewertungsraster.

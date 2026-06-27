@@ -1016,31 +1016,32 @@ function gruppenRasterHtml(plan, gruppe, zugeteilt, prueferName) {
   </table>`;
 }
 
-/** Druckbarer Stationsplan (alle Gruppen als Raster). */
-function stationsplanDrucken(termin, zugeteilt, stationen, prueferZug, pause) {
-  const plan = ablaufplanFuer(termin, zugeteilt, stationen, pause);
-  if (!plan.gruppen.length) { meldung("Keine Prüflinge zugeteilt.", "fehler"); return; }
-  const prueferName = prueferNameMap(prueferZug);
+/** Inneres HTML des Stationsplans (alle Gruppen als Raster). */
+function stationsplanHtml(termin, plan, zugeteilt, prueferName) {
   const datum = termin.datum ? new Date(termin.datum).toLocaleDateString("de-DE") : "—";
   const gruppen = plan.gruppen.map((g) => `
     <section style="break-inside:avoid;margin-top:var(--bw-space-3)">
       <h2>Gruppe ${zahl(g.nr)} <span class="bw-klein bw-leise">(${zahl(g.anzahl)} Prüflinge, ab ${minZuZeit(g.startMin)} Uhr)</span></h2>
       ${gruppenRasterHtml(plan, g, zugeteilt, prueferName)}
     </section>`).join("");
-  druckbereich().innerHTML = `
+  return `
     <h1>Ablaufplan (Stationen) — ${esc(termin.titel || "Prüfungstag")}</h1>
     <p>${esc(datum)}${termin.ort ? " · " + esc(termin.ort) : ""} · ${zahl(plan.anzahl)} Prüflinge · ${zahl(plan.m)} Stationen · ${zahl(plan.prueferProRunde)} Prüfer:innen gleichzeitig · ${minZuZeit(plan.startMin)}–${minZuZeit(plan.endeMin)} Uhr</p>
     <p class="bw-klein bw-leise">Karussell-Rotation: jeder Prüfling durchläuft jede Station genau einmal, ohne Leerlauf. Station je 60 Min (50 Prüfung + 10 Bewertung); Pflanzenerkennung 20 Min in Eigenregie des RP.</p>
     ${gruppen}
     <p class="bw-klein bw-leise" style="margin-top:var(--bw-space-3)">Erstellt mit der Ausbildungsberatung-Suite — Regierungspräsidium Freiburg</p>`;
+}
+
+/** Druckbarer Stationsplan (alle Gruppen als Raster). */
+function stationsplanDrucken(termin, zugeteilt, stationen, prueferZug, pause) {
+  const plan = ablaufplanFuer(termin, zugeteilt, stationen, pause);
+  if (!plan.gruppen.length) { meldung("Keine Prüflinge zugeteilt.", "fehler"); return; }
+  druckbereich().innerHTML = stationsplanHtml(termin, plan, zugeteilt, prueferNameMap(prueferZug));
   window.print();
 }
 
-/** Druckbare persönliche Laufzettel (eine Karte je Prüfling). */
-function laufzettelDrucken(termin, zugeteilt, stationen, prueferZug, pause) {
-  const plan = ablaufplanFuer(termin, zugeteilt, stationen, pause);
-  if (!plan.gruppen.length) { meldung("Keine Prüflinge zugeteilt.", "fehler"); return; }
-  const prueferName = prueferNameMap(prueferZug);
+/** Inneres HTML der persönlichen Laufzettel (eine Karte je Prüfling). */
+function laufzettelHtml(termin, plan, zugeteilt, prueferName) {
   const datum = termin.datum ? new Date(termin.datum).toLocaleDateString("de-DE") : "—";
   const karten = zugeteilt.map((z, i) => {
     const eintraege = plan.laufzettel[i] || [];
@@ -1067,18 +1068,22 @@ function laufzettelDrucken(termin, zugeteilt, stationen, prueferZug, pause) {
       </table>
     </section>`;
   }).join("");
-  druckbereich().innerHTML = `
+  return `
     <h1>Laufzettel — ${esc(termin.titel || "Prüfungstag")}</h1>
     <p class="bw-klein bw-leise">Je Prüfling eine Seite: wann an welcher Station. ${zahl(plan.anzahl)} Prüflinge.</p>
     ${karten}`;
+}
+
+/** Druckbare persönliche Laufzettel (eine Karte je Prüfling). */
+function laufzettelDrucken(termin, zugeteilt, stationen, prueferZug, pause) {
+  const plan = ablaufplanFuer(termin, zugeteilt, stationen, pause);
+  if (!plan.gruppen.length) { meldung("Keine Prüflinge zugeteilt.", "fehler"); return; }
+  druckbereich().innerHTML = laufzettelHtml(termin, plan, zugeteilt, prueferNameMap(prueferZug));
   window.print();
 }
 
-/** Druckbare Stationskarten je Station (für die Prüfer:innen): wer kommt wann. */
-function stationskartenDrucken(termin, zugeteilt, stationen, prueferZug, pause) {
-  const plan = ablaufplanFuer(termin, zugeteilt, stationen, pause);
-  if (!plan.gruppen.length) { meldung("Keine Prüflinge zugeteilt.", "fehler"); return; }
-  const prueferName = prueferNameMap(prueferZug);
+/** Inneres HTML der Stationskarten je Station (für die Prüfer:innen). */
+function stationskartenHtml(termin, plan, zugeteilt, prueferName) {
   const belegung = stationsBelegung(plan);
   const datum = termin.datum ? new Date(termin.datum).toLocaleDateString("de-DE") : "—";
   const karten = plan.stationen.map((s, sIdx) => {
@@ -1099,10 +1104,17 @@ function stationskartenDrucken(termin, zugeteilt, stationen, prueferZug, pause) 
       </table>
     </section>`;
   }).join("");
-  druckbereich().innerHTML = `
+  return `
     <h1>Stationskarten — ${esc(termin.titel || "Prüfungstag")}</h1>
     <p class="bw-klein bw-leise">Je Station eine Seite: welche Prüflinge in welcher Reihenfolge kommen. ${zahl(plan.m)} Stationen.</p>
     ${karten}`;
+}
+
+/** Druckbare Stationskarten je Station (für die Prüfer:innen): wer kommt wann. */
+function stationskartenDrucken(termin, zugeteilt, stationen, prueferZug, pause) {
+  const plan = ablaufplanFuer(termin, zugeteilt, stationen, pause);
+  if (!plan.gruppen.length) { meldung("Keine Prüflinge zugeteilt.", "fehler"); return; }
+  druckbereich().innerHTML = stationskartenHtml(termin, plan, zugeteilt, prueferNameMap(prueferZug));
   window.print();
 }
 
@@ -1254,12 +1266,20 @@ function bewertungsboegenDrucken(termin, zugeteilt) {
  * leerer Bewertungsbogen und die Ergebnis-Niederschrift — eine Aktion für die
  * gesamte Durchführung (je Abschnitt eine Seite).
  */
-async function mappeDrucken(termin, zugeteilt, prueferZug) {
+async function mappeDrucken(termin, zugeteilt, prueferZug, stationen, pause) {
   if (!zugeteilt.length) { meldung("Keine Prüflinge zugeteilt.", "fehler"); return; }
   const ergebnisse = await store.terminErgebnisse(termin.id);
+  const plan = ablaufplanFuer(termin, zugeteilt, stationen, pause);
+  const prueferName = prueferNameMap(prueferZug);
   const blatt = (html) => `<section class="bw-zeugnisblatt">${html}</section>`;
+  // Komplette Tagesmappe in Ablaufreihenfolge: Übersicht/Stationsplan →
+  // Laufzettel (Prüflinge) → Stationskarten (Prüfer:innen) → Bewertungsbögen →
+  // Niederschrift. Nutzt dieselben Bausteine wie die Einzeldrucke.
   druckbereich().innerHTML =
     blatt(tagesablaufHtml(termin, zugeteilt, prueferZug)) +
+    (plan.gruppen.length ? blatt(stationsplanHtml(termin, plan, zugeteilt, prueferName)) : "") +
+    (plan.gruppen.length ? blatt(laufzettelHtml(termin, plan, zugeteilt, prueferName)) : "") +
+    (plan.gruppen.length ? blatt(stationskartenHtml(termin, plan, zugeteilt, prueferName)) : "") +
     zugeteilt.map((p) => blatt(bewertungsbogenHtml(termin, p))).join("") +
     blatt(niederschriftHtml(termin, ergebnisse, prueferZug));
   window.print();
@@ -1423,7 +1443,7 @@ async function renderPruefungstag(pruefungId = null) {
     const an = (idAttr, fn) => document.getElementById(idAttr)?.addEventListener("click", async () => {
       try { await fn(); } catch (e) { console.error(e); meldung("Aktion fehlgeschlagen: " + e.message, "fehler"); }
     });
-    an("tag-mappe", () => mappeDrucken(termin, zugeteilt, prueferZug));
+    an("tag-mappe", () => mappeDrucken(termin, zugeteilt, prueferZug, stationen, pause));
     an("tag-ablauf", () => tagesablaufDrucken(termin, zugeteilt, prueferZug));
     an("tag-laufzettel", () => laufzettelDrucken(termin, zugeteilt, stationen, prueferZug, pause));
     an("tag-stationskarten", () => stationskartenDrucken(termin, zugeteilt, stationen, prueferZug, pause));
@@ -1762,8 +1782,14 @@ async function renderPlanung() {
     });
 
     document.getElementById("mappe-btn")?.addEventListener("click", async () => {
-      try { await mappeDrucken(termin, zugeteilt, prueferZug); }
-      catch (e) { console.error(e); meldung("Prüfungstag-Mappe fehlgeschlagen: " + e.message, "fehler"); }
+      try {
+        const st = await store.stationenFuer(id);
+        const pause = {
+          nachRunde: Number(await store.getEinstellung("ablauf_pause_nach", 0)) || 0,
+          min: Number(await store.getEinstellung("ablauf_pause_min", 0)) || 0,
+        };
+        await mappeDrucken(termin, zugeteilt, prueferZug, st, pause);
+      } catch (e) { console.error(e); meldung("Prüfungstag-Mappe fehlgeschlagen: " + e.message, "fehler"); }
     });
 
     // Termindetails (Datum/Ort/Raum/Uhrzeit) direkt aus der Planung bearbeiten —
