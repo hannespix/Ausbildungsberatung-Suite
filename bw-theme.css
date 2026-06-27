@@ -57,6 +57,7 @@
   --bw-fehler:      #9A1A1A;
   --bw-erfolg-bg:   #E7F0E1;   /* dezente Tönung für Status-Pills (dunkler Text) */
   --bw-fehler-bg:   #F3E2E2;
+  --bw-gelb-bg:     #FFF7B0;   /* helle Gelb-Tönung (Fläche, dunkler Text) */
 
   /* Semantik */
   --bw-bg:          var(--bw-grau-50);
@@ -195,6 +196,33 @@ input, select, textarea { font: inherit; width: 100%; padding: 0.5em 0.65em; bac
 /* Schlüssel-Wert-Tabelle (Zeilenkopf links, Wert rechts) — z. B. Rechner-Ergebnis. */
 .bw-table--paare th[scope="row"] { font-weight: 600; width: 45%; color: var(--bw-grau-700); }
 .bw-table--paare td { font-weight: 600; }
+
+/* ===================== Berichtsheft-Wochenraster ================== */
+.bw-kw-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.bw-kw-jahr { margin: var(--bw-space-3) 0 var(--bw-space-1); display: flex; align-items: baseline; gap: var(--bw-space-2); }
+.bw-kw-jahr h3 { margin: 0; }
+.bw-kw-grid { display: grid; grid-template-columns: repeat(13, minmax(2.6rem, 1fr)); gap: 2px; min-width: 36rem; }
+.bw-kw { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  min-height: 2.75rem; padding: 0.2rem; border: 1px solid var(--bw-linie); border-radius: var(--bw-radius);
+  background: var(--bw-weiss); cursor: pointer; font-size: var(--bw-fs-klein); line-height: 1.1; user-select: none; }
+.bw-kw__num { font-size: var(--bw-fs-mini); color: var(--bw-grau-700); }
+.bw-kw__codes { font-weight: 700; letter-spacing: 0.06em; }
+.bw-kw__fehl { position: absolute; top: 1px; right: 2px; font-size: var(--bw-fs-mini); font-weight: 700;
+  background: var(--bw-gelb); color: var(--bw-schwarz); border: 1px solid var(--bw-schwarz); border-radius: var(--bw-radius-rund);
+  min-width: 1.1em; text-align: center; padding: 0 0.15em; }
+.bw-kw--ok       { background: var(--bw-erfolg-bg); border-color: var(--bw-erfolg); }
+.bw-kw--issue    { background: var(--bw-fehler-bg); border-color: var(--bw-fehler); }
+.bw-kw--fehltage { background: var(--bw-gelb-bg); border-color: var(--bw-schwarz); }
+.bw-kw--behoben  { background: var(--bw-grau-100); color: var(--bw-grau-500); }
+.bw-kw--behoben .bw-kw__codes { text-decoration: line-through; }
+.bw-kw--inactive { background: var(--bw-grau-50); opacity: 0.45; pointer-events: none; }
+.bw-kw:focus, .bw-kw:focus-visible { outline: 2px solid var(--bw-schwarz); outline-offset: 1px;
+  box-shadow: 0 0 0 3px var(--bw-gelb); z-index: 2; }
+.bw-kw-legend { display: flex; flex-wrap: wrap; gap: var(--bw-space-1) var(--bw-space-2); align-items: center;
+  font-size: var(--bw-fs-klein); margin-top: var(--bw-space-2); }
+.bw-kw-legend kbd { font: inherit; font-weight: 700; background: var(--bw-grau-100); border: 1px solid var(--bw-grau-300);
+  border-radius: 3px; padding: 0 0.35em; }
+.bw-kw-legend .leg { display: inline-flex; align-items: center; gap: 0.3em; }
 
 /* ===================== Störer (rund) ============================== */
 .bw-stoerer { display: inline-flex; align-items: center; justify-content: center; text-align: center; width: 7rem; height: 7rem; border-radius: var(--bw-radius-rund); background: var(--bw-gelb); color: var(--bw-schwarz); font-family: var(--bw-font-serif); font-weight: 700; line-height: 1.05; padding: 0.5rem; }

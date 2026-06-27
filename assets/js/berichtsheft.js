@@ -111,6 +111,43 @@ export function wvStatus(fristISO, erledigt, heuteISO) {
   return frist.valueOf() < heute.setHours(0, 0, 0, 0) ? "ueberfaellig" : "offen";
 }
 
+/* --------------------------------------------------------------- KW-Raster */
+// Kalenderwochen in Schuljahr-Reihenfolge (Ausbildungsbeginn i. d. R. KW 36).
+export const KW_ORDER = (() => {
+  const a = [];
+  for (let k = 36; k <= 52; k++) a.push(k);
+  for (let k = 1; k <= 35; k++) a.push(k);
+  return a;
+})();
+export const RASTER_SPALTEN = 13; // 4 Reihen × 13 = 52 Wochen je Ausbildungsjahr
+
+/** Echte Mängelcodes (A–G, I) eines Strings — ohne „H" (nur Fehltage). */
+export function codesAlsListe(codesStr) {
+  return String(codesStr || "").split(",").map((c) => c.trim().toUpperCase()).filter(Boolean);
+}
+/** Code in einem Codes-String an-/abschalten (alphabetisch sortiert). */
+export function codeUmschalten(codesStr, code) {
+  const c = String(code || "").trim().toUpperCase();
+  if (!c) return codesStr || "";
+  const set = new Set(codesAlsListe(codesStr));
+  if (set.has(c)) set.delete(c); else set.add(c);
+  return Array.from(set).sort().join(",");
+}
+/**
+ * Anzeige-/Farbstatus einer Rasterzelle.
+ * @returns {"issue"|"behoben"|"fehltage"|"ok"|"leer"}
+ */
+export function zellenStatus(z) {
+  z = z || {};
+  if (hatEchteMaengel(z.maengel)) return "issue";
+  const behoben = codesAlsListe(z.behobene).length > 0;
+  const fehl = Number(z.fehltage || 0) > 0;
+  if (!codesAlsListe(z.maengel).length && behoben) return "behoben";
+  if (fehl) return "fehltage";
+  if (z.geprueft) return "ok";
+  return "leer";
+}
+
 /* ------------------------------------------------------------- Status-Ableitung */
 /**
  * Gesamt-Ampel je Auszubildende:r aus der letzten Kontrolle + WV-Status.

@@ -14,6 +14,7 @@ import {
 import {
   ERGEBNISSE, ergebnisLabel, brauchtWiedervorlage, naechsteFrist,
   wvStatus, ampel as bhAmpel, isoDate as bhIso, zulassungsEmpfehlung,
+  KW_ORDER, RASTER_SPALTEN, MAENGEL_CODES, codeUmschalten, codesAlsListe, zellenStatus,
 } from "./berichtsheft.js";
 
 // Vorlage für den Rotations-Ablaufplan (Single Source: model.js) — von Cockpit
@@ -4308,6 +4309,7 @@ async function renderBerichtsheft() {
   const heute = heuteISO();
   const rows = await store.berichtsheftUebersicht();
   const wv = await store.berichtsheftWiedervorlagen();
+  const offeneMg = await store.berichtsheftOffeneMaengel();
   const wvOffen = wv
     .map((w) => ({ ...w, _stat: wvStatus(w.wiedervorlage_frist, w.wiedervorlage_erledigt, heute) }))
     .filter((w) => w._stat === "offen" || w._stat === "ueberfaellig");
@@ -4315,8 +4317,11 @@ async function renderBerichtsheft() {
   const eintraege = rows.map((r) => {
     const letzte = r.kontroll_id ? { ergebnis: r.ergebnis, maengel: r.maengel } : null;
     const stat = wvStatus(r.wiedervorlage_frist, r.wiedervorlage_erledigt, heute);
-    const a = bhAmpel(letzte, stat);
-    return { ...r, _ampel: a, _wvStat: stat };
+    const mg = offeneMg[r.pruefling_id] || 0;
+    let a = bhAmpel(letzte, stat);
+    // Offene Mängel im Wochenraster heben den Status auf „rot".
+    if (mg > 0 && a.farbe !== "rot") a = { farbe: "rot", text: `Offene Mängel im Raster (${mg})` };
+    return { ...r, _ampel: a, _wvStat: stat, _mg: mg };
   });
   const offen = eintraege.filter((e) => e._ampel.farbe === "rot").length;
   const nieKontrolliert = eintraege.filter((e) => e._ampel.farbe === "grau").length;
@@ -4380,7 +4385,10 @@ async function renderBerichtsheft() {
         <td>${esc(e.betrieb || "—")}</td>
         <td>${e.datum ? esc(new Date(e.datum).toLocaleDateString("de-DE")) : "—"}</td>
         <td>${e.kontroll_id ? esc(ergebnisLabel(e.ergebnis)) : "<span class='bw-leise'>—</span>"}</td>
-        <td class="bw-actions"><button class="bw-btn bw-btn--gelb" type="button" data-kontrolle="${e.pruefling_id}">Kontrolle erfassen</button></td>
+        <td class="bw-actions" style="white-space:nowrap">
+          <a class="bw-btn bw-btn--gelb" href="#/berichtsheft/${e.pruefling_id}">Raster</a>
+          <button class="bw-btn bw-btn--sekundaer" type="button" data-kontrolle="${e.pruefling_id}">Kontrolle</button>
+        </td>
       </tr>`).join("");
     document.getElementById("bh-leer").hidden = gefiltert.length > 0;
   }
@@ -4531,6 +4539,213 @@ async function kontrolleDialog(prueflingId, name, nachher) {
   });
   dlg.addEventListener("close", () => { dlg.remove(); if (nachher) nachher(); });
   dlg.showModal();
+}
+
+/* ------------------------------- Berichtsheft: Wochenraster (Tastatur-Schnellkontrolle) */
+const RASTER_AJ = 3; // grüne Berufe: 3 Ausbildungsjahre
+
+async function renderBerichtsheftRaster(prueflingIdRaw) {
+  const prueflingId = Number(prueflingIdRaw);
+  const p = await store.holen("prueflinge", prueflingId);
+  if (!p) { appEl().innerHTML = `<div class="bw-hinweis bw-hinweis--fehler">Auszubildende:r nicht gefunden.</div>`; return; }
+
+  // Zellen laden -> Map "aj:kw" -> Zelle.
+  const zellen = await store.berichtsheftKwLaden(prueflingId);
+  const map = new Map();
+  zellen.forEach((z) => map.set(`${z.ausbildungsjahr}:${z.kalenderwoche}`, z));
+  const zelle = (aj, kw) => map.get(`${aj}:${kw}`) || { ausbildungsjahr: aj, kalenderwoche: kw, maengel: "", behobene: "", fehltage: 0, geprueft: false, bemerkung: "" };
+
+  const statusKlasse = { issue: "bw-kw--issue", ok: "bw-kw--ok", behoben: "bw-kw--behoben", fehltage: "bw-kw--fehltage", leer: "" };
+
+  function zellHTML(aj, kw, idx) {
+    const z = zelle(aj, kw);
+    const st = zellenStatus(z);
+    const codes = codesAlsListe(z.maengel).filter((c) => c !== "H").join(" ");
+    const fehl = Number(z.fehltage || 0);
+    const titel = `${aj}. Ausbildungsjahr, KW ${kw}` + (codes ? ` — Mängel: ${codes}` : "") + (fehl ? ` — Fehltage: ${fehl}` : "");
+    return `<div class="bw-kw ${statusKlasse[st] || ""}" role="gridcell" tabindex="${idx === 0 ? 0 : -1}"
+        data-aj="${aj}" data-kw="${kw}" data-idx="${idx}" title="${esc(titel)}" aria-label="${esc(titel)}">
+        <span class="bw-kw__num">${kw}</span>
+        <span class="bw-kw__codes">${esc(codes)}</span>
+        ${fehl ? `<span class="bw-kw__fehl">${fehl}</span>` : ""}
+      </div>`;
+  }
+
+  // Globaler Index über alle AJ/KW für die Pfeil-Navigation.
+  let idx = 0;
+  const jahrSektionen = [];
+  for (let aj = 1; aj <= RASTER_AJ; aj++) {
+    const fehlSumme = KW_ORDER.reduce((s, kw) => s + Number(zelle(aj, kw).fehltage || 0), 0);
+    const cells = KW_ORDER.map((kw) => zellHTML(aj, kw, idx++)).join("");
+    jahrSektionen.push(`
+      <div class="bw-kw-jahr"><h3>${aj}. Ausbildungsjahr</h3>
+        <span class="bw-klein bw-leise">Fehltage gesamt: <strong data-fehlsum="${aj}">${zahl(fehlSumme)}</strong></span></div>
+      <div class="bw-kw-wrap"><div class="bw-kw-grid" role="grid" aria-label="${aj}. Ausbildungsjahr">${cells}</div></div>`);
+  }
+  const gesamtZellen = idx;
+
+  const legende = MAENGEL_CODES.map((m) => `<span class="leg"><kbd>${m.code}</kbd>${esc(m.label)}</span>`).join("");
+
+  appEl().innerHTML = `
+    <p class="bw-klein"><a href="#/berichtsheft">← Berichtsheftkontrolle</a></p>
+    <h1>Wochenraster — ${esc(p.nachname)}, ${esc(p.vorname)}</h1>
+    <p class="bw-unterzeile">${esc(p.beruf || "")}${p.betrieb ? " · " + esc(p.betrieb) : ""} — schnelle Kontrolle per Tastatur: Zelle wählen, Buchstabe tippt den Mängelcode.</p>
+
+    <div class="bw-hinweis">
+      <strong>Tastatur:</strong>
+      <span class="bw-kw-legend" style="margin-top:.4em">
+        <span class="leg"><kbd>←→↑↓</kbd> Navigieren</span>
+        <span class="leg"><kbd>A</kbd>–<kbd>G</kbd>,<kbd>I</kbd> Mangel an/aus</span>
+        <span class="leg"><kbd>0</kbd>–<kbd>7</kbd> Fehltage</span>
+        <span class="leg"><kbd>O</kbd> ohne Beanstandung</span>
+        <span class="leg"><kbd>Entf</kbd> leeren (→ behoben)</span>
+        <span class="leg"><kbd>Leer</kbd>/<kbd>Enter</kbd> Detail</span>
+      </span>
+    </div>
+
+    <div id="bh-raster">${jahrSektionen.join("")}</div>
+
+    <details style="margin-top:var(--bw-space-3)"><summary>Mängelcodes</summary>
+      <div class="bw-kw-legend">${legende}</div></details>`;
+
+  // Listener am frisch gerenderten Container (nicht am bleibenden #app).
+  const gridRoot = document.getElementById("bh-raster");
+  const zelleEl = (i) => gridRoot.querySelector(`.bw-kw[data-idx="${i}"]`);
+
+  function fokus(i) {
+    const ziel = zelleEl(Math.max(0, Math.min(gesamtZellen - 1, i)));
+    if (!ziel) return;
+    gridRoot.querySelectorAll(".bw-kw[tabindex='0']").forEach((c) => c.setAttribute("tabindex", "-1"));
+    ziel.setAttribute("tabindex", "0");
+    ziel.focus();
+  }
+
+  // Zelle neu zeichnen nach Änderung (ohne kompletten Re-Render).
+  function neuZeichnen(el) {
+    const aj = Number(el.dataset.aj), kw = Number(el.dataset.kw), i = Number(el.dataset.idx);
+    const z = zelle(aj, kw);
+    const st = zellenStatus(z);
+    el.className = "bw-kw " + (statusKlasse[st] || "");
+    const codes = codesAlsListe(z.maengel).filter((c) => c !== "H").join(" ");
+    const fehl = Number(z.fehltage || 0);
+    el.innerHTML = `<span class="bw-kw__num">${kw}</span><span class="bw-kw__codes">${esc(codes)}</span>${fehl ? `<span class="bw-kw__fehl">${fehl}</span>` : ""}`;
+    el.setAttribute("tabindex", String(i === 0 ? 0 : -1));
+    // Fehltage-Summe des Jahres aktualisieren.
+    const sum = KW_ORDER.reduce((s, k) => s + Number(zelle(aj, k).fehltage || 0), 0);
+    const sumEl = gridRoot.querySelector(`[data-fehlsum="${aj}"]`);
+    if (sumEl) sumEl.textContent = zahl(sum);
+  }
+
+  async function speichern(aj, kw, z) {
+    map.set(`${aj}:${kw}`, { ...z, ausbildungsjahr: aj, kalenderwoche: kw });
+    try { await store.berichtsheftKwSetzen(prueflingId, aj, kw, z); }
+    catch (e) { console.error(e); meldung("Konnte Zelle nicht speichern: " + e.message, "fehler"); }
+  }
+
+  // Code an-/abschalten (geprüft = true sobald bearbeitet).
+  async function codeUmschaltenZelle(el, code) {
+    const aj = Number(el.dataset.aj), kw = Number(el.dataset.kw);
+    const z = { ...zelle(aj, kw) };
+    z.maengel = codeUmschalten(z.maengel, code);
+    z.geprueft = true;
+    await speichern(aj, kw, z);
+    neuZeichnen(el);
+  }
+  async function fehltageSetzen(el, n) {
+    const aj = Number(el.dataset.aj), kw = Number(el.dataset.kw);
+    const z = { ...zelle(aj, kw) };
+    z.fehltage = Math.max(0, Math.min(7, n));
+    // „H" spiegelt nur die Existenz von Fehltagen.
+    const ohneH = codesAlsListe(z.maengel).filter((c) => c !== "H");
+    z.maengel = (z.fehltage > 0 ? [...ohneH, "H"] : ohneH).sort().join(",");
+    z.geprueft = true;
+    await speichern(aj, kw, z);
+    neuZeichnen(el);
+  }
+  async function alsOk(el) {
+    const aj = Number(el.dataset.aj), kw = Number(el.dataset.kw);
+    await speichern(aj, kw, { ...zelle(aj, kw), maengel: "", fehltage: 0, geprueft: true });
+    neuZeichnen(el);
+  }
+  async function leeren(el) {
+    const aj = Number(el.dataset.aj), kw = Number(el.dataset.kw);
+    const z = { ...zelle(aj, kw) };
+    const aktuell = codesAlsListe(z.maengel).filter((c) => c !== "H");
+    // Aktuelle Mängel als „behoben" merken (Nachweis der Erledigung).
+    if (aktuell.length) {
+      const behoben = new Set([...codesAlsListe(z.behobene), ...aktuell]);
+      z.behobene = Array.from(behoben).sort().join(",");
+    }
+    z.maengel = ""; z.fehltage = 0; z.geprueft = true;
+    await speichern(aj, kw, z);
+    neuZeichnen(el);
+    meldung("Zelle geleert" + (aktuell.length ? ` (Mängel ${aktuell.join(",")} als behoben vermerkt)` : "") + ".");
+  }
+
+  gridRoot.addEventListener("click", (ev) => {
+    const el = ev.target.closest(".bw-kw");
+    if (el && !el.classList.contains("bw-kw--inactive")) fokus(Number(el.dataset.idx));
+  });
+
+  gridRoot.addEventListener("keydown", (ev) => {
+    const el = ev.target.closest(".bw-kw");
+    if (!el) return;
+    const i = Number(el.dataset.idx);
+    const k = ev.key;
+    if (k === "ArrowRight") { ev.preventDefault(); return fokus(i + 1); }
+    if (k === "ArrowLeft")  { ev.preventDefault(); return fokus(i - 1); }
+    if (k === "ArrowDown")  { ev.preventDefault(); return fokus(i + RASTER_SPALTEN); }
+    if (k === "ArrowUp")    { ev.preventDefault(); return fokus(i - RASTER_SPALTEN); }
+    if (k === "Home")       { ev.preventDefault(); return fokus(0); }
+    if (k === "End")        { ev.preventDefault(); return fokus(gesamtZellen - 1); }
+    if (k === " " || k === "Enter") { ev.preventDefault(); return rasterDetailDialog(el); }
+    if (k === "Delete" || k === "Backspace") { ev.preventDefault(); return leeren(el); }
+    const up = k.toUpperCase();
+    if (up === "O") { ev.preventDefault(); return alsOk(el); }
+    if (/^[A-G]$/.test(up) || up === "I") { ev.preventDefault(); return codeUmschaltenZelle(el, up); }
+    if (up === "H") { ev.preventDefault(); return rasterDetailDialog(el); }
+    if (/^[0-7]$/.test(k)) { ev.preventDefault(); return fehltageSetzen(el, Number(k)); }
+  });
+
+  // Detail-Dialog (Mängel-Checkboxen, Fehltage, Bemerkung) für Maus/Touch & „I".
+  function rasterDetailDialog(el) {
+    const aj = Number(el.dataset.aj), kw = Number(el.dataset.kw);
+    const z = { ...zelle(aj, kw) };
+    const alt = document.getElementById("dialog"); if (alt) alt.remove();
+    const dlg = document.createElement("dialog");
+    dlg.className = "bw-dialog"; dlg.id = "dialog";
+    const aktiv = new Set(codesAlsListe(z.maengel));
+    const checks = MAENGEL_CODES.filter((m) => m.code !== "H").map((m) =>
+      `<label class="bw-check"><input type="checkbox" value="${m.code}"${aktiv.has(m.code) ? " checked" : ""}> <strong>${m.code}</strong> — ${esc(m.label)}</label>`).join("");
+    dlg.innerHTML = `
+      <form method="dialog" novalidate>
+        <h2 style="margin-top:0">${aj}. Ausbildungsjahr · KW ${kw}</h2>
+        <fieldset class="bw-fieldset"><legend>Mängel</legend>${checks}</fieldset>
+        <div class="bw-field"><label for="rd-fehl">Fehltage</label>
+          <input id="rd-fehl" type="number" min="0" max="7" step="1" value="${Number(z.fehltage || 0)}"></div>
+        <div class="bw-field"><label for="rd-bem">Bemerkung</label>
+          <textarea id="rd-bem" rows="2" style="font:inherit;width:100%">${esc(z.bemerkung || "")}</textarea></div>
+        <div class="bw-dialog__aktionen">
+          <button type="button" class="bw-btn bw-btn--sekundaer" id="rd-ok">Ohne Beanstandung</button>
+          <button type="button" class="bw-btn bw-btn--sekundaer" id="rd-abbr">Abbrechen</button>
+          <button type="button" class="bw-btn bw-btn--gelb" id="rd-speichern">Speichern</button>
+        </div>
+      </form>`;
+    document.body.appendChild(dlg);
+    dlg.querySelector("#rd-abbr").addEventListener("click", () => dlg.close());
+    dlg.querySelector("#rd-ok").addEventListener("click", async () => { await alsOk(el); dlg.close(); });
+    dlg.querySelector("#rd-speichern").addEventListener("click", async () => {
+      const codes = Array.from(dlg.querySelectorAll('input[type="checkbox"]:checked')).map((c) => c.value);
+      const fehl = Math.max(0, Math.min(7, Number(dlg.querySelector("#rd-fehl").value || 0)));
+      if (fehl > 0) codes.push("H");
+      await speichern(aj, kw, { ...z, maengel: codes.sort().join(","), fehltage: fehl, geprueft: true, bemerkung: dlg.querySelector("#rd-bem").value.trim() || null });
+      neuZeichnen(el); dlg.close();
+    });
+    dlg.addEventListener("close", () => { dlg.remove(); fokus(Number(el.dataset.idx)); });
+    dlg.showModal();
+  }
+
+  document.getElementById("inhalt")?.focus?.();
 }
 
 /* ---------------------------------------------------------------- Beratung */
@@ -4799,6 +5014,7 @@ async function route() {
     else if (r === "barrierefreiheit") { renderBarrierefreiheit(); }
     else if (r === "benutzer") { await renderBenutzer(); }
     else if (r === "vorlagen") { renderVorlagen(); }
+    else if (r.startsWith("berichtsheft/")) { await renderBerichtsheftRaster(r.slice("berichtsheft/".length)); }
     else if (r === "berichtsheft") { await renderBerichtsheft(); }
     else if (r === "beratung") { renderBeratung(); }
     else if (r === "rechner") { renderRechner(); }

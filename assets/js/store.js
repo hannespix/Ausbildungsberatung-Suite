@@ -177,7 +177,65 @@ export async function oeffnen() {
       UNIQUE (pruefling_id, ausbildungsjahr, durchsicht_nr)
     );
   `);
+  // Wochen-Raster der Berichtsheftkontrolle: eine Zelle je Auszubildende:m,
+  // Ausbildungsjahr und Kalenderwoche (Mängelcodes, behobene Codes, Fehltage,
+  // geprüft). UNIQUE sichert genau eine Zelle pro (Person, AJ, KW).
+  await _pg.exec(`
+    CREATE TABLE IF NOT EXISTS berichtsheft_kw (
+      id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      pruefling_id bigint NOT NULL,
+      ausbildungsjahr int NOT NULL,
+      kalenderwoche int NOT NULL,
+      maengel text DEFAULT '',
+      behobene text DEFAULT '',
+      fehltage int DEFAULT 0,
+      geprueft boolean DEFAULT false,
+      bemerkung text,
+      geaendert_am timestamptz DEFAULT now(),
+      UNIQUE (pruefling_id, ausbildungsjahr, kalenderwoche)
+    );
+  `);
   return { pg: _pg, modus: _modus };
+}
+
+/* ------------------------------------------ Berichtsheft: KW-Raster (Zellen) */
+
+/** Alle Rasterzellen eines Prüflings. */
+export async function berichtsheftKwLaden(prueflingId) {
+  const res = await _pg.query(
+    `SELECT ausbildungsjahr, kalenderwoche, maengel, behobene, fehltage, geprueft, bemerkung
+       FROM berichtsheft_kw WHERE pruefling_id = $1`,
+    [Number(prueflingId)]
+  );
+  return res.rows;
+}
+
+/** Eine Rasterzelle setzen (Upsert je Person/AJ/KW). */
+export async function berichtsheftKwSetzen(prueflingId, aj, kw, z) {
+  await _pg.query(
+    `INSERT INTO berichtsheft_kw
+       (pruefling_id, ausbildungsjahr, kalenderwoche, maengel, behobene, fehltage, geprueft, bemerkung, geaendert_am)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8, now())
+     ON CONFLICT (pruefling_id, ausbildungsjahr, kalenderwoche) DO UPDATE SET
+       maengel = EXCLUDED.maengel, behobene = EXCLUDED.behobene, fehltage = EXCLUDED.fehltage,
+       geprueft = EXCLUDED.geprueft, bemerkung = EXCLUDED.bemerkung, geaendert_am = now()`,
+    [Number(prueflingId), Number(aj), Number(kw), z.maengel || "", z.behobene || "",
+     Number(z.fehltage || 0), !!z.geprueft, z.bemerkung || null]
+  );
+}
+
+/** Offene Mängel (echte Codes, ohne „H") je Prüfling — für die Dashboard-Ampel. */
+export async function berichtsheftOffeneMaengel() {
+  const res = await _pg.query(`
+    SELECT pruefling_id, count(*)::int AS n
+      FROM berichtsheft_kw
+     WHERE maengel <> '' AND maengel <> 'H'
+       AND regexp_replace(maengel, '[H, ]', '', 'g') <> ''
+     GROUP BY pruefling_id
+  `);
+  const m = {};
+  res.rows.forEach((r) => { m[r.pruefling_id] = r.n; });
+  return m;
 }
 
 /* ----------------------------------------------------- Berichtsheftkontrolle */
