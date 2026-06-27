@@ -12,6 +12,17 @@ Auto-Merge (siehe `AGENTS.md`).
 
 ---
 
+## Infrastruktur
+- ✅ **GitHub-Pages-Deployment**: Workflow `.github/workflows/deploy-pages.yml`
+  veröffentlicht das Tool nach jedem Update auf `main` (und manuell per „Run
+  workflow") auf eine GitHub Page zum Testen im Browser. Prüft vorher die
+  Offline-Fähigkeit (`check_offline.py`) und deployt nur die Laufzeitdateien
+  (relative Pfade → läuft unter dem Pages-Unterpfad; Persistenz über IndexedDB,
+  daher ohne COOP/COEP-Header). Hinweis: Schriften (Luzi Type) und RPF-Logo sind
+  lizenzpflichtig — bei öffentlichem Repo/Page ggf. über `.gitignore` ausschließen.
+
+---
+
 ## Erledigt
 
 ### M0 — Gerüst ✅
