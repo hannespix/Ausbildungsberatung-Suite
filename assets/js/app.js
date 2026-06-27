@@ -2534,6 +2534,7 @@ async function renderAuswertungen(jahr = null) {
       <button class="bw-btn bw-btn--sekundaer" type="button" id="csv-quoten" ${quoten.length ? "" : "disabled"}>Quoten als CSV</button>
       <button class="bw-btn bw-btn--sekundaer" type="button" id="csv-auslastung" ${auslast.length ? "" : "disabled"}>Auslastung als CSV</button>
       <button class="bw-btn bw-btn--sekundaer" type="button" id="csv-einsaetze" ${einsaetze.length ? "" : "disabled"}>Prüfer-Einsätze als CSV</button>
+      <button class="bw-btn bw-btn--sekundaer" type="button" id="einsaetze-drucken" ${einsaetze.length ? "" : "disabled"}>Einsatzübersicht drucken</button>
       <button class="bw-btn bw-btn--gelb" type="button" id="bericht-drucken" ${(quoten.length || auslast.length) ? "" : "disabled"}>Bericht drucken</button>
     </div>
 
@@ -2734,6 +2735,50 @@ async function renderAuswertungen(jahr = null) {
     const zeilen = einsaetze.map((r) => [r.name, r.organisation || "", r.einsaetze, r.tage, r.zugesagt, r.offen, r.abgesagt]);
     dateiDownload(`Pruefer-Einsaetze${jahr ? "-" + jahr : ""}.csv`, csvText(kopf, zeilen), "text/csv;charset=utf-8");
     meldung(`Prüfer-Einsätze exportiert: ${zahl(einsaetze.length)} Prüfer:innen.`);
+  });
+  document.getElementById("einsaetze-drucken")?.addEventListener("click", async () => {
+    const liste = await store.prueferEinsatzListe(jahr);
+    if (!liste.length) { meldung("Noch keine Ausschuss-Zuteilungen zum Drucken."); return; }
+    const heute = new Date().toLocaleDateString("de-DE");
+    // Zeilen je Prüfer:in gruppieren — Reihenfolge der Liste bleibt erhalten.
+    const gruppen = [];
+    let aktuell = null;
+    for (const r of liste) {
+      if (!aktuell || aktuell.id !== r.pruefer_id) {
+        aktuell = { id: r.pruefer_id, name: r.name, organisation: r.organisation, zeilen: [] };
+        gruppen.push(aktuell);
+      }
+      aktuell.zeilen.push(r);
+    }
+    const statusWort = (s) => {
+      const t = String(s || "offen").toLowerCase();
+      if (t === "zugesagt") return "zugesagt";
+      if (t === "abgesagt") return "abgesagt";
+      if (t === "angefragt") return "angefragt";
+      return "offen";
+    };
+    const block = (g) => `
+      <section class="bw-einsatz-block" style="margin-top:var(--bw-space-3);break-inside:avoid">
+        <h2 style="margin-bottom:0">${esc(g.name)}</h2>
+        <p class="bw-klein bw-leise" style="margin-top:0">${esc(g.organisation || "ohne Organisation")} · ${zahl(g.zeilen.length)} ${g.zeilen.length === 1 ? "Einsatz" : "Einsätze"}</p>
+        <table class="bw-table">
+          <thead><tr><th>Datum</th><th>Termin</th><th>Fachrichtung</th><th>Rolle</th><th>Zusage</th></tr></thead>
+          <tbody>${g.zeilen.map((r) => `<tr>
+            <td>${r.datum ? esc(new Date(r.datum).toLocaleDateString("de-DE")) : "—"}</td>
+            <td>${esc(r.titel || "—")}</td>
+            <td>${esc(r.beruf || "—")}</td>
+            <td>${esc(r.rolle || "—")}</td>
+            <td>${esc(statusWort(r.status))}</td>
+          </tr>`).join("")}</tbody>
+        </table>
+      </section>`;
+    druckbereich().innerHTML = `
+      <h1>Prüfer-Einsatzübersicht — Abschlussprüfung Gärtner/in</h1>
+      <p>${jahr ? "Prüfungsjahr " + esc(String(jahr)) : "Alle Prüfungsjahre"} · ${zahl(gruppen.length)} Prüfer:innen · ${zahl(liste.length)} Einsätze · Stand ${esc(heute)}</p>
+      <p class="bw-klein bw-leise">Saison-Übersicht je Prüfer:in als Grundlage für Einsatzbestätigung und Entschädigung.</p>
+      ${gruppen.map(block).join("")}
+      <p class="bw-klein bw-leise" style="margin-top:var(--bw-space-3)">Erstellt mit der Ausbildungsberatung-Suite — Regierungspräsidium Freiburg</p>`;
+    window.print();
   });
   document.getElementById("bericht-drucken")?.addEventListener("click", () => {
     const heute = new Date().toLocaleDateString("de-DE");
