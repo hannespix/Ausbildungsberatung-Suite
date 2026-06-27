@@ -2,7 +2,7 @@
 import {
   ERGEBNISSE, ergebnisLabel, brauchtWiedervorlage, hatEchteMaengel,
   isoKW, isoWochenJahr, kwBereich, naechsteFrist, wvStatus, ampel,
-  zulassungsEmpfehlung,
+  zulassungsEmpfehlung, KW_ORDER, codeUmschalten, codesAlsListe, zellenStatus,
 } from "../assets/js/berichtsheft.js";
 
 let fehler = 0, geprueft = 0;
@@ -60,6 +60,22 @@ eq(ampel({ ergebnis: "post_an_rp", maengel: "" }, "ueberfaellig").farbe, "rot", 
 eq(zulassungsEmpfehlung({ ergebnis: "in_ordnung", maengel: "", fehltageProzent: 5, wvOffen: false }), true, "alles ok -> Empfehlung ja");
 eq(zulassungsEmpfehlung({ ergebnis: "in_ordnung", maengel: "", fehltageProzent: 12, wvOffen: false }), false, ">10% Fehltage -> nein");
 eq(zulassungsEmpfehlung({ ergebnis: "post_an_rp", maengel: "", fehltageProzent: 0, wvOffen: true }), false, "WV offen -> nein");
+
+// --- KW-Raster ---
+eq(KW_ORDER.length, 52, "52 Kalenderwochen im Raster");
+eq(KW_ORDER[0], 36, "Raster beginnt bei KW 36 (Schuljahr)");
+eq(KW_ORDER[16], 52, "17. Zelle = KW 52");
+eq(KW_ORDER[17], 1, "18. Zelle = KW 1");
+eq(KW_ORDER[51], 35, "letzte Zelle = KW 35");
+eq(codeUmschalten("", "a"), "A", "Code hinzufügen (uppercase)");
+eq(codeUmschalten("A,D", "C"), "A,C,D", "Code einsortieren");
+eq(codeUmschalten("A,D", "D"), "A", "Code entfernen");
+eq(codesAlsListe("A, d ,H").join("|"), "A|D|H", "codesAlsListe normalisiert");
+eq(zellenStatus({ maengel: "A" }), "issue", "echter Mangel -> issue");
+eq(zellenStatus({ maengel: "H", fehltage: 2 }), "fehltage", "nur H+Fehltage -> fehltage");
+eq(zellenStatus({ maengel: "", behobene: "A", geprueft: 1 }), "behoben", "behoben ohne aktuellen Mangel");
+eq(zellenStatus({ maengel: "", geprueft: 1 }), "ok", "geprüft ohne Mangel -> ok");
+eq(zellenStatus({}), "leer", "unbearbeitet -> leer");
 
 console.log(`${geprueft} Prüfungen, ${fehler} Fehler.`);
 if (fehler) { console.error("BERICHTSHEFT-TESTS FEHLGESCHLAGEN"); process.exit(1); }

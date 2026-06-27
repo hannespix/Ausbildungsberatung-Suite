@@ -73,6 +73,18 @@ Ausbildungsberatung (Prüfung + Berichtsheftkontrolle + Beratung + Vordrucke).
   **UNIQUE** auf Kontrollen, **Auto-Zulassung** nur als Empfehlung (überschreibt
   keine manuelle Entscheidung). Chromium-getestet (Erststatus, Kontrolle mit
   Wiedervorlage, erledigen, Upsert, Mobile 390px).
+- ✅ **Berichtsheft-Wochenraster (Tastatur-Schnellkontrolle)** (`#/berichtsheft/<id>`):
+  das gewohnte Raster — Zeilen je Ausbildungsjahr, Spalten je Kalenderwoche
+  (Schuljahr-Reihenfolge ab KW 36, 52 Wochen je Jahr als 4×13). **Tastatur-first:**
+  Pfeile navigieren, Buchstaben `A`–`G`/`I` schalten Mängelcodes direkt,
+  Ziffern `0`–`7` setzen Fehltage, `O` = ohne Beanstandung, `Entf` leert (und
+  vermerkt bisherige Mängel als „behoben"), `Leer`/`Enter` öffnet den Detail-
+  Dialog (Mängel-Checkboxen, Fehltage, Bemerkung) — auch für Maus/Touch.
+  Farbstatus je Zelle (Mangel/ok/Fehltage/behoben), Fehltage-Summe je Jahr,
+  sofortige Speicherung je Zelle (PGlite-Tabelle `berichtsheft_kw` mit `UNIQUE`).
+  Offene Raster-Mängel heben die Dashboard-Ampel auf „rot". Reine Logik
+  (`KW_ORDER`, `codeUmschalten`, `zellenStatus`) mit 47 Unit-Tests; Chromium-
+  getestet (Tasten A/Ziffer/O/Pfeile/Entf, Persistenz nach Reload, Mobile 390px).
 - ⏳ **Ausbildungsberatung (Problem/Lösungs-Doku)**: als Startseite angelegt und
   mit Funktionsplan „vorgelegt"; nächster Ausbau (Beratungsfälle mit
   Verlauf/Wiedervorlage). Weiterer Berichtsheft-Ausbau: Import, Kontrolltermine,
