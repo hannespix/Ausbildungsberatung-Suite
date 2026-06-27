@@ -119,6 +119,24 @@ export function prueferVerteilen(stationen, prueferIds) {
 }
 
 /**
+ * Belegung je Station über den Tag: für jede Station die Folge der Prüflinge mit
+ * Zeitfenster (zeitlich sortiert, über alle Gruppen). Gegenstück zum Laufzettel
+ * — Grundlage der Stationskarten für die Prüfer:innen an der Station.
+ * @param {object} plan  Ergebnis von rotationsplan().
+ * @returns {Array<Array<{vonMin,bisMin,prueflingIdx,rundeNr}>>} je Station eine Liste.
+ */
+export function stationsBelegung(plan) {
+  const perStation = (plan.stationen || []).map(() => []);
+  (plan.laufzettel || []).forEach((eintraege, prueflingIdx) => {
+    eintraege.forEach((e) => {
+      if (perStation[e.stationIdx]) perStation[e.stationIdx].push({ vonMin: e.vonMin, bisMin: e.bisMin, prueflingIdx, rundeNr: e.rundeNr });
+    });
+  });
+  perStation.forEach((arr) => arr.sort((a, b) => a.vonMin - b.vonMin));
+  return perStation;
+}
+
+/**
  * Baut den optimierten Rotations-Ablaufplan.
  * @param {Array} stationen  Stationsdefinitionen (siehe normalisiereStationen).
  * @param {number|Array} prueflinge  Anzahl oder Liste {id,name,...}.
