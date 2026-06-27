@@ -147,6 +147,31 @@ Ablauf des handlungsorientierten Prüfungstags (Gewerk 4,5 Std., Fachgespräch
 Grundlage: offizielle RPF-Präsentation. Andere Fachrichtungen ohne diese
 Phasen. Smoke-getestet.
 
+### M3f — Stationen-Rotations-Ablaufplan (optimiert) ✅
+Der praktische Prüfungstag wird stationsbasiert geplant statt im 20-Min-Raster:
+**jede Aufgabe ist eine Station, jeder Prüfling durchläuft jede Station genau
+einmal.** Station je 60 Min (50 Prüfung + 10 Bewertung); **Pflanzenerkennung**
+als eigene 20-Min-Station in Eigenregie des RP (ohne Ausschuss-Prüfer).
+- **Optimierung:** Karussell-Rotation als lateinisches Quadrat — bei m Stationen
+  bilden je m Prüflinge eine Gruppe; in Runde r steht Position i an Station
+  (i+r) mod m. Dadurch ist jede Station jede Runde mit genau einem Prüfling
+  belegt und **niemand wartet** (0 Min Leerlauf). Die nötige Prüferzahl ist die
+  Summe des Prüferbedarfs der betreuten Stationen (eine Aufstellung genügt für
+  alle nacheinander laufenden Gruppen) — das **Minimum**.
+- Reine, DB-/DOM-freie Logik in `assets/js/ablauf.js` (`rotationsplan`,
+  `normalisiereStationen`, `prueferProRunde`, `minZuZeit`), mit 50 Node-Unit-
+  Tests (`tools/test_ablauf.mjs`, in der CI).
+- Im **Prüfungstag-Cockpit**: Kennzahlen (Stationen, Gruppen, gleichzeitige
+  Prüfer:innen, Tagesdauer, 0 Min Wartezeit), Stationsraster (Zeile = Uhrzeit,
+  Spalte = Station), **Laufzettel je Prüfling drucken** („wann bin ich wo?") und
+  **Stationsplan drucken** (alle Gruppen). Vorlage: die fünf praktischen
+  GaLaBau-Prüfungsbereiche + Pflanzenerkennung. Chromium-getestet (Raster 6
+  Stationen/6 Runden, 8 Prüflinge → 2 Gruppen, 5 Prüfer:innen, Laufzettel mit
+  Prüf-/Bewertungsfenster, Mobile 390px, Galabau-Mathe).
+- _Nächster Schritt:_ Stationen je Termin **bearbeitbar/persistent** (Name,
+  Dauer, Prüferbedarf 1–3, Eigenregie) und Ausschuss-Prüfer:innen den Stationen
+  zuordnen.
+
 ### M3d — Ergebnis-Niederschrift je Termin ✅
 „Ergebnis-Niederschrift" in der Planung: druckbares Protokoll je Prüfungstag,
 das Planung und Noten verbindet — alle zugeteilten Prüflinge in Slot-Reihenfolge
