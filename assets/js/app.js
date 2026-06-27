@@ -949,6 +949,7 @@ async function renderPlanung() {
         <div class="bw-toolbar" style="margin:0">
           <button class="bw-btn bw-btn--gelb" type="button" id="mappe-btn"
                   ${zugeteilt.length ? "" : "disabled title=\"Keine Prüflinge zugeteilt\""}>Prüfungstag-Mappe drucken</button>
+          <button class="bw-btn bw-btn--sekundaer" type="button" id="termin-bearbeiten">Termin bearbeiten</button>
           <details class="bw-disclosure">
             <summary class="bw-btn bw-btn--sekundaer">Einzeldokumente &amp; Export</summary>
             <div class="bw-disclosure__panel">
@@ -1160,6 +1161,12 @@ async function renderPlanung() {
     document.getElementById("mappe-btn")?.addEventListener("click", async () => {
       try { await mappeDrucken(termin, zugeteilt, prueferZug); }
       catch (e) { console.error(e); meldung("Prüfungstag-Mappe fehlgeschlagen: " + e.message, "fehler"); }
+    });
+
+    // Termindetails (Datum/Ort/Raum/Uhrzeit) direkt aus der Planung bearbeiten —
+    // ohne Umweg über die Termine-Stammdatenliste. Danach denselben Termin neu laden.
+    document.getElementById("termin-bearbeiten")?.addEventListener("click", () => {
+      formularOeffnen("pruefungen", termin, () => { location.hash = "#/planung?termin=" + id; renderPlanung(); });
     });
 
     document.getElementById("niederschrift-btn")?.addEventListener("click", async () => {
@@ -3031,7 +3038,13 @@ function notenImportDialog(pruefungId, nachher) {
 
 function feldHtml(f, value, refOptionen) {
   const id = "f_" + f.name;
-  const v = value == null ? "" : String(value);
+  let v = value == null ? "" : String(value);
+  // Datumsfelder: gespeicherte ISO-/Date-Werte auf YYYY-MM-DD bringen, sonst
+  // bleibt das <input type="date"> beim Bearbeiten leer (Pflichtfeld schlägt fehl).
+  if (f.input === "date" && v) {
+    const d = new Date(value);
+    if (!isNaN(d)) v = d.toISOString().slice(0, 10);
+  }
   const pflicht = f.pflicht ? " required" : "";
   const stern = f.pflicht ? ' <span aria-hidden="true">*</span>' : "";
   let control = "";

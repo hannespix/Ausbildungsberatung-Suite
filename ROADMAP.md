@@ -103,6 +103,16 @@ Neue Ansicht „Planung": Prüflinge je Prüfungstermin **zuteilen** (mit Uhrzei
 Slot), Tagesliste mit Entfernen, Konflikt-/Doppelbelegungswarnung am selben Tag,
 saubere Aufräumung abhängiger Zuteilungen beim Löschen. Smoke-getestet (Chromium).
 
+### Termin direkt aus der Planung bearbeiten ✅
+In der Planung lassen sich Termindetails (Datum, Ort, Raum, Uhrzeit, …) jetzt per
+„Termin bearbeiten" direkt im Cockpit ändern — ohne Umweg über die Termine-
+Stammdatenliste; danach wird derselbe Termin neu geladen. Dabei einen latenten
+Fehler behoben: beim Bearbeiten wurde der gespeicherte Datumswert (ISO-Zeitstempel)
+nicht ins `<input type="date">` übernommen, sodass das Pflichtfeld „Datum"
+fälschlich leer war (betraf jedes Datumsfeld, auch das Geburtsdatum). `feldHtml`
+normalisiert Datumswerte jetzt auf `YYYY-MM-DD`. Chromium-getestet (Ort/Raum
+ändern → gespeichert, Header aktualisiert; Mobile 390px).
+
 ### M3b — Ausschuss-Zuteilung ✅
 In der Planung zusätzlich **Prüfer:innen** einem Termin zuteilen (mit Rolle:
 Vorsitz/Beisitz/Lehrkraft), Liste mit Entfernen; abhängige Zuteilungen werden
