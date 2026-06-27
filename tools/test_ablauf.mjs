@@ -135,6 +135,28 @@ eq(kapazitaetProTag([], 480), 0, "keine Stationen -> 0");
 // Mit kürzerer Eigenregie-Station bleibt die Rundenlänge 60 (Max).
 eq(kapazitaetProTag(sechs.concat([{ name: "Pflanzen", dauerMin: 20, eigenregie: true }]), 7 * 60), 7, "7 Stationen, 420 Min -> 1 Gruppe -> 7");
 
+// --- Mittagspause: Runden nach der Pause verschieben sich ---
+const pst = [{ name: "A" }, { name: "B" }, { name: "C" }, { name: "D" }]; // 4 Stationen × 60
+let pp = rotationsplan(pst, 4, { startMin: 8 * 60, pauseNachRunde: 2, pauseMin: 30 });
+eq(pp.pauseNachRunde, 2, "Pause nach Runde 2 aktiv");
+eq(minZuZeit(pp.gruppen[0].runden[0].vonMin), "08:00", "Runde 1 08:00");
+eq(minZuZeit(pp.gruppen[0].runden[1].vonMin), "09:00", "Runde 2 09:00");
+eq(minZuZeit(pp.gruppen[0].runden[2].vonMin), "10:30", "Runde 3 nach Pause 10:30");
+eq(minZuZeit(pp.gruppen[0].runden[3].vonMin), "11:30", "Runde 4 11:30");
+eq(minZuZeit(pp.gruppen[0].pause.vonMin), "10:00", "Pause beginnt 10:00");
+eq(minZuZeit(pp.gruppen[0].pause.bisMin), "10:30", "Pause endet 10:30");
+eq(pp.dauerGesamtMin, 4 * 60 + 30, "Tagesdauer inkl. Pause");
+eq(minZuZeit(pp.endeMin), "12:30", "Ende 12:30 inkl. Pause");
+// Jeder Prüfling besucht weiter jede Station genau einmal (Pause ändert nur Zeiten).
+for (let i = 0; i < 4; i++) ok(new Set(pp.laufzettel[i].map((x) => x.stationIdx)).size === 4, `Pause: Prüfling ${i} alle Stationen`);
+// Zweite Gruppe startet nach erster inkl. Pausenversatz (4*60+30 = 270).
+pp = rotationsplan(pst, 8, { startMin: 8 * 60, pauseNachRunde: 2, pauseMin: 30 });
+eq(minZuZeit(pp.gruppen[1].startMin), "12:30", "Gruppe 2 ab 12:30 (mit Pausenversatz)");
+// Ungültige Pause (nachRunde >= Stationszahl) -> inaktiv.
+pp = rotationsplan(pst, 4, { startMin: 8 * 60, pauseNachRunde: 4, pauseMin: 30 });
+eq(pp.pauseNachRunde, 0, "Pause am/über Tagesende -> inaktiv");
+eq(pp.gruppen[0].pause, null, "keine Pause-Markierung wenn inaktiv");
+
 console.log(`${geprueft} Prüfungen, ${fehler} Fehler.`);
 if (fehler) { console.error("ABLAUF-TESTS FEHLGESCHLAGEN"); process.exit(1); }
 console.log("ABLAUF-TESTS OK");

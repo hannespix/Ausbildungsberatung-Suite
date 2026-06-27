@@ -239,6 +239,16 @@ als eigene 20-Min-Station in Eigenregie des RP (ohne Ausschuss-Prüfer).
   (Eingabe leer lassen = automatisch). Chromium-getestet (14 Prüflinge → automatisch
   3 Termine à ≤6 [5/5/4]; manuell 12 → 2 Termine; Mobile 390px; Galabau-Mathe).
   +5 Engine-Unit-Tests (67 gesamt).
+- ✅ **Mittagspause im Ablaufplan**: optionale Pause „nach Station n, Dauer m Min"
+  (im Cockpit einstellbar, global gespeichert). Die Rotation verschiebt alle
+  Runden nach der Pause entsprechend; Stationsraster, Laufzettel und Stationsplan
+  zeigen eine eigene „Mittagspause"-Zeile, die Kennzahlen das Pausenfenster und
+  das verschobene Tagesende. Die persistierten Startzeiten (Gruppenstart) bleiben
+  unberührt — die Pause ist eine reine Tagesablauf-Größe. Engine
+  `rotationsplan({pauseNachRunde,pauseMin})` mit +16 Unit-Tests (83 gesamt).
+  Chromium-getestet (Pause nach Station 3/45 Min → Pause 11:00–11:45, Runde 4 auf
+  11:45, Pause-Zeile in Raster & Laufzettel, Persistenz, Mobile 390px,
+  Galabau-Mathe).
 
 ### M3d — Ergebnis-Niederschrift je Termin ✅
 „Ergebnis-Niederschrift" in der Planung: druckbares Protokoll je Prüfungstag,
