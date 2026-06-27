@@ -122,7 +122,9 @@ export function prueferVerteilen(stationen, prueferIds) {
  * Baut den optimierten Rotations-Ablaufplan.
  * @param {Array} stationen  Stationsdefinitionen (siehe normalisiereStationen).
  * @param {number|Array} prueflinge  Anzahl oder Liste {id,name,...}.
- * @param {{startMin?:number}} opts  Tagesbeginn in Minuten (Default 08:00).
+ * @param {{startMin?:number, pauseNachRunde?:number, pauseMin?:number}} opts
+ *   Tagesbeginn in Minuten (Default 08:00); optional Mittagspause nach der
+ *   n-ten Runde mit Dauer in Minuten (n zwischen 1 und Stationszahl-1).
  * @returns {object} Plan mit Gruppen, Stationsraster, Laufzetteln und Kennzahlen.
  */
 export function rotationsplan(stationen, prueflinge, opts = {}) {
@@ -142,17 +144,25 @@ export function rotationsplan(stationen, prueflinge, opts = {}) {
 
   // Synchrone Runden: alle rotieren gemeinsam, Rundenlänge = längste Station.
   const rundenDauer = Math.max.apply(null, st.map((s) => s.dauerMin));
+  // Optionale Mittagspause nach der n-ten Runde (nur sinnvoll innerhalb des Tags).
+  const pauseNachRunde = Math.max(0, Math.round(opts.pauseNachRunde || 0));
+  const pauseMin = Math.max(0, Math.round(opts.pauseMin || 0));
+  const pauseAktiv = pauseNachRunde > 0 && pauseNachRunde < m && pauseMin > 0;
+  const pauseBeitrag = pauseAktiv ? pauseMin : 0;
   const gruppenAnzahl = Math.ceil(liste.length / m);
+  const gruppenDauer = m * rundenDauer + pauseBeitrag;
   const gruppen = [];
   const laufzettel = liste.map(() => []);
 
   for (let g = 0; g < gruppenAnzahl; g++) {
     const von = g * m;
     const mitglieder = liste.slice(von, von + m); // bis zu m Prüflinge
-    const gStart = startMin + g * m * rundenDauer;
+    const gStart = startMin + g * gruppenDauer;
     const runden = [];
     for (let r = 0; r < m; r++) {
-      const rVon = gStart + r * rundenDauer;
+      // Runden nach der Pause sind um die Pausendauer nach hinten versetzt.
+      const versatz = (pauseAktiv && r >= pauseNachRunde) ? pauseMin : 0;
+      const rVon = gStart + r * rundenDauer + versatz;
       const zellen = st.map((station, sIdx) => {
         // An Station sIdx steht in Runde r die Position i mit (i+r)%m == sIdx.
         const pos = ((sIdx - r) % m + m) % m;
@@ -167,17 +177,21 @@ export function rotationsplan(stationen, prueflinge, opts = {}) {
       });
       runden.push({ nr: r + 1, vonMin: rVon, bisMin: rVon + rundenDauer, zellen });
     }
-    gruppen.push({ nr: g + 1, startMin: gStart, mitglieder, von, anzahl: mitglieder.length, runden });
+    const pause = pauseAktiv
+      ? { nachRunde: pauseNachRunde, dauerMin: pauseMin, vonMin: gStart + pauseNachRunde * rundenDauer, bisMin: gStart + pauseNachRunde * rundenDauer + pauseMin }
+      : null;
+    gruppen.push({ nr: g + 1, startMin: gStart, mitglieder, von, anzahl: mitglieder.length, runden, pause });
   }
   // Laufzettel je Prüfling nach Uhrzeit ordnen (Position bestimmt Startstation).
   laufzettel.forEach((eintraege) => eintraege.sort((a, b) => a.vonMin - b.vonMin));
 
-  const dauerGesamtMin = gruppenAnzahl * m * rundenDauer;
+  const dauerGesamtMin = gruppenAnzahl * gruppenDauer;
   return {
     stationen: st, m, anzahl: liste.length, rundenDauer,
     prueferProRunde: prueferProRunde(st),
     gruppen, laufzettel, startMin,
     endeMin: startMin + dauerGesamtMin, dauerGesamtMin,
+    pauseNachRunde: pauseAktiv ? pauseNachRunde : 0, pauseMin: pauseAktiv ? pauseMin : 0,
     wartezeitProPruefling: 0,
   };
 }

@@ -880,9 +880,13 @@ function stationsZeitfenster(e) {
 }
 
 /** Rotations-Plan für einen Termin aus den (gespeicherten) Stationen. */
-function ablaufplanFuer(termin, zugeteilt, stationen) {
+function ablaufplanFuer(termin, zugeteilt, stationen, pause) {
   const st = stationen && stationen.length ? stationen : STATIONEN_GALABAU;
-  return rotationsplan(st, zugeteilt, { startMin: zeitZuMin(termin.zeit_von) });
+  return rotationsplan(st, zugeteilt, {
+    startMin: zeitZuMin(termin.zeit_von),
+    pauseNachRunde: (pause && pause.nachRunde) || 0,
+    pauseMin: (pause && pause.min) || 0,
+  });
 }
 
 /**
@@ -990,6 +994,7 @@ function ablaufKennzahlenHtml(plan) {
     <span>${zahl(plan.gruppen.length)} ${plan.gruppen.length === 1 ? "Gruppe" : "Gruppen"} à max. ${zahl(plan.m)}</span>
     <span>${zahl(plan.prueferProRunde)} Prüfer:innen gleichzeitig</span>
     <span>${minZuZeit(plan.startMin)}–${minZuZeit(plan.endeMin)} Uhr</span>
+    ${plan.pauseNachRunde && plan.gruppen[0].pause ? `<span>Mittagspause ${minZuZeit(plan.gruppen[0].pause.vonMin)}–${minZuZeit(plan.gruppen[0].pause.bisMin)}</span>` : ""}
     <span>0 Min Wartezeit</span>
   </div>`;
 }
@@ -997,9 +1002,13 @@ function ablaufKennzahlenHtml(plan) {
 /** Stationsraster einer Gruppe: Zeilen = Runden (Uhrzeit), Spalten = Stationen. */
 function gruppenRasterHtml(plan, gruppe, zugeteilt, prueferName) {
   const kopf = plan.stationen.map((s) => `<th>${esc(s.name)}<br><span class="bw-klein bw-leise">${esc(stationBesetzung(s, prueferName))}</span></th>`).join("");
+  const pauseZeile = gruppe.pause
+    ? `<tr><th scope="row">${minZuZeit(gruppe.pause.vonMin)}–${minZuZeit(gruppe.pause.bisMin)}</th><td colspan="${plan.stationen.length}" class="bw-leise" style="text-align:center">Mittagspause</td></tr>`
+    : "";
   const zeilen = gruppe.runden.map((r) => {
     const zellen = r.zellen.map((z) => `<td>${z.prueflingIdx == null ? "—" : esc(plName(zugeteilt[z.prueflingIdx]))}</td>`).join("");
-    return `<tr><th scope="row">${minZuZeit(r.vonMin)}–${minZuZeit(r.bisMin)}</th>${zellen}</tr>`;
+    const row = `<tr><th scope="row">${minZuZeit(r.vonMin)}–${minZuZeit(r.bisMin)}</th>${zellen}</tr>`;
+    return (gruppe.pause && gruppe.pause.nachRunde === r.nr) ? row + pauseZeile : row;
   }).join("");
   return `<table class="bw-table">
     <thead><tr><th>Uhrzeit</th>${kopf}</tr></thead>
@@ -1008,8 +1017,8 @@ function gruppenRasterHtml(plan, gruppe, zugeteilt, prueferName) {
 }
 
 /** Druckbarer Stationsplan (alle Gruppen als Raster). */
-function stationsplanDrucken(termin, zugeteilt, stationen, prueferZug) {
-  const plan = ablaufplanFuer(termin, zugeteilt, stationen);
+function stationsplanDrucken(termin, zugeteilt, stationen, prueferZug, pause) {
+  const plan = ablaufplanFuer(termin, zugeteilt, stationen, pause);
   if (!plan.gruppen.length) { meldung("Keine Prüflinge zugeteilt.", "fehler"); return; }
   const prueferName = prueferNameMap(prueferZug);
   const datum = termin.datum ? new Date(termin.datum).toLocaleDateString("de-DE") : "—";
@@ -1028,20 +1037,27 @@ function stationsplanDrucken(termin, zugeteilt, stationen, prueferZug) {
 }
 
 /** Druckbare persönliche Laufzettel (eine Karte je Prüfling). */
-function laufzettelDrucken(termin, zugeteilt, stationen, prueferZug) {
-  const plan = ablaufplanFuer(termin, zugeteilt, stationen);
+function laufzettelDrucken(termin, zugeteilt, stationen, prueferZug, pause) {
+  const plan = ablaufplanFuer(termin, zugeteilt, stationen, pause);
   if (!plan.gruppen.length) { meldung("Keine Prüflinge zugeteilt.", "fehler"); return; }
   const prueferName = prueferNameMap(prueferZug);
   const datum = termin.datum ? new Date(termin.datum).toLocaleDateString("de-DE") : "—";
   const karten = zugeteilt.map((z, i) => {
     const eintraege = plan.laufzettel[i] || [];
     const gruppeNr = Math.floor(i / plan.m) + 1;
-    const zeilen = eintraege.map((e) => `<tr>
+    const gPause = (plan.gruppen[gruppeNr - 1] || {}).pause;
+    const pauseZeile = gPause
+      ? `<tr><td>${minZuZeit(gPause.vonMin)}–${minZuZeit(gPause.bisMin)}</td><td colspan="3" class="bw-leise">Mittagspause</td></tr>`
+      : "";
+    const zeilen = eintraege.map((e) => {
+      const row = `<tr>
       <td>${minZuZeit(e.vonMin)}–${minZuZeit(e.bisMin)}</td>
       <td>${esc(e.station.name)}</td>
       <td class="bw-klein">${esc(stationBesetzung(e.station, prueferName))}</td>
       <td class="bw-klein">${stationsZeitfenster(e)}</td>
-    </tr>`).join("");
+    </tr>`;
+      return (gPause && plan.pauseNachRunde === e.rundeNr) ? row + pauseZeile : row;
+    }).join("");
     return `<section style="break-inside:avoid;page-break-after:always;margin-top:var(--bw-space-3)">
       <h2>Laufzettel — ${esc(plName(z))}</h2>
       <p class="bw-klein">${esc(termin.titel || "Prüfungstag")} · ${esc(datum)}${termin.ort ? " · " + esc(termin.ort) : ""} · Gruppe ${zahl(gruppeNr)}</p>
@@ -1264,7 +1280,11 @@ async function renderPruefungstag(pruefungId = null) {
     const pill = bereitschaftPunkt;
     const stationen = await store.stationenFuer(id);
     const stationenGespeichert = stationen.length > 0;
-    const tagPlan = ablaufplanFuer(termin, zugeteilt, stationen);
+    const pause = {
+      nachRunde: Number(await store.getEinstellung("ablauf_pause_nach", 0)) || 0,
+      min: Number(await store.getEinstellung("ablauf_pause_min", 0)) || 0,
+    };
+    const tagPlan = ablaufplanFuer(termin, zugeteilt, stationen, pause);
     // „Übernommen" = Startzeiten der Prüflinge entsprechen den Gruppenstarts des
     // aktuellen Ablaufplans (ein Zeitmodell, kein altes Raster mehr).
     const tagUebernommen = tagPlan.m > 0 && zugeteilt.length > 0 && zugeteilt.every((z, i) => {
@@ -1330,6 +1350,18 @@ async function renderPruefungstag(pruefungId = null) {
         <p class="bw-klein${stationenGespeichert ? " bw-leise" : ""}">${stationenGespeichert ? "Stationen für diesen Termin gespeichert." : "Standardvorlage (noch nicht gespeichert) — unten anpassen und speichern."}</p>
         <h3>Gruppe 1${tagPlan.gruppen.length > 1 ? ' <span class="bw-klein bw-leise">(' + zahl(tagPlan.gruppen.length) + " Gruppen gesamt)</span>" : ""}</h3>
         <div class="bw-tablewrap">${gruppenRasterHtml(tagPlan, tagPlan.gruppen[0], zugeteilt, prueferName)}</div>
+        <div class="bw-toolbar" style="margin-top:var(--bw-space-2);align-items:flex-end">
+          <div class="bw-field" style="margin:0">
+            <label for="pause-nach">Mittagspause nach Station</label>
+            <input id="pause-nach" type="number" min="0" max="${Math.max(0, tagPlan.m - 1)}" value="${zahl(pause.nachRunde)}" style="width:6rem" aria-label="Mittagspause nach welcher Station (0 = keine)">
+          </div>
+          <div class="bw-field" style="margin:0">
+            <label for="pause-min">Dauer (Min)</label>
+            <input id="pause-min" type="number" min="0" step="5" value="${zahl(pause.min)}" style="width:6rem" aria-label="Pausendauer in Minuten">
+          </div>
+          <button class="bw-btn bw-btn--sekundaer" type="button" id="pause-save">Pause speichern</button>
+          <span class="bw-klein bw-leise">0 = keine Pause. Wirkt auf Zeiten in Raster, Laufzettel und Stationsplan.</span>
+        </div>
         <details class="bw-disclosure" style="margin-top:var(--bw-space-3)">
           <summary>Stationen bearbeiten</summary>
           <div id="stationen-editor"></div>
@@ -1360,8 +1392,16 @@ async function renderPruefungstag(pruefungId = null) {
     });
     an("tag-mappe", () => mappeDrucken(termin, zugeteilt, prueferZug));
     an("tag-ablauf", () => tagesablaufDrucken(termin, zugeteilt, prueferZug));
-    an("tag-laufzettel", () => laufzettelDrucken(termin, zugeteilt, stationen, prueferZug));
-    an("tag-stationsplan", () => stationsplanDrucken(termin, zugeteilt, stationen, prueferZug));
+    an("tag-laufzettel", () => laufzettelDrucken(termin, zugeteilt, stationen, prueferZug, pause));
+    an("tag-stationsplan", () => stationsplanDrucken(termin, zugeteilt, stationen, prueferZug, pause));
+    document.getElementById("pause-save")?.addEventListener("click", async () => {
+      const nach = Math.max(0, parseInt(document.getElementById("pause-nach").value, 10) || 0);
+      const min = Math.max(0, parseInt(document.getElementById("pause-min").value, 10) || 0);
+      await store.setEinstellung("ablauf_pause_nach", String(nach));
+      await store.setEinstellung("ablauf_pause_min", String(min));
+      meldung(nach && min ? `Mittagspause gesetzt: ${zahl(min)} Min nach Station ${zahl(nach)}.` : "Mittagspause entfernt.");
+      tagZeichnen();
+    });
     // Schreibt Startzeit + Reihenfolge aus dem Ablaufplan (gegebener Stationen) auf alle Prüflinge.
     const taktenSchreiben = async (st) => {
       const plan = ablaufplanFuer(termin, zugeteilt, st);
