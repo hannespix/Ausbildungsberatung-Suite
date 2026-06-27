@@ -219,9 +219,20 @@ als eigene 20-Min-Station in Eigenregie des RP (ohne Ausschuss-Prüfer).
   Reine, testbare Verteil-Logik `ablauf.js → prueferVerteilen` (62 Unit-Tests).
   Chromium-getestet (1 Klick: 6 Stationen, 3 Ausschuss → 3/5 besetzt + 2 offen
   gemeldet, Eigenregie frei, 8/8 getaktet, Mobile 390px, Galabau-Mathe).
-- _Nächster Schritt:_ die globale „Automatische Prüfungsplanung" vom
-  20-Min-Raster auf das Ablaufplan-Modell umstellen (Masseneinstieg folgt
-  demselben Takt).
+- ✅ **Automatische Planung folgt dem Ablaufplan-Takt** (kein 20-Min-Raster
+  mehr): die globale „Automatische Prüfungsplanung" und das manuelle „Ablaufplan
+  übernehmen" in der Planung nutzen jetzt dasselbe Zeitmodell wie das Cockpit.
+  Je Termin werden die Standard-Stationen angelegt, der Ausschuss namentlich auf
+  die Stationen verteilt und Startzeit + Reihenfolge je Prüfling aus der
+  Karussell-Rotation geschrieben (Gruppenstart, keine 20-Minuten-Slots). Die
+  Stationsvorlage liegt jetzt zentral in `model.js`
+  (`STANDARD_STATIONEN_GALABAU`), genutzt von Cockpit und Planung. Neue
+  Store-Funktion `ablaufplanTakten`; das alte `zeitrasterVergeben`/20-Min-Raster
+  ist entfernt. Chromium-getestet (Auto-Plan: 10 Prüflinge → 6×08:00 + 4×14:00,
+  keine :20/:40-Slots, 6 Stationen, Ausschuss verteilt, Eigenregie frei,
+  eindeutige Reihenfolge, Mobile 390px, Galabau-Mathe).
+- _Nächster Schritt:_ Kapazität je Tag aus dem Ablaufplan ableiten (Gruppen ×
+  Stationen × Rundenlänge gegen die Tageslänge), statt fester Kapazitätszahl.
 
 ### M3d — Ergebnis-Niederschrift je Termin ✅
 „Ergebnis-Niederschrift" in der Planung: druckbares Protokoll je Prüfungstag,

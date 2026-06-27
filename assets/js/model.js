@@ -42,6 +42,17 @@ export const GALABAU_BEREICHE = {
   ],
 };
 
+/**
+ * Standard-Stationen des praktischen Prüfungstags GaLaBau (Vorlage für den
+ * Rotations-Ablaufplan): die fünf praktischen Prüfungsbereiche (je 60 Min,
+ * 50 Prüfung + 10 Bewertung) plus die vom RP in Eigenregie betreute
+ * Pflanzenerkennung (20 Min, ohne Ausschuss-Prüfer). Einzige Quelle für die
+ * Vorlage — von Cockpit (app.js) und automatischer Planung (store.js) genutzt.
+ */
+export const STANDARD_STATIONEN_GALABAU = GALABAU_BEREICHE.praxis
+  .map((name) => ({ name, dauerMin: 60, bewertungMin: 10, prueferBedarf: 1, eigenregie: false }))
+  .concat([{ name: "Pflanzenerkennung", dauerMin: 20, bewertungMin: 0, prueferBedarf: 0, eigenregie: true }]);
+
 export const ENTITAETEN = {
   prueflinge: {
     key: "prueflinge",

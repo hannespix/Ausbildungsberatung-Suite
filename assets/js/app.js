@@ -5,19 +5,12 @@
 // Design ausschließlich über bw-theme.css (--bw-*-Tokens), Texte deutsch.
 
 import * as store from "./store.js";
-import { ENTITAETEN, NAV_REIHENFOLGE, GALABAU_BEREICHE } from "./model.js";
-import { rotationsplan, minZuZeit, PFLANZEN_DAUER, prueferVerteilen } from "./ablauf.js";
+import { ENTITAETEN, NAV_REIHENFOLGE, GALABAU_BEREICHE, STANDARD_STATIONEN_GALABAU } from "./model.js";
+import { rotationsplan, minZuZeit, prueferVerteilen } from "./ablauf.js";
 
-/**
- * Standard-Stationen des praktischen Prüfungstags GaLaBau: die fünf praktischen
- * Prüfungsbereiche (je 60 Min, 50 Prüfung + 10 Bewertung) plus die in
- * Eigenregie des RP betreute Pflanzenerkennung (20 Min, ohne Ausschuss-Prüfer).
- * Vorlage für den Rotations-Ablaufplan — Prüferbedarf je Station ist später je
- * Termin anpassbar.
- */
-const STATIONEN_GALABAU = GALABAU_BEREICHE.praxis
-  .map((name) => ({ name, dauerMin: 60, bewertungMin: 10, prueferBedarf: 1, eigenregie: false }))
-  .concat([{ name: "Pflanzenerkennung", dauerMin: PFLANZEN_DAUER, bewertungMin: 0, prueferBedarf: 0, eigenregie: true }]);
+// Vorlage für den Rotations-Ablaufplan (Single Source: model.js) — von Cockpit
+// und automatischer Planung gemeinsam genutzt, je Termin anpassbar.
+const STATIONEN_GALABAU = STANDARD_STATIONEN_GALABAU;
 
 /** "08:00"/"8:00 Uhr" -> Minuten ab Mitternacht; ungültig -> Default. */
 function zeitZuMin(text, fallback = 8 * 60) {
@@ -330,7 +323,7 @@ async function renderUebersicht() {
     <section aria-labelledby="autoplan-h" style="margin-top:var(--bw-space-4)">
       <h2 id="autoplan-h">Automatische Prüfungsplanung</h2>
       <div class="bw-card">
-        <p class="bw-klein bw-leise">Verteilt alle Prüflinge je Fachrichtung gleichmäßig auf passend viele Prüfungstermine (Kapazität je Tag), nach PLZ geclustert, legt fehlende Termine an, vergibt Uhrzeiten (20-Minuten-Takt) und besetzt je Termin einen Ausschuss. Ergebnis im <a href="#/planungsliste">Prüfer-Plan</a> und in der <a href="#/planung">Planung</a>.</p>
+        <p class="bw-klein bw-leise">Verteilt alle Prüflinge je Fachrichtung gleichmäßig auf passend viele Prüfungstermine (Kapazität je Tag), nach PLZ geclustert, legt fehlende Termine an, besetzt je Termin einen Ausschuss und erstellt den Stationen-Ablaufplan: Ausschuss auf Stationen verteilt, Startzeit &amp; Reihenfolge je Prüfling aus der Karussell-Rotation (kein 20-Minuten-Raster). Ergebnis im <a href="#/planungsliste">Prüfer-Plan</a>, in der <a href="#/planung">Planung</a> und im <a href="#/pruefungstag">Prüfungstag-Cockpit</a>.</p>
         <div class="bw-toolbar" style="margin-top:var(--bw-space-2)">
           <button class="bw-btn bw-btn--gelb" type="button" id="autoplan-btn">Jetzt automatisch planen</button>
         </div>
@@ -1518,18 +1511,9 @@ async function renderPlanung() {
 
       <h2>Zugeteilte Prüflinge (${zahl(zugeteilt.length)})</h2>
       <div class="bw-toolbar" style="margin-bottom:var(--bw-space-2)"${zugeteilt.length ? "" : " hidden"}>
-        <div class="bw-field" style="margin:0">
-          <label for="raster-start" class="bw-skip-link">Beginn</label>
-          <input id="raster-start" type="time" value="${esc(termin.zeit_von || "08:00")}" aria-label="Beginn des Zeitrasters">
-        </div>
-        <div class="bw-field" style="margin:0">
-          <label for="raster-takt" class="bw-skip-link">Minuten je Prüfling</label>
-          <input id="raster-takt" type="number" min="1" max="120" value="20" inputmode="numeric"
-                 aria-label="Minuten je Prüfling" style="width:6rem">
-        </div>
-        <button class="bw-btn bw-btn--sekundaer" type="button" id="raster-btn">Zeitraster erzeugen</button>
+        <button class="bw-btn bw-btn--gelb" type="button" id="raster-btn">Ablaufplan übernehmen</button>
         <button class="bw-btn bw-btn--sekundaer" type="button" id="raster-loeschen">Uhrzeiten löschen</button>
-        <span class="bw-klein bw-leise"> — vergibt fortlaufende Uhrzeiten in Reihenfolge.</span>
+        <span class="bw-klein bw-leise"> — vergibt Startzeit &amp; Reihenfolge aus dem Stationen-Ablaufplan (Detail-Stationen im <a href="#/pruefungstag?termin=${id}">Cockpit</a>).</span>
       </div>
       <table class="bw-table">
         <thead><tr><th>Uhrzeit</th><th>Name</th><th>Beruf</th><th>Betrieb</th><th>Aktion</th></tr></thead>
@@ -1647,15 +1631,13 @@ async function renderPlanung() {
     });
 
     document.getElementById("raster-btn")?.addEventListener("click", async () => {
-      const start = document.getElementById("raster-start").value || null;
-      const takt = parseInt(document.getElementById("raster-takt").value, 10) || 20;
       try {
-        const r = await store.zeitrasterVergeben(id, start, takt);
-        meldung(r.anzahl
-          ? `Zeitraster vergeben: ${zahl(r.anzahl)} Prüflinge ab ${r.beginn} Uhr im ${zahl(r.minuten)}-Minuten-Takt.`
-          : "Keine zugeteilten Prüflinge für ein Zeitraster.");
+        const r = await store.ablaufplanTakten(id);
+        meldung(r.getaktet
+          ? `Ablaufplan übernommen: ${zahl(r.getaktet)} Prüflinge ab ${r.beginn} Uhr getaktet (${zahl(r.gruppen)} ${r.gruppen === 1 ? "Gruppe" : "Gruppen"}, ${zahl(r.prueferProRunde)} Prüfer:innen gleichzeitig).`
+          : "Keine zugeteilten Prüflinge für den Ablaufplan.");
         planZeichnen();
-      } catch (e) { console.error(e); meldung("Zeitraster fehlgeschlagen: " + e.message, "fehler"); }
+      } catch (e) { console.error(e); meldung("Ablaufplan fehlgeschlagen: " + e.message, "fehler"); }
     });
 
     document.getElementById("raster-loeschen")?.addEventListener("click", async () => {
