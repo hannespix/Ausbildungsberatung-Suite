@@ -185,6 +185,14 @@ Einladungs-/Bestätigungsstatus ✅ (Prüfer-Plan).
   Einladung pro Ausschussmitglied (Rolle, Datum, Ort, Prüflingszahl, Bitte um
   Zu-/Absage) — eine Seite je Mitglied, ergänzt die `mailto`-Anfrage für
   Mitglieder ohne E-Mail. Chromium-getestet (Seitenzahl = Mitglieder, Mobile).
+- ✅ **Druckbare Einsatzübersicht je Prüfer:in**: in den Auswertungen erzeugt
+  „Einsatzübersicht drucken" ein Saison-Dokument, das **je Prüfer:in** alle
+  Ausschuss-Einsätze gruppiert auflistet (Datum · Termin · Fachrichtung · Rolle ·
+  Zusage), optional auf ein Prüfungsjahr gefiltert. Grundlage für
+  Einsatzbestätigung und die spätere Entschädigungsabrechnung (Beträge folgen,
+  sobald die Entschädigungssätze vorliegen). `store.prueferEinsatzListe(jahr)`.
+  Chromium-getestet (ein Block je Prüfer:in, Tabellenkopf vollständig, Mobile
+  390px, Galabau-Mathe).
 
 ### M5 — Notenberechnung ✅
 Neue Ansicht „Noten": Gesamtbewertung je Prüfling, Bewerten-Dialog mit

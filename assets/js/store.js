@@ -929,6 +929,30 @@ export async function prueferEinsaetze(jahr = null) {
   return res.rows;
 }
 
+/**
+ * Detaillierte Einsatzliste je Prüfer:in (eine Zeile je Ausschuss-Einsatz) für
+ * die druckbare Saison-Übersicht — Name, Organisation, Datum, Termin, Rolle,
+ * Zusage-Status. Grundlage u. a. für die spätere Entschädigungsabrechnung.
+ * @returns {Array<{pruefer_id,name,organisation,datum,titel,beruf,rolle,status}>}
+ */
+export async function prueferEinsatzListe(jahr = null) {
+  const res = await _pg.query(
+    `SELECT p.id AS pruefer_id,
+            (p.nachname || ', ' || coalesce(p.vorname,'')) AS name,
+            coalesce(p.organisation,'') AS organisation,
+            pr.datum, pr.titel, pr.beruf,
+            coalesce(pz.rolle,'') AS rolle,
+            coalesce(pz.status,'offen') AS status
+       FROM pruefer_zuteilungen pz
+       JOIN pruefer p ON p.id = pz.pruefer_id
+       JOIN pruefungen pr ON pr.id = pz.pruefung_id
+      WHERE ($1::int IS NULL OR EXTRACT(YEAR FROM pr.datum)::int = $1::int)
+      ORDER BY p.nachname, p.vorname, pr.datum NULLS LAST, pr.id`,
+    [jahr]
+  );
+  return res.rows;
+}
+
 /** Setzt den Status eines einzelnen Prüflings (Schnellaktion in der Akte). */
 export async function setzeStatus(prueflingId, status) {
   await _pg.query(`UPDATE prueflinge SET status = $2 WHERE id = $1`, [Number(prueflingId), status]);
