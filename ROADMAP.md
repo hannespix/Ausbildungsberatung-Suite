@@ -56,11 +56,27 @@ Ausbildungsberatung (Prüfung + Berichtsheftkontrolle + Beratung + Vordrucke).
   Theme-Komponenten `.bw-fieldset`, `.bw-check`, `.bw-betont`,
   `.bw-table--paare`. Chromium-getestet (Grundfall, vorzeitig, Teilzeit-Cap,
   Mobile 390px ohne Überlauf).
-- ⏳ **Berichtsheftkontrolle** und **Ausbildungsberatung (Problem/Lösungs-Doku)**:
-  als Startseiten angelegt und mit konkretem Funktionsplan „vorgelegt"; werden in
-  den nächsten Iterationen ausgebaut (Kontroll-Status je Auszubildender:m bzw.
-  Beratungsfälle mit Verlauf/Wiedervorlage). Berichtsheft nutzt künftig die
-  übernommene Logik aus `quellen/` (mit behobenen KW-/UNIQUE-/Wiedervorlage-Fehlern).
+- ✅ **Berichtsheftkontrolle (erste funktionsfähige Stufe)**: Dashboard je
+  Auszubildende:m (nutzt die vorhandenen `prueflinge`) mit **Ampel-Status**
+  (in Ordnung / Mängel / Wiedervorlage offen bzw. überfällig / noch nie
+  kontrolliert), Kennzahlen, globaler Fuzzy-Suche und CSV-Export. **Kontrolle
+  erfassen** per Dialog (Datum, Ausbildungsjahr, Durchsicht-Nr., Ergebnis,
+  Fehltage, Mängelcodes, Bemerkung) mit automatisch vorgeschlagener
+  Wiedervorlage-Frist und **Zulassungs-Empfehlung** (nur Hinweis). Eigener
+  **Wiedervorlagen-Abschnitt** (offen/überfällig, „erledigt"-Knopf). Neue
+  PGlite-Tabelle `berichtsheft_kontrollen` mit `UNIQUE`-Eindeutigkeit. Reine,
+  getestete Logik in `assets/js/berichtsheft.js` (33 Unit-Tests in der CI) —
+  mit den aus den Quellen behobenen Fehlern: **ISO-KW** einheitlich per
+  `Math.round` (kein Off-by-one an DST-/Jahreswechsel-Grenzen),
+  **Wiedervorlage-Frist** nie in der Vergangenheit (kein `interval=0`),
+  **WV-Status** stets aus der Frist abgeleitet (kein veraltender DB-Status),
+  **UNIQUE** auf Kontrollen, **Auto-Zulassung** nur als Empfehlung (überschreibt
+  keine manuelle Entscheidung). Chromium-getestet (Erststatus, Kontrolle mit
+  Wiedervorlage, erledigen, Upsert, Mobile 390px).
+- ⏳ **Ausbildungsberatung (Problem/Lösungs-Doku)**: als Startseite angelegt und
+  mit Funktionsplan „vorgelegt"; nächster Ausbau (Beratungsfälle mit
+  Verlauf/Wiedervorlage). Weiterer Berichtsheft-Ausbau: Import, Kontrolltermine,
+  Mängel je Kalenderwoche, druckbare Kontroll-Liste.
 
 ---
 

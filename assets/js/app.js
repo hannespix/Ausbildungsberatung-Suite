@@ -11,6 +11,10 @@ import {
   BERUFE, berufNach, berechne, getTarifVerguetung, getJahresurlaub,
   ds as rDs, iso as rIso, addMonths as rAddMonths,
 } from "./ausbildungsrechner.js";
+import {
+  ERGEBNISSE, ergebnisLabel, brauchtWiedervorlage, naechsteFrist,
+  wvStatus, ampel as bhAmpel, isoDate as bhIso, zulassungsEmpfehlung,
+} from "./berichtsheft.js";
 
 // Vorlage für den Rotations-Ablaufplan (Single Source: model.js) — von Cockpit
 // und automatischer Planung gemeinsam genutzt, je Termin anpassbar.
@@ -4290,19 +4294,243 @@ function renderVorlagen() {
 }
 
 /* ------------------------------------------------------------- Berichtsheft */
-function renderBerichtsheft() {
+const BH_AMPEL = {
+  gruen: '<span class="bw-status-do" title="In Ordnung" aria-hidden="true">●</span>',
+  gelb:  '<span aria-hidden="true" style="color:var(--bw-schwarz)">◐</span>',
+  rot:   '<span class="bw-status-dont" title="Handlung nötig" aria-hidden="true">●</span>',
+  grau:  '<span class="bw-leise" aria-hidden="true">○</span>',
+};
+
+/** Heutiges Datum als ISO (für die WV-Statusableitung). */
+function heuteISO() { return bhIso(new Date()); }
+
+async function renderBerichtsheft() {
+  const heute = heuteISO();
+  const rows = await store.berichtsheftUebersicht();
+  const wv = await store.berichtsheftWiedervorlagen();
+  const wvOffen = wv
+    .map((w) => ({ ...w, _stat: wvStatus(w.wiedervorlage_frist, w.wiedervorlage_erledigt, heute) }))
+    .filter((w) => w._stat === "offen" || w._stat === "ueberfaellig");
+
+  const eintraege = rows.map((r) => {
+    const letzte = r.kontroll_id ? { ergebnis: r.ergebnis, maengel: r.maengel } : null;
+    const stat = wvStatus(r.wiedervorlage_frist, r.wiedervorlage_erledigt, heute);
+    const a = bhAmpel(letzte, stat);
+    return { ...r, _ampel: a, _wvStat: stat };
+  });
+  const offen = eintraege.filter((e) => e._ampel.farbe === "rot").length;
+  const nieKontrolliert = eintraege.filter((e) => e._ampel.farbe === "grau").length;
+
   appEl().innerHTML = `
     <h1>Berichtsheftkontrolle</h1>
-    <p class="bw-unterzeile">Übersicht und Kontrolle der Ausbildungsnachweise (Berichtshefte) je Auszubildender/Auszubildendem.</p>
-    <div class="bw-hinweis">Dieser Bereich wird gerade aufgebaut. Geplante Funktionen:</div>
-    <ul>
-      <li>Kontroll-Status je Auszubildender:m (geprüft / Nachweis offen / Mängel) mit Datum.</li>
-      <li>Erinnerungen erzeugen (nutzt die <a href="#/vorlagen">Vorlage „Berichtsheft anfordern"</a>).</li>
-      <li>Verknüpfung mit den Stammdaten der <a href="#/prueflinge">Auszubildenden</a> und <a href="#/betriebe">Betriebe</a>.</li>
-      <li>Druckbare Kontroll-Liste für Betriebsbesuche.</li>
-    </ul>
-    <p class="bw-klein bw-leise">Bereits nutzbar: das passende Anschreiben unter <a href="#/vorlagen">Vorlagen</a>.</p>`;
+    <p class="bw-unterzeile">Kontrolle der Ausbildungsnachweise (Berichtshefte) je Auszubildender:m — Ergebnis erfassen, Wiedervorlagen im Blick behalten.</p>
+
+    <div class="bw-flaechen" style="margin-bottom:var(--bw-space-3)">
+      <div class="bw-card" style="flex:1 1 8rem"><div class="bw-klein bw-leise">Auszubildende</div><div style="font-size:1.5rem;font-weight:700">${zahl(eintraege.length)}</div></div>
+      <div class="bw-card" style="flex:1 1 8rem"><div class="bw-klein bw-leise">Wiedervorlagen offen</div><div style="font-size:1.5rem;font-weight:700">${zahl(wvOffen.length)}</div></div>
+      <div class="bw-card" style="flex:1 1 8rem"><div class="bw-klein bw-leise">Handlung nötig</div><div style="font-size:1.5rem;font-weight:700">${zahl(offen)}</div></div>
+      <div class="bw-card" style="flex:1 1 8rem"><div class="bw-klein bw-leise">Noch nie kontrolliert</div><div style="font-size:1.5rem;font-weight:700">${zahl(nieKontrolliert)}</div></div>
+    </div>
+
+    ${wvOffen.length ? `
+    <section class="bw-card" aria-labelledby="bh-wv-h" style="margin-bottom:var(--bw-space-3)">
+      <h2 id="bh-wv-h" style="margin-top:0">Wiedervorlagen</h2>
+      <div class="bw-tablewrap">
+        <table class="bw-table">
+          <thead><tr><th>Frist</th><th>Auszubildende:r</th><th>Anlass</th><th>Status</th><th></th></tr></thead>
+          <tbody id="bh-wv-tbody">${wvOffen.map((w) => `
+            <tr>
+              <td>${esc(new Date(w.wiedervorlage_frist).toLocaleDateString("de-DE"))}</td>
+              <td>${esc(w.nachname)}, ${esc(w.vorname)}</td>
+              <td>${esc(ergebnisLabel(w.ergebnis))}</td>
+              <td>${w._stat === "ueberfaellig" ? '<span class="bw-tag bw-tag--fehler">überfällig</span>' : '<span class="bw-tag bw-tag--aktiv">offen</span>'}</td>
+              <td class="bw-actions"><button class="bw-btn bw-btn--sekundaer" type="button" data-wv-erledigt="${w.id}">erledigt</button></td>
+            </tr>`).join("")}</tbody>
+        </table>
+      </div>
+    </section>` : ""}
+
+    <section class="bw-card" aria-labelledby="bh-liste-h">
+      <h2 id="bh-liste-h" style="margin-top:0">Auszubildende</h2>
+      <div class="bw-search" style="margin-bottom:var(--bw-space-2)">
+        <label for="bh-suche" class="bw-skip-link">Auszubildende durchsuchen</label>
+        <input id="bh-suche" type="search" placeholder="Suchen (Name, Betrieb, Fachrichtung) …" autocomplete="off">
+      </div>
+      <div class="bw-toolbar" style="margin:0 0 var(--bw-space-2)">
+        <button class="bw-btn bw-btn--sekundaer" type="button" id="bh-csv">CSV exportieren</button>
+      </div>
+      <div class="bw-tablewrap">
+        <table class="bw-table">
+          <thead><tr><th>Status</th><th>Name</th><th>Betrieb</th><th>Letzte Kontrolle</th><th>Ergebnis</th><th></th></tr></thead>
+          <tbody id="bh-tbody"></tbody>
+        </table>
+      </div>
+      <p id="bh-leer" class="bw-leise bw-klein" hidden>Keine Auszubildenden gefunden.</p>
+    </section>`;
+
+  const tbody = document.getElementById("bh-tbody");
+  const sucheEl = document.getElementById("bh-suche");
+  let gefiltert = eintraege;
+
+  function zeichne() {
+    tbody.innerHTML = gefiltert.map((e) => `
+      <tr>
+        <td title="${esc(e._ampel.text)}">${BH_AMPEL[e._ampel.farbe]} <span class="bw-klein">${esc(e._ampel.text)}</span></td>
+        <td><a href="#/pruefling/${e.pruefling_id}">${esc(e.nachname)}, ${esc(e.vorname)}</a></td>
+        <td>${esc(e.betrieb || "—")}</td>
+        <td>${e.datum ? esc(new Date(e.datum).toLocaleDateString("de-DE")) : "—"}</td>
+        <td>${e.kontroll_id ? esc(ergebnisLabel(e.ergebnis)) : "<span class='bw-leise'>—</span>"}</td>
+        <td class="bw-actions"><button class="bw-btn bw-btn--gelb" type="button" data-kontrolle="${e.pruefling_id}">Kontrolle erfassen</button></td>
+      </tr>`).join("");
+    document.getElementById("bh-leer").hidden = gefiltert.length > 0;
+  }
+
+  function filtern() {
+    const q = sucheEl.value.trim();
+    if (!q) { gefiltert = eintraege; zeichne(); return; }
+    if (window.bwSearch) {
+      gefiltert = window.bwSearch.search(eintraege, q, { fields: ["nachname", "vorname", "betrieb", "beruf"] });
+    } else {
+      const n = q.toLowerCase();
+      gefiltert = eintraege.filter((e) => `${e.nachname} ${e.vorname} ${e.betrieb || ""} ${e.beruf || ""}`.toLowerCase().includes(n));
+    }
+    zeichne();
+  }
+  zeichne();
+  sucheEl.addEventListener("input", debounce(filtern, 150));
+
+  tbody.addEventListener("click", (ev) => {
+    const id = ev.target.closest("[data-kontrolle]")?.getAttribute("data-kontrolle");
+    if (id) {
+      const e = eintraege.find((x) => String(x.pruefling_id) === String(id));
+      kontrolleDialog(Number(id), e ? `${e.nachname}, ${e.vorname}` : "", () => route());
+    }
+  });
+  // WV-„erledigt" am frisch gerenderten Tabellenkörper (nicht am bleibenden #app).
+  document.getElementById("bh-wv-tbody")?.addEventListener("click", async (ev) => {
+    const wvId = ev.target.closest("[data-wv-erledigt]")?.getAttribute("data-wv-erledigt");
+    if (!wvId) return;
+    await store.berichtsheftWvErledigen(Number(wvId), true);
+    meldung("Wiedervorlage als erledigt markiert.");
+    route();
+  });
+
+  document.getElementById("bh-csv").addEventListener("click", () => {
+    const kopf = ["Nachname", "Vorname", "Betrieb", "Fachrichtung", "Status", "Letzte Kontrolle", "Ergebnis", "Wiedervorlage"];
+    const zeilen = eintraege.map((e) => [
+      e.nachname, e.vorname, e.betrieb || "", e.beruf || "", e._ampel.text,
+      e.datum ? new Date(e.datum).toLocaleDateString("de-DE") : "",
+      e.kontroll_id ? ergebnisLabel(e.ergebnis) : "",
+      e.wiedervorlage_frist && !e.wiedervorlage_erledigt ? new Date(e.wiedervorlage_frist).toLocaleDateString("de-DE") : "",
+    ]);
+    dateiDownload("berichtsheftkontrolle.csv", csvText(kopf, zeilen), "text/csv;charset=utf-8");
+    meldung(`CSV exportiert: ${zahl(eintraege.length)} Auszubildende.`);
+  });
+
   document.getElementById("inhalt")?.focus?.();
+}
+
+/* ------------------------------------------- Berichtsheft: Kontrolle erfassen */
+async function kontrolleDialog(prueflingId, name, nachher) {
+  const alt = document.getElementById("dialog");
+  if (alt) alt.remove();
+  const heute = heuteISO();
+  const bisher = await store.berichtsheftFuerPruefling(prueflingId);
+  // Nächsten geplanten Prüfungstermin für die WV-Frist-Vorgabe holen.
+  let naechsterTermin = null;
+  try {
+    const ts = await store.liste("pruefungen");
+    const kuenftig = ts.map((t) => t.datum).filter((dd) => dd && dd > heute).sort();
+    naechsterTermin = kuenftig[0] || null;
+  } catch { /* ignore */ }
+
+  const dlg = document.createElement("dialog");
+  dlg.className = "bw-dialog bw-dialog--breit";
+  dlg.id = "dialog";
+  const ergebnisOptions = ERGEBNISSE.map((e) => `<option value="${esc(e.id)}">${esc(e.label)}</option>`).join("");
+  dlg.innerHTML = `
+    <form method="dialog" id="bh-form" novalidate>
+      <h2 style="margin-top:0">Kontrolle erfassen — ${esc(name)}</h2>
+      <div class="bw-dialog__felder">
+        <div class="bw-field"><label for="bh-datum">Kontrolldatum</label>
+          <input id="bh-datum" type="date" value="${esc(heute)}" required></div>
+        <div class="bw-field"><label for="bh-aj">Ausbildungsjahr</label>
+          <select id="bh-aj"><option value="1">1. Jahr</option><option value="2">2. Jahr</option><option value="3">3. Jahr</option><option value="4">4. Jahr</option></select></div>
+        <div class="bw-field"><label for="bh-nr">Durchsicht-Nr.</label>
+          <input id="bh-nr" type="number" min="1" max="9" step="1" value="1"></div>
+        <div class="bw-field"><label for="bh-ergebnis">Ergebnis</label>
+          <select id="bh-ergebnis">${ergebnisOptions}</select></div>
+        <div class="bw-field"><label for="bh-fehltage">Fehltage</label>
+          <input id="bh-fehltage" type="number" min="0" max="999" step="1" value="0"></div>
+        <div class="bw-field"><label for="bh-maengel">Mängelcodes <span class="bw-leise">(z. B. A,D)</span></label>
+          <input id="bh-maengel" type="text" placeholder="A,B,…"></div>
+      </div>
+      <div class="bw-field" id="bh-wv-feld" hidden>
+        <label for="bh-wv">Wiedervorlage bis</label>
+        <input id="bh-wv" type="date">
+        <p class="bw-klein bw-leise" style="margin:.3em 0 0">Vorgeschlagen aus Ergebnis/nächstem Termin — anpassbar.</p>
+      </div>
+      <div class="bw-field"><label for="bh-bemerkung">Bemerkung</label>
+        <textarea id="bh-bemerkung" rows="3" style="font:inherit;width:100%"></textarea></div>
+      <p id="bh-empf" class="bw-hinweis bw-hinweis--erfolg" hidden></p>
+      ${bisher.length ? `<details style="margin-top:var(--bw-space-2)"><summary>Bisherige Kontrollen (${zahl(bisher.length)})</summary>
+        <ul class="bw-klein">${bisher.map((b) => `<li>${esc(new Date(b.datum).toLocaleDateString("de-DE"))} · ${esc(ergebnisLabel(b.ergebnis))}${b.ausbildungsjahr ? ` · ${b.ausbildungsjahr}. AJ` : ""}${b.durchsicht_nr ? `/Durchsicht ${b.durchsicht_nr}` : ""}</li>`).join("")}</ul></details>` : ""}
+      <div class="bw-dialog__aktionen">
+        <button type="button" class="bw-btn bw-btn--sekundaer" id="bh-abbrechen">Abbrechen</button>
+        <button type="button" class="bw-btn bw-btn--gelb" id="bh-speichern">Speichern</button>
+      </div>
+    </form>`;
+  document.body.appendChild(dlg);
+
+  const ergEl = dlg.querySelector("#bh-ergebnis");
+  const wvFeld = dlg.querySelector("#bh-wv-feld");
+  const wvEl = dlg.querySelector("#bh-wv");
+  const empfEl = dlg.querySelector("#bh-empf");
+
+  function syncErgebnis() {
+    const erg = ergEl.value;
+    const brauchtWv = brauchtWiedervorlage(erg);
+    wvFeld.hidden = !brauchtWv;
+    if (brauchtWv && !wvEl.value) {
+      const f = naechsteFrist(erg, naechsterTermin, heute);
+      if (f) wvEl.value = f;
+    }
+    // Zulassungs-EMPFEHLUNG (nur Hinweis, überschreibt nichts).
+    const fehltage = Number(dlg.querySelector("#bh-fehltage").value || 0);
+    const empf = zulassungsEmpfehlung({ ergebnis: erg, maengel: dlg.querySelector("#bh-maengel").value, fehltageProzent: 0, wvOffen: brauchtWv });
+    empfEl.hidden = !empf;
+    if (empf) empfEl.textContent = "Empfehlung: Voraussetzungen für die Prüfungszulassung erfüllt (keine offenen Mängel/Wiedervorlagen).";
+  }
+  ergEl.addEventListener("change", syncErgebnis);
+  dlg.querySelector("#bh-maengel").addEventListener("input", syncErgebnis);
+  dlg.querySelector("#bh-fehltage").addEventListener("input", syncErgebnis);
+  syncErgebnis();
+
+  dlg.querySelector("#bh-abbrechen").addEventListener("click", () => dlg.close());
+  dlg.querySelector("#bh-speichern").addEventListener("click", async () => {
+    const datum = dlg.querySelector("#bh-datum").value;
+    if (!datum) { meldung("Bitte ein Kontrolldatum angeben.", "fehler"); return; }
+    try {
+      await store.berichtsheftSpeichern({
+        prueflingId,
+        datum,
+        ausbildungsjahr: dlg.querySelector("#bh-aj").value,
+        durchsichtNr: dlg.querySelector("#bh-nr").value,
+        ergebnis: ergEl.value,
+        maengel: dlg.querySelector("#bh-maengel").value.trim().toUpperCase() || null,
+        fehltage: dlg.querySelector("#bh-fehltage").value,
+        bemerkung: dlg.querySelector("#bh-bemerkung").value.trim() || null,
+        wiedervorlageFrist: brauchtWiedervorlage(ergEl.value) ? (wvEl.value || null) : null,
+      });
+      meldung("Kontrolle gespeichert.");
+      dlg.close();
+    } catch (e) {
+      console.error(e);
+      meldung("Konnte nicht speichern: " + e.message, "fehler");
+    }
+  });
+  dlg.addEventListener("close", () => { dlg.remove(); if (nachher) nachher(); });
+  dlg.showModal();
 }
 
 /* ---------------------------------------------------------------- Beratung */
@@ -4571,7 +4799,7 @@ async function route() {
     else if (r === "barrierefreiheit") { renderBarrierefreiheit(); }
     else if (r === "benutzer") { await renderBenutzer(); }
     else if (r === "vorlagen") { renderVorlagen(); }
-    else if (r === "berichtsheft") { renderBerichtsheft(); }
+    else if (r === "berichtsheft") { await renderBerichtsheft(); }
     else if (r === "beratung") { renderBeratung(); }
     else if (r === "rechner") { renderRechner(); }
     else if (r === "uebersicht") await renderUebersicht();
