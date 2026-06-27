@@ -12,6 +12,69 @@ import { rotationsplan, minZuZeit, prueferVerteilen, stationsBelegung } from "./
 // und automatischer Planung gemeinsam genutzt, je Termin anpassbar.
 const STATIONEN_GALABAU = STANDARD_STATIONEN_GALABAU;
 
+/* ----------------------------------------------------------------- Anmeldung
+   Leichte Zugangsabsicherung: ohne Login ist nichts nutzbar. Die Sitzung gilt
+   nur für den Browser-Tab (sessionStorage) — nach dem Schließen wird erneut
+   nach dem Login gefragt. Siehe auth.js für die ehrliche Sicherheits-Einordnung. */
+const SITZUNG_KEY = "ab_sitzung";
+let _benutzer = null;
+
+function istAdmin() { return _benutzer && _benutzer.rolle === "admin"; }
+
+function sitzungLaden() {
+  try {
+    const roh = sessionStorage.getItem(SITZUNG_KEY);
+    if (roh) { const u = JSON.parse(roh); if (u && u.benutzername) _benutzer = u; }
+  } catch { /* sessionStorage evtl. nicht verfügbar — dann eben Login je Aufruf */ }
+}
+
+function abmelden() {
+  _benutzer = null;
+  try { sessionStorage.removeItem(SITZUNG_KEY); } catch { /* egal */ }
+  navAufbauen();
+  loginAnzeigen();
+  if (aktiveRoute() !== "") location.hash = "#/";
+}
+
+/** Login-Maske; blockiert die App bis zur erfolgreichen Anmeldung. */
+function loginAnzeigen(fehler) {
+  navAufbauen();
+  appEl().innerHTML = `
+    <section class="bw-card" style="max-width:26rem;margin:var(--bw-space-4) auto" aria-labelledby="login-h">
+      <h1 id="login-h" style="margin-top:0">Anmeldung</h1>
+      <p class="bw-klein bw-leise">Bitte anmelden — ohne Login ist das Tool gesperrt.</p>
+      ${fehler ? `<p class="bw-hinweis bw-hinweis--fehler" role="alert">${esc(fehler)}</p>` : ""}
+      <form id="login-form" novalidate>
+        <div class="bw-field">
+          <label for="login-name">Benutzername</label>
+          <input id="login-name" name="name" type="text" autocomplete="username" value="admin" required>
+        </div>
+        <div class="bw-field">
+          <label for="login-pass">Passwort</label>
+          <input id="login-pass" name="pass" type="password" autocomplete="current-password" required>
+        </div>
+        <button class="bw-btn bw-btn--gelb" type="submit">Anmelden</button>
+      </form>
+      <p class="bw-klein bw-leise" style="margin-top:var(--bw-space-2)">Erstanmeldung über den vorbelegten Zugang <strong>admin</strong>. Passwort danach unter „Benutzer" ändern.</p>
+    </section>`;
+  const form = document.getElementById("login-form");
+  form.addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const name = document.getElementById("login-name").value;
+    const pass = document.getElementById("login-pass").value;
+    try {
+      const u = await store.login(name, pass);
+      if (!u) { loginAnzeigen("Benutzername oder Passwort falsch."); return; }
+      _benutzer = u;
+      try { sessionStorage.setItem(SITZUNG_KEY, JSON.stringify(u)); } catch { /* egal */ }
+      meldung(`Angemeldet als ${u.benutzername}.`);
+      navAufbauen();
+      if (aktiveRoute() === "" ) route(); else location.hash = "#/";
+    } catch (e) { console.error(e); loginAnzeigen("Anmeldung fehlgeschlagen: " + e.message); }
+  });
+  document.getElementById("login-pass")?.focus?.();
+}
+
 /** "08:00"/"8:00 Uhr" -> Minuten ab Mitternacht; ungültig -> Default. */
 function zeitZuMin(text, fallback = 8 * 60) {
   const m = String(text || "").match(/(\d{1,2}):(\d{2})/);
@@ -143,7 +206,13 @@ function navGruppen() {
 function navAufbauen() {
   const ul = document.getElementById("navlinks");
   if (!ul) return;
+  // Ohne Anmeldung keine Navigation (Tool ist gesperrt).
+  if (!_benutzer) { ul.innerHTML = ""; return; }
   const route = aktiveRoute();
+  const auth = (istAdmin()
+      ? `<li><a href="#/benutzer"${route === "benutzer" ? ' aria-current="page"' : ""}>Benutzer</a></li>`
+      : "")
+    + `<li><a href="#/abmelden" title="Angemeldet als ${esc(_benutzer.benutzername)}">Abmelden</a></li>`;
   ul.innerHTML = navGruppen().map((g, gi) => {
     if (!g.kinder) {
       const aktiv = g.routeKey === route ? ' aria-current="page"' : "";
@@ -158,7 +227,7 @@ function navAufbauen() {
                 data-menu-toggle aria-haspopup="true" aria-expanded="false" aria-controls="${subId}">${esc(g.label)} <span class="bw-nav__caret" aria-hidden="true">▾</span></button>
         <ul class="bw-nav__submenu" id="${subId}">${sub}</ul>
       </li>`;
-  }).join("");
+  }).join("") + auth;
   navDropdownsBinden();
 }
 
@@ -3992,11 +4061,140 @@ async function formularOeffnen(key, rec, nachher) {
 
 /* --------------------------------------------------------------- Router */
 
+/* ------------------------------------------------------ Benutzerverwaltung */
+
+async function renderBenutzer() {
+  if (!istAdmin()) {
+    appEl().innerHTML = `<h1>Benutzer</h1>
+      <p class="bw-hinweis bw-hinweis--fehler">Kein Zugriff — nur für Administrator:innen.</p>`;
+    return;
+  }
+  const liste = await store.benutzerListe();
+  const zeile = (u) => `
+    <tr>
+      <td>${esc(u.benutzername)}</td>
+      <td>${u.rolle === "admin" ? "Administrator:in" : "Benutzer:in"}</td>
+      <td class="bw-toolbar" style="margin:0;gap:var(--bw-space-1)">
+        <button class="bw-btn bw-btn--sekundaer" type="button" data-pw="${u.id}" data-name="${esc(u.benutzername)}">Passwort</button>
+        <button class="bw-iconbtn" type="button" data-del="${u.id}" data-name="${esc(u.benutzername)}" aria-label="Benutzer:in entfernen">${icon("muell")}</button>
+      </td>
+    </tr>`;
+  appEl().innerHTML = `
+    <h1>Benutzerverwaltung</h1>
+    <p class="bw-unterzeile">Zugänge zur Suite anlegen und verwalten. Angemeldet als <strong>${esc(_benutzer.benutzername)}</strong>.</p>
+    <p class="bw-hinweis">Hinweis: Diese Anmeldung ist eine <strong>leichte Zugangshürde</strong> für ein lokales Offline-Werkzeug — kein vollwertiger Schutz gegen direkten Geräte-/Dateizugriff. Personenbezogene Echtdaten nur über BITBW/LVN.</p>
+
+    <section class="bw-card" aria-labelledby="bn-neu" style="margin-bottom:var(--bw-space-3)">
+      <h2 id="bn-neu" style="margin-top:0">Neue:n Benutzer:in anlegen</h2>
+      <div class="bw-toolbar" style="align-items:flex-end">
+        <div class="bw-field" style="margin:0"><label for="bn-name">Benutzername</label><input id="bn-name" type="text" autocomplete="off"></div>
+        <div class="bw-field" style="margin:0"><label for="bn-pass">Passwort</label><input id="bn-pass" type="text" autocomplete="off" placeholder="mind. 4 Zeichen"></div>
+        <div class="bw-field" style="margin:0"><label for="bn-rolle">Rolle</label>
+          <select id="bn-rolle"><option value="user">Benutzer:in</option><option value="admin">Administrator:in</option></select></div>
+        <button class="bw-btn bw-btn--gelb" type="button" id="bn-anlegen">Anlegen</button>
+      </div>
+    </section>
+
+    <div class="bw-tablewrap">
+      <table class="bw-table">
+        <thead><tr><th>Benutzername</th><th>Rolle</th><th><span class="bw-skip-link">Aktion</span></th></tr></thead>
+        <tbody>${liste.map(zeile).join("")}</tbody>
+      </table>
+    </div>`;
+
+  document.getElementById("bn-anlegen").addEventListener("click", async () => {
+    const name = document.getElementById("bn-name").value;
+    const pass = document.getElementById("bn-pass").value;
+    const rolle = document.getElementById("bn-rolle").value;
+    try {
+      await store.benutzerAnlegen(name, pass, rolle);
+      meldung(`Benutzer:in „${name}" angelegt.`);
+      renderBenutzer();
+    } catch (e) { meldung("Anlegen fehlgeschlagen: " + e.message, "fehler"); }
+  });
+  appEl().querySelectorAll("[data-del]").forEach((b) => b.addEventListener("click", async () => {
+    const id = b.getAttribute("data-del"), name = b.getAttribute("data-name");
+    if (!confirm(`Benutzer:in „${name}" wirklich entfernen?`)) return;
+    try { await store.benutzerLoeschen(id); meldung("Benutzer:in entfernt."); renderBenutzer(); }
+    catch (e) { meldung("Entfernen fehlgeschlagen: " + e.message, "fehler"); }
+  }));
+  appEl().querySelectorAll("[data-pw]").forEach((b) => b.addEventListener("click", async () => {
+    const id = b.getAttribute("data-pw"), name = b.getAttribute("data-name");
+    const neu = prompt(`Neues Passwort für „${name}" (mind. 4 Zeichen):`);
+    if (neu == null) return;
+    try { await store.passwortSetzen(id, neu); meldung(`Passwort für „${name}" gesetzt.`); }
+    catch (e) { meldung("Passwort setzen fehlgeschlagen: " + e.message, "fehler"); }
+  }));
+}
+
+/* ------------------------------------------------------- Rechtliche Seiten */
+
+function rechtsSeite(titel, inhalt) {
+  appEl().innerHTML = `<h1>${esc(titel)}</h1>${inhalt}
+    <p class="bw-klein bw-leise" style="margin-top:var(--bw-space-4)">Regierungspräsidium Freiburg — Ausbildungsberatung</p>`;
+  document.getElementById("inhalt")?.focus?.();
+}
+
+function renderImpressum() {
+  rechtsSeite("Impressum", `
+    <p>Angaben gemäß § 5 DDG (Digitale-Dienste-Gesetz).</p>
+    <h2>Herausgeber</h2>
+    <p>Regierungspräsidium Freiburg<br>Kaiser-Joseph-Straße 167<br>79098 Freiburg im Breisgau</p>
+    <h2>Vertretung</h2>
+    <p>Das Regierungspräsidium Freiburg wird durch die Regierungspräsidentin / den Regierungspräsidenten vertreten.</p>
+    <h2>Kontakt</h2>
+    <p>Telefon: 0761 208-0<br>E-Mail: poststelle@rpf.bwl.de</p>
+    <h2>Zuständige Aufsichtsbehörde</h2>
+    <p>Ministerium für Ernährung, Ländlichen Raum und Verbraucherschutz Baden-Württemberg.</p>
+    <p class="bw-hinweis">Internes Werkzeug der Ausbildungsberatung. Die konkreten Verantwortlichen sind vor Veröffentlichung durch die Dienststelle zu ergänzen/zu prüfen.</p>`);
+}
+
+function renderDatenschutz() {
+  rechtsSeite("Datenschutz", `
+    <p>Dieses Werkzeug ist ein <strong>reines Offline-Tool</strong>. Alle Eingaben
+       werden <strong>ausschließlich lokal</strong> im Browser dieses Geräts
+       gespeichert (OPFS bzw. IndexedDB). Es werden <strong>keine Daten an Server
+       oder Dritte übertragen</strong>, es gibt kein Tracking und keine externen
+       Aufrufe (Zero-Trust, vollständig offline).</p>
+    <h2>Verarbeitung</h2>
+    <ul>
+      <li>Verarbeitung lokal auf dem Gerät der nutzenden Stelle.</li>
+      <li>Keine Übermittlung, keine Cookies, keine Analyse-/Tracking-Dienste.</li>
+      <li>Die Anmeldung dient nur der lokalen Zugangsbeschränkung; Passwörter werden gesalzen und gehasht gespeichert (nicht im Klartext).</li>
+    </ul>
+    <h2>Personenbezogene Daten</h2>
+    <p>Der produktive Umgang mit personenbezogenen Echtdaten erfolgt
+       ausschließlich über die dafür vorgesehene Landesinfrastruktur (BITBW/LVN)
+       gemäß den geltenden Vorgaben. Verantwortliche Stelle und Betroffenenrechte
+       (Auskunft, Berichtigung, Löschung) richten sich nach der Datenschutz-
+       erklärung des Regierungspräsidiums Freiburg.</p>
+    <p class="bw-hinweis">Dieser Text ist eine werkzeugbezogene Kurzinformation und
+       ersetzt nicht die amtliche Datenschutzerklärung der Dienststelle.</p>`);
+}
+
+function renderBarrierefreiheit() {
+  rechtsSeite("Barrierefreiheit", `
+    <p>Dieses Werkzeug ist nach den Vorgaben der Landesverwaltung
+       (WCAG 2.1, Stufe AA) gestaltet: semantisches HTML, Tastaturbedienung,
+       sichtbarer Fokus, ausreichende Kontraste und Rücksicht auf
+       <code>prefers-reduced-motion</code>.</p>
+    <h2>Feedback</h2>
+    <p>Barrieren oder Verbesserungsvorschläge bitte an die Ausbildungsberatung des
+       Regierungspräsidiums Freiburg melden (siehe <a href="#/impressum">Impressum</a>).</p>`);
+}
+
 async function route() {
-  navAufbauen();
+  // Zugangsschutz: ohne Anmeldung ist nichts erreichbar.
+  if (!_benutzer) { loginAnzeigen(); return; }
   const r = aktiveRoute();
+  if (r === "abmelden") { abmelden(); return; }
+  navAufbauen();
   try {
-    if (r === "uebersicht") await renderUebersicht();
+    if (r === "impressum") { renderImpressum(); }
+    else if (r === "datenschutz") { renderDatenschutz(); }
+    else if (r === "barrierefreiheit") { renderBarrierefreiheit(); }
+    else if (r === "benutzer") { await renderBenutzer(); }
+    else if (r === "uebersicht") await renderUebersicht();
     else if (r === "pruefungstag") await renderPruefungstag();
     else if (r === "planung") await renderPlanung();
     else if (r === "planungsliste") await renderPlanungsliste();
@@ -4039,6 +4237,7 @@ async function start() {
   try {
     const { modus } = await store.oeffnen();
     DB_MODUS = modus;
+    await store.benutzerSeed();      // Standard-Admin beim ersten Start
     await store.beispieldatenEinmalig();
   } catch (e) {
     console.error(e);
@@ -4053,7 +4252,8 @@ async function start() {
   dbModusHinweis();
   window.addEventListener("hashchange", route);
   tastenkuerzel();
-  route();
+  sitzungLaden();
+  if (_benutzer) route(); else loginAnzeigen();
 }
 
 /**

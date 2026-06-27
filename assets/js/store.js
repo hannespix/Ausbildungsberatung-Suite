@@ -8,6 +8,7 @@
 import { initDB, createTable, globaleSuche } from "./db.js";
 import { ENTITAETEN, suchspalten, STANDARD_STATIONEN_GALABAU } from "./model.js";
 import { rotationsplan, minZuZeit, prueferVerteilen, kapazitaetProTag, werktageNach } from "./ablauf.js";
+import { passHash } from "./auth.js";
 // Reine Notenlogik liegt in galabau.js (isoliert testbar). Intern genutzt und
 // für die UI über store re-exportiert.
 import {
@@ -141,6 +142,18 @@ export async function oeffnen() {
       wert text
     );
   `);
+  // Benutzer für die (leichte) Zugangsabsicherung. Passwörter nur gesalzen +
+  // iteriert gehasht (nie Klartext). Keine fachlichen Daten — überleben Reset.
+  await _pg.exec(`
+    CREATE TABLE IF NOT EXISTS benutzer (
+      id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      benutzername text UNIQUE NOT NULL,
+      pass_hash text NOT NULL,
+      salt text NOT NULL,
+      rolle text NOT NULL DEFAULT 'user',
+      angelegt timestamptz DEFAULT now()
+    );
+  `);
   return { pg: _pg, modus: _modus };
 }
 
@@ -157,6 +170,79 @@ export async function setEinstellung(schluessel, wert) {
        ON CONFLICT (schluessel) DO UPDATE SET wert = EXCLUDED.wert`,
     [schluessel, wert == null ? null : String(wert)]
   );
+}
+
+/* ------------------------------------------------------- Benutzer / Login */
+
+/** Zufälliges Salz als Hex (crypto.getRandomValues; auch unter file:// verfügbar). */
+function neuesSalz() {
+  const a = new Uint8Array(16);
+  (globalThis.crypto || {}).getRandomValues
+    ? globalThis.crypto.getRandomValues(a)
+    : a.forEach((_, i) => (a[i] = Math.floor(Math.random() * 256)));
+  return Array.from(a, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/**
+ * Legt beim ersten Start eine:n Standard-Admin an (admin / azubi2027), falls
+ * noch keine Benutzer existieren. Ohne fachliche Daten — unabhängig vom Reset.
+ */
+export async function benutzerSeed() {
+  const n = (await _pg.query(`SELECT count(*)::int AS n FROM benutzer`)).rows[0].n;
+  if (n > 0) return false;
+  const salt = neuesSalz();
+  await _pg.query(
+    `INSERT INTO benutzer (benutzername, pass_hash, salt, rolle) VALUES ($1, $2, $3, 'admin')`,
+    ["admin", passHash(salt, "azubi2027"), salt]
+  );
+  return true;
+}
+
+/** Prüft Anmeldedaten; gibt {id,benutzername,rolle} zurück oder null. */
+export async function login(benutzername, passwort) {
+  const name = String(benutzername || "").trim();
+  if (!name) return null;
+  const r = (await _pg.query(`SELECT * FROM benutzer WHERE lower(benutzername) = lower($1)`, [name])).rows[0];
+  if (!r) return null;
+  if (passHash(r.salt, String(passwort || "")) !== r.pass_hash) return null;
+  return { id: r.id, benutzername: r.benutzername, rolle: r.rolle };
+}
+
+/** Alle Benutzer (ohne Hash) für die Verwaltung. */
+export async function benutzerListe() {
+  const res = await _pg.query(`SELECT id, benutzername, rolle, angelegt FROM benutzer ORDER BY rolle, benutzername`);
+  return res.rows;
+}
+
+/** Legt eine:n Benutzer:in an (Admin-Aktion). Wirft bei Duplikat/leer. */
+export async function benutzerAnlegen(benutzername, passwort, rolle = "user") {
+  const name = String(benutzername || "").trim();
+  if (!name) throw new Error("Benutzername fehlt.");
+  if (String(passwort || "").length < 4) throw new Error("Passwort zu kurz (mind. 4 Zeichen).");
+  const r = rolle === "admin" ? "admin" : "user";
+  const salt = neuesSalz();
+  await _pg.query(
+    `INSERT INTO benutzer (benutzername, pass_hash, salt, rolle) VALUES ($1, $2, $3, $4)`,
+    [name, passHash(salt, String(passwort)), salt, r]
+  );
+}
+
+/** Setzt das Passwort einer/eines Benutzer:in neu (Admin-Aktion). */
+export async function passwortSetzen(id, neu) {
+  if (String(neu || "").length < 4) throw new Error("Passwort zu kurz (mind. 4 Zeichen).");
+  const salt = neuesSalz();
+  await _pg.query(`UPDATE benutzer SET pass_hash = $2, salt = $3 WHERE id = $1`, [Number(id), passHash(salt, String(neu)), salt]);
+}
+
+/** Löscht eine:n Benutzer:in; verhindert das Löschen des letzten Admins. */
+export async function benutzerLoeschen(id) {
+  const u = (await _pg.query(`SELECT rolle FROM benutzer WHERE id = $1`, [Number(id)])).rows[0];
+  if (!u) return;
+  if (u.rolle === "admin") {
+    const admins = (await _pg.query(`SELECT count(*)::int AS n FROM benutzer WHERE rolle = 'admin'`)).rows[0].n;
+    if (admins <= 1) throw new Error("Der letzte Admin-Zugang kann nicht gelöscht werden.");
+  }
+  await _pg.query(`DELETE FROM benutzer WHERE id = $1`, [Number(id)]);
 }
 
 function ent(key) {
