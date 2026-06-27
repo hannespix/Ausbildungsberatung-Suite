@@ -38,6 +38,26 @@ function formatWert(feld, value) {
 
 function zahl(n) { return Number(n || 0).toLocaleString("de-DE"); }
 
+/**
+ * Einfarbige Inline-SVG-Symbole (currentColor, erben die Textfarbe) — statt
+ * bunter Emoji, damit das Tool im Landes-CD „wie aus einem Guss" wirkt.
+ * Strichzeichnungen, keine Füll-/Eigenfarben. aria-hidden (Label am Knopf).
+ */
+const ICON_PFADE = {
+  akte: '<rect x="7" y="3" width="10" height="4" rx="1"/><path d="M7 5H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-1"/><path d="M9 12h6M9 16h6"/>',
+  kalender: '<rect x="3" y="4.5" width="18" height="16.5" rx="2"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/>',
+  stift: '<path d="M4 20h4L19 9a2 2 0 0 0-3-3L5 17v3Z"/><path d="M14.5 7.5l2 2"/>',
+  muell: '<path d="M4 7h16M9 7V4.5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1V7M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13M10 11v7M14 11v7"/>',
+  haken: '<path d="M5 12.5l4.5 4.5L19 6.5"/>',
+  kreuz: '<path d="M6 6l12 12M18 6L6 18"/>',
+  zurueck: '<path d="M4 5v5h5"/><path d="M4.5 10a8 8 0 1 1-1.2 5"/>',
+};
+function icon(name) {
+  const p = ICON_PFADE[name];
+  if (!p) return "";
+  return `<svg class="bw-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${p}</svg>`;
+}
+
 function meldung(text, art = "erfolg") {
   const m = meldungEl();
   if (!m) return;
@@ -335,22 +355,22 @@ function zeileHtml(ent, row, query, phase, termin, belegung) {
       + `<td style="text-align:right">${belegung.ausschuss ? zahl(belegung.ausschuss) : '<span class="bw-status-dont">0</span>'}</td>`
     : "";
   const akte = ent.key === "prueflinge"
-    ? `<a class="bw-iconbtn" href="#/pruefling/${row.id}" aria-label="Akte von ${esc((row.vorname || "") + " " + (row.nachname || ""))} öffnen" title="Akte öffnen">📋</a>`
+    ? `<a class="bw-iconbtn" href="#/pruefling/${row.id}" aria-label="Akte von ${esc((row.vorname || "") + " " + (row.nachname || ""))} öffnen" title="Akte öffnen">${icon("akte")}</a>`
     : ent.key === "betriebe"
-    ? `<a class="bw-iconbtn" href="#/betrieb/${row.id}" aria-label="Betrieb ${esc(row.name || "")} öffnen" title="Betrieb öffnen">📋</a>`
+    ? `<a class="bw-iconbtn" href="#/betrieb/${row.id}" aria-label="Betrieb ${esc(row.name || "")} öffnen" title="Betrieb öffnen">${icon("akte")}</a>`
     : ent.key === "pruefer"
-    ? `<a class="bw-iconbtn" href="#/pruefer/${row.id}" aria-label="Akte von ${esc((row.vorname || "") + " " + (row.nachname || ""))} öffnen" title="Akte öffnen">📋</a>`
+    ? `<a class="bw-iconbtn" href="#/pruefer/${row.id}" aria-label="Akte von ${esc((row.vorname || "") + " " + (row.nachname || ""))} öffnen" title="Akte öffnen">${icon("akte")}</a>`
     : ent.key === "pruefungen"
-    ? `<a class="bw-iconbtn" href="#/planung?termin=${row.id}" aria-label="In der Planung öffnen" title="In der Planung öffnen">📅</a>`
+    ? `<a class="bw-iconbtn" href="#/planung?termin=${row.id}" aria-label="In der Planung öffnen" title="In der Planung öffnen">${icon("kalender")}</a>`
     : "";
   const abw = ent.key === "pruefer"
-    ? `<button class="bw-iconbtn" type="button" data-abwesenheit="${row.id}" aria-label="Abwesenheiten von ${esc((row.vorname || "") + " " + (row.nachname || ""))}" title="Abwesenheiten">📅</button>`
+    ? `<button class="bw-iconbtn" type="button" data-abwesenheit="${row.id}" aria-label="Abwesenheiten von ${esc((row.vorname || "") + " " + (row.nachname || ""))}" title="Abwesenheiten">${icon("kalender")}</button>`
     : "";
   return `<tr>${tds}${terminTd}${fortschrittTd}${belegungTds}
     <td class="bw-actions">
       ${akte}${abw}
-      <button class="bw-iconbtn" type="button" data-edit="${row.id}" aria-label="${esc(ent.singular)} bearbeiten" title="Bearbeiten">✎</button>
-      <button class="bw-iconbtn" type="button" data-del="${row.id}" aria-label="${esc(ent.singular)} löschen" title="Löschen">🗑</button>
+      <button class="bw-iconbtn" type="button" data-edit="${row.id}" aria-label="${esc(ent.singular)} bearbeiten" title="Bearbeiten">${icon("stift")}</button>
+      <button class="bw-iconbtn" type="button" data-del="${row.id}" aria-label="${esc(ent.singular)} löschen" title="Löschen">${icon("muell")}</button>
     </td></tr>`;
 }
 
@@ -1034,7 +1054,7 @@ async function renderPlanung() {
               <td>${esc(z.betrieb || "")}</td>
               <td class="bw-actions">
                 <button class="bw-iconbtn" type="button" data-remove="${z.zuteilung_id}"
-                        aria-label="Zuteilung von ${esc((z.vorname || "") + " " + (z.nachname || ""))} entfernen" title="Entfernen">🗑</button>
+                        aria-label="Zuteilung von ${esc((z.vorname || "") + " " + (z.nachname || ""))} entfernen" title="Entfernen">${icon("muell")}</button>
               </td>
             </tr>`).join("")}
         </tbody>
@@ -1075,7 +1095,7 @@ async function renderPlanung() {
               <td>${esc(p.organisation || "")}</td>
               <td class="bw-actions">
                 <button class="bw-iconbtn" type="button" data-remove-pruefer="${p.zuteilung_id}"
-                        aria-label="Prüfer:in ${esc((p.vorname || "") + " " + (p.nachname || ""))} entfernen" title="Entfernen">🗑</button>
+                        aria-label="Prüfer:in ${esc((p.vorname || "") + " " + (p.nachname || ""))} entfernen" title="Entfernen">${icon("muell")}</button>
               </td>
             </tr>`).join("")}
         </tbody>
@@ -1319,9 +1339,9 @@ async function renderPlanungsliste() {
                 <td>${esc(p.organisation || "")}</td>
                 <td>${zusageBadge(p.status)}</td>
                 <td class="bw-actions">
-                  <button class="bw-iconbtn" type="button" data-status="zugesagt" data-zid="${p.zuteilung_id}" title="Zusage" aria-label="Zusage">✓</button>
-                  <button class="bw-iconbtn" type="button" data-status="abgesagt" data-zid="${p.zuteilung_id}" title="Absage" aria-label="Absage">✗</button>
-                  <button class="bw-iconbtn" type="button" data-status="offen" data-zid="${p.zuteilung_id}" title="Zurücksetzen" aria-label="Zurücksetzen">↺</button>
+                  <button class="bw-iconbtn" type="button" data-status="zugesagt" data-zid="${p.zuteilung_id}" title="Zusage" aria-label="Zusage">${icon("haken")}</button>
+                  <button class="bw-iconbtn" type="button" data-status="abgesagt" data-zid="${p.zuteilung_id}" title="Absage" aria-label="Absage">${icon("kreuz")}</button>
+                  <button class="bw-iconbtn" type="button" data-status="offen" data-zid="${p.zuteilung_id}" title="Zurücksetzen" aria-label="Zurücksetzen">${icon("zurueck")}</button>
                 </td>
               </tr>`).join("") : `<tr><td colspan="5" class="bw-leise">Noch kein Ausschuss zugeteilt.</td></tr>`}
           </tbody>
@@ -1957,9 +1977,9 @@ async function renderPrueflingAkte(id) {
     <div class="bw-card" style="margin-bottom:var(--bw-space-2)">
       <div class="bw-toolbar" style="margin:0">
         <strong style="margin-right:auto">${esc(t.titel || "Termin")}</strong>
-        <a class="bw-iconbtn" href="#/planung?termin=${t.id}" aria-label="In der Planung öffnen" title="In der Planung öffnen">📅</a>
+        <a class="bw-iconbtn" href="#/planung?termin=${t.id}" aria-label="In der Planung öffnen" title="In der Planung öffnen">${icon("kalender")}</a>
         <button class="bw-iconbtn" type="button" data-entfernen="${t.zuteilung_id}"
-                aria-label="Zuteilung entfernen" title="Zuteilung entfernen">🗑</button>
+                aria-label="Zuteilung entfernen" title="Zuteilung entfernen">${icon("muell")}</button>
       </div>
       <div class="bw-klein bw-leise" style="margin:var(--bw-space-1) 0">
         ${t.datum ? esc(new Date(t.datum).toLocaleDateString("de-DE")) : "ohne Datum"}${t.slot ? " · " + esc(t.slot) + " Uhr" : (t.zeit_von ? " · ab " + esc(t.zeit_von) : "")}
@@ -2156,7 +2176,7 @@ async function renderBetriebAkte(id) {
                   <td>${esc(p.pruefungsjahr || "—")}</td>
                   <td style="text-align:right">${formatNote(p.gesamt)}</td>
                   <td>${fortschrittTag(p.phase)}</td>
-                  <td class="bw-actions"><a class="bw-iconbtn" href="#/pruefling/${p.id}" title="Akte öffnen" aria-label="Akte öffnen">📋</a></td>
+                  <td class="bw-actions"><a class="bw-iconbtn" href="#/pruefling/${p.id}" title="Akte öffnen" aria-label="Akte öffnen">${icon("akte")}</a></td>
                 </tr>`).join("")}</tbody>
             </table>
           </div>`
@@ -2850,7 +2870,7 @@ async function abwesenheitDialog(prueferId, name, nachher) {
     listeEl.innerHTML = tage.map((t) => `
       <tr>
         <td>${esc(new Date(t.datum).toLocaleDateString("de-DE"))}</td>
-        <td class="bw-actions"><button class="bw-iconbtn" type="button" data-del-abw="${t.id}" title="Entfernen" aria-label="Tag entfernen">🗑</button></td>
+        <td class="bw-actions"><button class="bw-iconbtn" type="button" data-del-abw="${t.id}" title="Entfernen" aria-label="Tag entfernen">${icon("muell")}</button></td>
       </tr>`).join("");
     dlg.querySelector("#abw-leer").hidden = tage.length > 0;
   };

@@ -489,6 +489,18 @@ schlechter). Folgt dem Prüfungsjahr-Filter, im Bericht enthalten
 hervorgehoben = schwächster, Tabelle, Bericht, Mobile 390px).
 Offen: Stichtagsauswertung.
 
+### CD-Feinschliff: einfarbige Symbole + kein Inhalts-Rahmen ✅
+Auf Nutzer-Feedback: die bunten Emoji-Symbole (Akte/Planung/Bearbeiten/Löschen,
+Zusage/Absage/Zurücksetzen) sind durch **einfarbige Inline-SVG-Symbole**
+(currentColor, Strichzeichnung, keine Eigenfarben) ersetzt — wirkt
+professioneller und entspricht dem CD („keine freie Farbigkeit"). Zentrale
+`icon()`-Funktion mit `ICON_PFADE`. Außerdem behoben: der **schwarze Rahmen um
+den gesamten Inhalt** beim Start — er kam vom Fokus-Outline des
+skriptfokussierten Inhalts-Containers (`#inhalt`, Skip-Link-Ziel); jetzt
+`#inhalt:focus { outline:none }` (interaktive Elemente behalten ihren Fokusring).
+Chromium-getestet (keine Emoji in den Listen, SVG-Icons currentColor,
+#inhalt-Fokus ohne Outline, Mobile 390px).
+
 ### M11 — Barrierefreiheit & Feinschliff
 WCAG-AA-Audit, Tastatur-/Screenreader-Durchgang, Leer-/Fehlerzustände,
 Hilfetexte, Tastenkürzel, Dark-Mode-Prüfung der Tokens.
