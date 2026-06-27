@@ -501,6 +501,31 @@ skriptfokussierten Inhalts-Containers (`#inhalt`, Skip-Link-Ziel); jetzt
 Chromium-getestet (keine Emoji in den Listen, SVG-Icons currentColor,
 #inhalt-Fokus ohne Outline, Mobile 390px).
 
+### Navigation gruppiert (Dropdowns) ✅
+Auf Nutzer-Feedback: 11 Hauptpunkte waren zu unübersichtlich. Die Navigation ist
+jetzt nach dem Arbeitsablauf in **5 Hauptpunkte** gegliedert, Unterpunkte im
+barrierefreien Dropdown:
+- **Übersicht** (Direktlink)
+- **Stammdaten** ▾ — Prüflinge · Ausbildungsbetriebe · Prüfer:innen ·
+  Prüfungstermine · Adressliste
+- **Planung** ▾ — Tagesplanung · Prüfer-Plan
+- **Prüfungstag** ▾ — Noten · Zeugnisse
+- **Auswertungen** (Direktlink)
+
+Datengetrieben (`navGruppen()`), Dropdown-Verhalten per Delegation
+(`navDropdownsBinden`): Klick öffnet/schließt, Klick außerhalb/Escape schließt,
+Unterpunkt-Klick navigiert und schließt Dropdown + Hamburger; die aktive Gruppe
+trägt den gelben Marker, der aktive Unterpunkt `aria-current`. Desktop als
+Overlay-Dropdown, mobil als inline aufklappende Abschnitte im Hamburger
+(`aria-haspopup`/`aria-expanded`/`aria-controls`, nur `--bw-*`-Tokens, keine
+Schatten). Chromium-getestet (5 Hauptpunkte, Dropdown öffnet/schließt,
+Navigation + aktiv-Markierung, alle 10 Routen erreichbar, Mobile 390px inline).
+
+Geplant (nächste Iterationen, prüfungstag-zentriert): ein **Prüfungstag-Dashboard**
+als Bulk-Cockpit (Ausschuss/Zusagen, Ablaufplan, Reihen-Noteneintragung,
+Serien-Zeugnis-/Mitteilungsdruck, Niederschrift) und **Prüferentschädigung**
+(Abrechnung je Einsatz, druckbar/CSV).
+
 ### M11 — Barrierefreiheit & Feinschliff
 WCAG-AA-Audit, Tastatur-/Screenreader-Durchgang, Leer-/Fehlerzustände,
 Hilfetexte, Tastenkürzel, Dark-Mode-Prüfung der Tokens.

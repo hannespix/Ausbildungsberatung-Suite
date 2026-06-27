@@ -91,17 +91,82 @@ function routeParams() {
   return p;
 }
 
+// Gruppierte Hauptnavigation: wenige Hauptpunkte, Unterpunkte im Dropdown —
+// gegliedert nach dem Arbeitsablauf (Stammdaten → Planung → Prüfungstag →
+// Auswertung). Übersicht und Auswertungen bleiben Direktlinks.
+function navGruppen() {
+  const ent = (k) => (ENTITAETEN[k] ? ENTITAETEN[k].plural : k);
+  return [
+    { link: "", label: "Übersicht", routeKey: "uebersicht" },
+    { label: "Stammdaten", kinder: [
+      { key: "prueflinge", label: ent("prueflinge") },
+      { key: "betriebe", label: ent("betriebe") },
+      { key: "pruefer", label: ent("pruefer") },
+      { key: "pruefungen", label: ent("pruefungen") },
+      { key: "kontakte", label: "Adressliste" },
+    ] },
+    { label: "Planung", kinder: [
+      { key: "planung", label: "Tagesplanung" },
+      { key: "planungsliste", label: "Prüfer-Plan" },
+    ] },
+    { label: "Prüfungstag", kinder: [
+      { key: "noten", label: "Noten" },
+      { key: "zeugnisse", label: "Zeugnisse" },
+    ] },
+    { link: "auswertungen", label: "Auswertungen", routeKey: "auswertungen" },
+  ];
+}
+
 function navAufbauen() {
   const ul = document.getElementById("navlinks");
   if (!ul) return;
   const route = aktiveRoute();
-  const punkte = [{ key: "uebersicht", label: "Übersicht" }]
-    .concat(NAV_REIHENFOLGE.map((k) => ({ key: k, label: ENTITAETEN[k].plural })))
-    .concat([{ key: "planung", label: "Planung" }, { key: "planungsliste", label: "Prüfer-Plan" }, { key: "noten", label: "Noten" }, { key: "zeugnisse", label: "Zeugnisse" }, { key: "auswertungen", label: "Auswertungen" }, { key: "kontakte", label: "Adressliste" }]);
-  ul.innerHTML = punkte.map((p) => {
-    const aktiv = p.key === route ? ' aria-current="page"' : "";
-    return `<li><a href="#/${p.key === "uebersicht" ? "" : p.key}"${aktiv}>${esc(p.label)}</a></li>`;
+  ul.innerHTML = navGruppen().map((g, gi) => {
+    if (!g.kinder) {
+      const aktiv = g.routeKey === route ? ' aria-current="page"' : "";
+      return `<li><a href="#/${g.link}"${aktiv}>${esc(g.label)}</a></li>`;
+    }
+    const kindAktiv = g.kinder.some((k) => k.key === route);
+    const subId = "navsub-" + gi;
+    const sub = g.kinder.map((k) =>
+      `<li><a href="#/${k.key}"${k.key === route ? ' aria-current="page"' : ""}>${esc(k.label)}</a></li>`).join("");
+    return `<li class="bw-nav__group">
+        <button type="button" class="bw-nav__groupbtn${kindAktiv ? " is-aktiv" : ""}"
+                data-menu-toggle aria-haspopup="true" aria-expanded="false" aria-controls="${subId}">${esc(g.label)} <span class="bw-nav__caret" aria-hidden="true">▾</span></button>
+        <ul class="bw-nav__submenu" id="${subId}">${sub}</ul>
+      </li>`;
   }).join("");
+  navDropdownsBinden();
+}
+
+let _navGebunden = false;
+/** Dropdown- und Schließverhalten der Hauptnavigation (einmalig, per Delegation). */
+function navDropdownsBinden() {
+  const ul = document.getElementById("navlinks");
+  if (!ul || _navGebunden) return;
+  _navGebunden = true;
+  const alleZu = (außer) => ul.querySelectorAll('[data-menu-toggle][aria-expanded="true"]')
+    .forEach((b) => { if (b !== außer) b.setAttribute("aria-expanded", "false"); });
+  const hamburgerZu = () => {
+    const t = document.querySelector("[data-nav-toggle]");
+    const p = document.getElementById("hauptmenue");
+    if (t) t.setAttribute("aria-expanded", "false");
+    if (p) p.setAttribute("data-open", "false");
+  };
+  ul.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-menu-toggle]");
+    if (btn) {
+      e.preventDefault();
+      const offen = btn.getAttribute("aria-expanded") === "true";
+      alleZu(btn);
+      btn.setAttribute("aria-expanded", String(!offen));
+      return;
+    }
+    // Klick auf einen echten Navigationslink: Dropdown und Hamburger schließen.
+    if (e.target.closest("a[href]")) { alleZu(null); hamburgerZu(); }
+  });
+  document.addEventListener("click", (e) => { if (!ul.contains(e.target)) alleZu(null); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") alleZu(null); });
 }
 
 /* ----------------------------------------------------------------- Übersicht */
