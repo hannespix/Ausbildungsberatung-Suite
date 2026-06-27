@@ -168,9 +168,18 @@ als eigene 20-Min-Station in Eigenregie des RP (ohne Ausschuss-Prüfer).
   GaLaBau-Prüfungsbereiche + Pflanzenerkennung. Chromium-getestet (Raster 6
   Stationen/6 Runden, 8 Prüflinge → 2 Gruppen, 5 Prüfer:innen, Laufzettel mit
   Prüf-/Bewertungsfenster, Mobile 390px, Galabau-Mathe).
-- _Nächster Schritt:_ Stationen je Termin **bearbeitbar/persistent** (Name,
-  Dauer, Prüferbedarf 1–3, Eigenregie) und Ausschuss-Prüfer:innen den Stationen
-  zuordnen.
+- ✅ **Stationen je Termin bearbeitbar & persistent**: im Cockpit unter
+  „Stationen bearbeiten" lassen sich Stationen anlegen/entfernen und Name, Dauer,
+  Prüferbedarf (0–3) und RP-Eigenregie setzen; „Standard-Stationen einsetzen"
+  füllt die GaLaBau-Vorlage. Gespeichert je Prüfungstag (neue Tabelle
+  `stationen`, `store.stationenFuer`/`stationenSetzen`, beim Löschen des Termins
+  mit aufgeräumt). Der Ablaufplan, die Prüferzahl, Laufzettel und Stationsplan
+  rechnen sofort mit den gespeicherten Stationen; ohne gespeicherte Stationen
+  greift die Standardvorlage. Eigenregie-Stationen zählen 0 Prüfer:innen.
+  Chromium-getestet (Bedarf 3 speichern → 7 Prüfer:innen, Persistenz,
+  Eigenregie-Toggle deaktiviert den Bedarf, Mobile 390px, Galabau-Mathe).
+- _Nächster Schritt:_ konkrete Ausschuss-Prüfer:innen den einzelnen Stationen
+  zuordnen (Namen je Station statt nur Bedarfszahl).
 
 ### M3d — Ergebnis-Niederschrift je Termin ✅
 „Ergebnis-Niederschrift" in der Planung: druckbares Protokoll je Prüfungstag,
