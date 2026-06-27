@@ -116,6 +116,20 @@ export async function oeffnen() {
     ALTER TABLE bewertungen ADD COLUMN IF NOT EXISTS ergaenzung_bereich text;
     ALTER TABLE bewertungen ADD COLUMN IF NOT EXISTS ergaenzung_note numeric;
   `);
+  // Stationen je Prüfungstag (Aufgaben des Rotations-Ablaufplans). Eigenregie =
+  // vom RP selbst betreut (kein Ausschuss-Prüfer, z. B. Pflanzenerkennung).
+  await _pg.exec(`
+    CREATE TABLE IF NOT EXISTS stationen (
+      id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      pruefung_id bigint NOT NULL,
+      name text NOT NULL,
+      dauer_min int DEFAULT 60,
+      bewertung_min int DEFAULT 10,
+      pruefer_bedarf int DEFAULT 1,
+      eigenregie boolean DEFAULT false,
+      reihenfolge int DEFAULT 0
+    );
+  `);
   // Schlüssel/Wert-Einstellungen (z. B. Entschädigungssätze) — keine fachlichen
   // Daten, überleben einen Datenreset bewusst.
   await _pg.exec(`
@@ -233,6 +247,7 @@ export async function loeschen(key, id) {
   if (key === "pruefungen") {
     await _pg.query(`DELETE FROM zuteilungen WHERE pruefung_id = $1`, [id]);
     await _pg.query(`DELETE FROM pruefer_zuteilungen WHERE pruefung_id = $1`, [id]);
+    await _pg.query(`DELETE FROM stationen WHERE pruefung_id = $1`, [id]);
   }
   await _pg.query(`DELETE FROM ${e.key} WHERE id = $1`, [id]);
 }
@@ -1003,6 +1018,56 @@ export async function entschaedigungVorschau(jahr = null) {
     [jahr]
   );
   return res.rows;
+}
+
+/**
+ * Stationen eines Prüfungstags (Aufgaben des Rotations-Ablaufplans), in
+ * gespeicherter Reihenfolge. Felder bereits im Engine-Format (dauerMin etc.).
+ * @returns {Array<{id,name,dauerMin,bewertungMin,prueferBedarf,eigenregie}>}
+ */
+export async function stationenFuer(pruefungId) {
+  const res = await _pg.query(
+    `SELECT id, name, dauer_min, bewertung_min, pruefer_bedarf, eigenregie
+       FROM stationen WHERE pruefung_id = $1
+      ORDER BY reihenfolge, id`,
+    [Number(pruefungId)]
+  );
+  return res.rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    dauerMin: r.dauer_min,
+    bewertungMin: r.bewertung_min,
+    prueferBedarf: r.pruefer_bedarf,
+    eigenregie: !!r.eigenregie,
+  }));
+}
+
+/**
+ * Ersetzt die Stationen eines Prüfungstags vollständig durch die übergebene
+ * Liste (Reihenfolge = Array-Index). Leeres Array löscht alle Stationen.
+ */
+export async function stationenSetzen(pruefungId, liste) {
+  const pid = Number(pruefungId);
+  await _pg.query(`DELETE FROM stationen WHERE pruefung_id = $1`, [pid]);
+  const rows = (liste || []).filter((s) => String(s.name || "").trim());
+  for (let i = 0; i < rows.length; i++) {
+    const s = rows[i];
+    const eigen = !!s.eigenregie;
+    await _pg.query(
+      `INSERT INTO stationen (pruefung_id, name, dauer_min, bewertung_min, pruefer_bedarf, eigenregie, reihenfolge)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [
+        pid,
+        String(s.name).trim(),
+        Math.max(1, Math.round(Number(s.dauerMin) || 60)),
+        Math.max(0, Math.round(Number(s.bewertungMin) || 0)),
+        eigen ? 0 : Math.min(3, Math.max(0, Math.round(Number(s.prueferBedarf) || 1))),
+        eigen,
+        i,
+      ]
+    );
+  }
+  return rows.length;
 }
 
 /** Setzt den Status eines einzelnen Prüflings (Schnellaktion in der Akte). */

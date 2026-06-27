@@ -871,9 +871,67 @@ function stationsZeitfenster(e) {
   return s.bewertungMin > 0 ? `${txt} · ${minZuZeit(pruefBis)}–${minZuZeit(e.bisMin)} Bewertung` : txt;
 }
 
-/** Rotations-Plan für einen Termin aus der Standard-Stationsvorlage. */
-function ablaufplanFuer(termin, zugeteilt) {
-  return rotationsplan(STATIONEN_GALABAU, zugeteilt, { startMin: zeitZuMin(termin.zeit_von) });
+/** Rotations-Plan für einen Termin aus den (gespeicherten) Stationen. */
+function ablaufplanFuer(termin, zugeteilt, stationen) {
+  const st = stationen && stationen.length ? stationen : STATIONEN_GALABAU;
+  return rotationsplan(st, zugeteilt, { startMin: zeitZuMin(termin.zeit_von) });
+}
+
+/**
+ * Bindet den Stationen-Editor (eine Disclosure im Cockpit): Zeilen mit Name,
+ * Dauer, Prüferbedarf, Eigenregie; hinzufügen/entfernen, Standardvorlage
+ * einsetzen, speichern. Nach dem Speichern lädt das Cockpit neu (Plan
+ * aktualisiert sich). @param neuLaden Callback zum Neuzeichnen.
+ */
+function stationenEditorBinden(pruefungId, start, neuLaden) {
+  const wrap = document.getElementById("stationen-editor");
+  if (!wrap) return;
+  let arbeit = (start && start.length ? start : STATIONEN_GALABAU).map((s) => ({ ...s }));
+
+  function zeichne() {
+    const summe = arbeit.reduce((n, s) => n + (s.eigenregie ? 0 : Math.min(3, Math.max(0, Math.round(Number(s.prueferBedarf) || 0)))), 0);
+    wrap.innerHTML = `
+      <div class="bw-tablewrap">
+        <table class="bw-table">
+          <thead><tr><th>Station (Aufgabe)</th><th style="width:7rem">Dauer&nbsp;Min</th><th style="width:7rem">Prüfer 0–3</th><th style="width:6rem">RP-eigen</th><th><span class="bw-skip-link">Aktion</span></th></tr></thead>
+          <tbody>${arbeit.map((s, i) => `
+            <tr>
+              <td><input type="text" class="bw-input" data-f="name" data-i="${i}" value="${esc(s.name)}" aria-label="Stationsname"></td>
+              <td><input type="number" min="1" step="5" class="bw-input" data-f="dauerMin" data-i="${i}" value="${Number(s.dauerMin) || 60}" aria-label="Dauer in Minuten"></td>
+              <td><input type="number" min="0" max="3" class="bw-input" data-f="prueferBedarf" data-i="${i}" value="${s.eigenregie ? 0 : (Number(s.prueferBedarf) || 0)}"${s.eigenregie ? " disabled" : ""} aria-label="Prüferbedarf"></td>
+              <td style="text-align:center"><input type="checkbox" data-f="eigenregie" data-i="${i}"${s.eigenregie ? " checked" : ""} aria-label="In Eigenregie des RP (ohne Ausschuss-Prüfer)"></td>
+              <td><button type="button" class="bw-iconbtn" data-del="${i}" aria-label="Station entfernen">${icon("muell")}</button></td>
+            </tr>`).join("")}</tbody>
+        </table>
+      </div>
+      <p class="bw-klein bw-leise">${zahl(arbeit.length)} Stationen · ${zahl(summe)} Prüfer:innen gleichzeitig nötig. „RP-eigen" = vom RP betreut, ohne Ausschuss-Prüfer (z. B. Pflanzenerkennung).</p>
+      <div class="bw-toolbar" style="margin:0">
+        <button type="button" class="bw-btn bw-btn--sekundaer" id="st-add">Station hinzufügen</button>
+        <button type="button" class="bw-btn bw-btn--sekundaer" id="st-standard">Standard-Stationen einsetzen</button>
+        <button type="button" class="bw-btn bw-btn--gelb" id="st-save">Stationen speichern</button>
+      </div>`;
+
+    wrap.querySelectorAll("input[data-f]").forEach((inp) => {
+      inp.addEventListener("input", () => {
+        const i = Number(inp.dataset.i), f = inp.dataset.f;
+        if (f === "eigenregie") { arbeit[i].eigenregie = inp.checked; if (inp.checked) { arbeit[i].prueferBedarf = 0; arbeit[i].bewertungMin = 0; } zeichne(); return; }
+        arbeit[i][f] = f === "name" ? inp.value : Number(inp.value);
+      });
+    });
+    wrap.querySelectorAll("button[data-del]").forEach((b) => b.addEventListener("click", () => { arbeit.splice(Number(b.dataset.del), 1); zeichne(); }));
+    document.getElementById("st-add").addEventListener("click", () => { arbeit.push({ name: "Neue Station", dauerMin: 60, bewertungMin: 10, prueferBedarf: 1, eigenregie: false }); zeichne(); });
+    document.getElementById("st-standard").addEventListener("click", () => { arbeit = STATIONEN_GALABAU.map((s) => ({ ...s })); zeichne(); meldung("Standard-Stationen eingesetzt — noch speichern."); });
+    document.getElementById("st-save").addEventListener("click", async () => {
+      const gueltig = arbeit.filter((s) => String(s.name || "").trim());
+      if (!gueltig.length) { meldung("Mindestens eine Station mit Namen angeben.", "fehler"); return; }
+      try {
+        await store.stationenSetzen(pruefungId, arbeit);
+        meldung(`Stationen gespeichert: ${zahl(gueltig.length)}.`);
+        neuLaden();
+      } catch (e) { console.error(e); meldung("Speichern fehlgeschlagen: " + e.message, "fehler"); }
+    });
+  }
+  zeichne();
 }
 
 /** Kennzahlen-Zeile (Pills) zum Plan — für das Cockpit. */
@@ -902,8 +960,8 @@ function gruppenRasterHtml(plan, gruppe, zugeteilt) {
 }
 
 /** Druckbarer Stationsplan (alle Gruppen als Raster). */
-function stationsplanDrucken(termin, zugeteilt) {
-  const plan = ablaufplanFuer(termin, zugeteilt);
+function stationsplanDrucken(termin, zugeteilt, stationen) {
+  const plan = ablaufplanFuer(termin, zugeteilt, stationen);
   if (!plan.gruppen.length) { meldung("Keine Prüflinge zugeteilt.", "fehler"); return; }
   const datum = termin.datum ? new Date(termin.datum).toLocaleDateString("de-DE") : "—";
   const gruppen = plan.gruppen.map((g) => `
@@ -921,8 +979,8 @@ function stationsplanDrucken(termin, zugeteilt) {
 }
 
 /** Druckbare persönliche Laufzettel (eine Karte je Prüfling). */
-function laufzettelDrucken(termin, zugeteilt) {
-  const plan = ablaufplanFuer(termin, zugeteilt);
+function laufzettelDrucken(termin, zugeteilt, stationen) {
+  const plan = ablaufplanFuer(termin, zugeteilt, stationen);
   if (!plan.gruppen.length) { meldung("Keine Prüflinge zugeteilt.", "fehler"); return; }
   const datum = termin.datum ? new Date(termin.datum).toLocaleDateString("de-DE") : "—";
   const karten = zugeteilt.map((z, i) => {
@@ -1153,7 +1211,9 @@ async function renderPruefungstag(pruefungId = null) {
     const bestanden = ergebnisse.filter((r) => r.bestanden === true).length;
     const hatPl = zugeteilt.length > 0;
     const pill = bereitschaftPunkt;
-    const tagPlan = ablaufplanFuer(termin, zugeteilt);
+    const stationen = await store.stationenFuer(id);
+    const stationenGespeichert = stationen.length > 0;
+    const tagPlan = ablaufplanFuer(termin, zugeteilt, stationen);
 
     document.getElementById("tag-inhalt").innerHTML = `
       <div class="bw-card" style="margin-bottom:var(--bw-space-3)">
@@ -1206,8 +1266,13 @@ async function renderPruefungstag(pruefungId = null) {
           <button class="bw-btn bw-btn--gelb" type="button" id="tag-laufzettel">Laufzettel drucken (je Prüfling)</button>
           <button class="bw-btn bw-btn--sekundaer" type="button" id="tag-stationsplan">Stationsplan drucken</button>
         </div>
+        <p class="bw-klein${stationenGespeichert ? " bw-leise" : ""}">${stationenGespeichert ? "Stationen für diesen Termin gespeichert." : "Standardvorlage (noch nicht gespeichert) — unten anpassen und speichern."}</p>
         <h3>Gruppe 1${tagPlan.gruppen.length > 1 ? ' <span class="bw-klein bw-leise">(' + zahl(tagPlan.gruppen.length) + " Gruppen gesamt)</span>" : ""}</h3>
         <div class="bw-tablewrap">${gruppenRasterHtml(tagPlan, tagPlan.gruppen[0], zugeteilt)}</div>
+        <details class="bw-disclosure" style="margin-top:var(--bw-space-3)">
+          <summary>Stationen bearbeiten</summary>
+          <div id="stationen-editor"></div>
+        </details>
       </section>` : ""}
 
       <h2 style="margin-top:var(--bw-space-4)">Prüflinge (${zahl(zugeteilt.length)})</h2>
@@ -1230,8 +1295,9 @@ async function renderPruefungstag(pruefungId = null) {
     });
     an("tag-mappe", () => mappeDrucken(termin, zugeteilt, prueferZug));
     an("tag-ablauf", () => tagesablaufDrucken(termin, zugeteilt, prueferZug));
-    an("tag-laufzettel", () => laufzettelDrucken(termin, zugeteilt));
-    an("tag-stationsplan", () => stationsplanDrucken(termin, zugeteilt));
+    an("tag-laufzettel", () => laufzettelDrucken(termin, zugeteilt, stationen));
+    an("tag-stationsplan", () => stationsplanDrucken(termin, zugeteilt, stationen));
+    if (hatPl) stationenEditorBinden(id, stationen, tagZeichnen);
     an("tag-anwesenheit", () => anwesenheitDrucken(termin, zugeteilt));
     an("tag-boegen", () => bewertungsboegenDrucken(termin, zugeteilt));
     an("tag-niederschrift", () => niederschriftDrucken(termin, ergebnisse, prueferZug));
