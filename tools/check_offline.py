@@ -17,7 +17,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 SCAN_SUFFIXES = {".html", ".htm", ".css", ".js", ".mjs", ".webmanifest", ".json"}
-SKIP_DIRS = {"dist", "node_modules", ".git"}
+SKIP_DIRS = {"dist", "node_modules", ".git", "quellen"}
 
 # Echte Ladekonstrukte mit externer URL -> FEHLER
 PATTERNS = [

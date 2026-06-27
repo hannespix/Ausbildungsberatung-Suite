@@ -33,10 +33,23 @@ Ausbildungsberatung (Prüfung + Berichtsheftkontrolle + Beratung + Vordrucke).
   Tabellen (Benutzerverwaltung) als kompakte Icon-Knöpfe → keine abgeschnittenen
   Buttons mehr in der Mobilansicht. Gesamtes Layout per 390px-Audit über alle
   Routen auf Überlauf geprüft (sauber). Chromium-getestet.
+- ✅ **Referenz-Tools übernommen (`quellen/`)**: die beiden bereits bestehenden
+  Eigen-Tools **Ausbildungsrechner grüne Berufe BW** und **Berichtsheftkontrolle**
+  liegen als fachliche Referenz im Repo (Fremdbibliotheken/Schriften/WASM
+  gekürzt, App-Logik erhalten; nicht zum Ausliefern). Funktionen werden Schritt
+  für Schritt im neuen Design + PGlite nachgebaut.
+- ✅ **Ausbildungsrechner — Rechenkern** (`assets/js/ausbildungsrechner.js`): reine,
+  testbare Engine für die grünen Berufe. §188 III BGB-Datumslogik, 15 Berufe mit
+  Tarifstaffeln + Mindestausbildungsvergütung (max-Regel), Jahresurlaub
+  (Tarif vs. JArbSchG §19 für Jugendliche), Prüfungsperiode (Sommer/Winter),
+  Verkürzung, vorzeitige Zulassung §45, Teilzeit §7a II (inkl. 1,5-fach-Cap) und
+  Fehltage-Anrechnung §8 mit Geringfügigkeitsschwelle/Nachholzeit. 38 Unit-Tests
+  in der CI. Die Oberfläche (Formular + Ergebnis + Druck) folgt im nächsten Schritt.
 - ⏳ **Berichtsheftkontrolle** und **Ausbildungsberatung (Problem/Lösungs-Doku)**:
   als Startseiten angelegt und mit konkretem Funktionsplan „vorgelegt"; werden in
   den nächsten Iterationen ausgebaut (Kontroll-Status je Auszubildender:m bzw.
-  Beratungsfälle mit Verlauf/Wiedervorlage).
+  Beratungsfälle mit Verlauf/Wiedervorlage). Berichtsheft nutzt künftig die
+  übernommene Logik aus `quellen/` (mit behobenen KW-/UNIQUE-/Wiedervorlage-Fehlern).
 
 ---
 
