@@ -116,7 +116,30 @@ export async function oeffnen() {
     ALTER TABLE bewertungen ADD COLUMN IF NOT EXISTS ergaenzung_bereich text;
     ALTER TABLE bewertungen ADD COLUMN IF NOT EXISTS ergaenzung_note numeric;
   `);
+  // Schlüssel/Wert-Einstellungen (z. B. Entschädigungssätze) — keine fachlichen
+  // Daten, überleben einen Datenreset bewusst.
+  await _pg.exec(`
+    CREATE TABLE IF NOT EXISTS einstellungen (
+      schluessel text PRIMARY KEY,
+      wert text
+    );
+  `);
   return { pg: _pg, modus: _modus };
+}
+
+/** Liest eine Einstellung (Schlüssel/Wert); Fallback, wenn nicht gesetzt. */
+export async function getEinstellung(schluessel, fallback = null) {
+  const res = await _pg.query(`SELECT wert FROM einstellungen WHERE schluessel = $1`, [schluessel]);
+  return res.rows.length ? res.rows[0].wert : fallback;
+}
+
+/** Setzt eine Einstellung (Upsert). */
+export async function setEinstellung(schluessel, wert) {
+  await _pg.query(
+    `INSERT INTO einstellungen (schluessel, wert) VALUES ($1, $2)
+       ON CONFLICT (schluessel) DO UPDATE SET wert = EXCLUDED.wert`,
+    [schluessel, wert == null ? null : String(wert)]
+  );
 }
 
 function ent(key) {
@@ -948,6 +971,35 @@ export async function prueferEinsatzListe(jahr = null) {
        JOIN pruefungen pr ON pr.id = pz.pruefung_id
       WHERE ($1::int IS NULL OR EXTRACT(YEAR FROM pr.datum)::int = $1::int)
       ORDER BY p.nachname, p.vorname, pr.datum NULLS LAST, pr.id`,
+    [jahr]
+  );
+  return res.rows;
+}
+
+/**
+ * Entschädigungs-Grundlage je Prüfer:in: Anzahl der Sitzungstage und Einsätze,
+ * bei denen die Person nicht abgesagt hat (nur tatsächliche Teilnahme zählt).
+ * Beträge werden NICHT hier berechnet — die Sätze (Tagessatz, Fahrtkosten) gibt
+ * die sachbearbeitende Stelle in der Oberfläche ein; das Tool trifft keine
+ * Annahme über Höhe oder Rechtsgrundlage. Optional auf ein Prüfungsjahr
+ * eingeschränkt. Nur Prüfer:innen mit mindestens einem gültigen Sitzungstag.
+ * @returns {Array<{pruefer_id,name,organisation,tage,einsaetze}>}
+ */
+export async function entschaedigungVorschau(jahr = null) {
+  const res = await _pg.query(
+    `SELECT p.id AS pruefer_id,
+            (p.nachname || ', ' || coalesce(p.vorname,'')) AS name,
+            coalesce(p.organisation,'') AS organisation,
+            count(DISTINCT pr.datum) FILTER (WHERE lower(coalesce(pz.status,'offen')) <> 'abgesagt')::int AS tage,
+            count(*) FILTER (WHERE lower(coalesce(pz.status,'offen')) <> 'abgesagt')::int AS einsaetze
+       FROM pruefer_zuteilungen pz
+       JOIN pruefer p ON p.id = pz.pruefer_id
+       JOIN pruefungen pr ON pr.id = pz.pruefung_id
+      WHERE ($1::int IS NULL OR EXTRACT(YEAR FROM pr.datum)::int = $1::int)
+        AND pr.datum IS NOT NULL
+      GROUP BY p.id, name, organisation
+     HAVING count(DISTINCT pr.datum) FILTER (WHERE lower(coalesce(pz.status,'offen')) <> 'abgesagt') > 0
+      ORDER BY p.nachname, p.vorname`,
     [jahr]
   );
   return res.rows;

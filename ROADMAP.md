@@ -193,6 +193,16 @@ Einladungs-/Bestätigungsstatus ✅ (Prüfer-Plan).
   sobald die Entschädigungssätze vorliegen). `store.prueferEinsatzListe(jahr)`.
   Chromium-getestet (ein Block je Prüfer:in, Tabellenkopf vollständig, Mobile
   390px, Galabau-Mathe).
+- ✅ **Prüferentschädigung (frei eingebbare Sätze)**: in den Auswertungen werden
+  Tagessatz und Fahrtkostenpauschale je Sitzungstag **eingetragen** (das Tool
+  trifft keine Annahme über Höhe/Rechtsgrundlage) und die Entschädigung je
+  Prüfer:in live berechnet: Betrag = wahrgenommene Sitzungstage × (Tagessatz +
+  Fahrtpauschale); Absagen zählen nicht. Summenzeile, druckbares
+  Abrechnungsblatt und CSV-Export. Sätze werden in einer neuen
+  Schlüssel/Wert-`einstellungen`-Tabelle gespeichert (`getEinstellung`/
+  `setEinstellung`, überlebt einen Datenreset). `store.entschaedigungVorschau`.
+  Chromium-getestet (Absage ausgeschlossen, Summe 105,00 € bei 3 Tagen ×
+  35 €, Satz-Persistenz, Druck, Mobile 390px, Galabau-Mathe).
 
 ### M5 — Notenberechnung ✅
 Neue Ansicht „Noten": Gesamtbewertung je Prüfling, Bewerten-Dialog mit
