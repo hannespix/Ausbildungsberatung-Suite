@@ -28,6 +28,8 @@ jobs:
         run: node tools/test_ablauf.mjs
       - name: Auth-/Hash-Logik testen
         run: node tools/test_auth.mjs
+      - name: Ausbildungsrechner-Logik testen
+        run: node tools/test_rechner.mjs
       - name: Bundle packen
         run: |
           mkdir -p dist
