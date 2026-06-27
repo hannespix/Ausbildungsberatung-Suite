@@ -44,7 +44,18 @@ Ausbildungsberatung (Prüfung + Berichtsheftkontrolle + Beratung + Vordrucke).
   (Tarif vs. JArbSchG §19 für Jugendliche), Prüfungsperiode (Sommer/Winter),
   Verkürzung, vorzeitige Zulassung §45, Teilzeit §7a II (inkl. 1,5-fach-Cap) und
   Fehltage-Anrechnung §8 mit Geringfügigkeitsschwelle/Nachholzeit. 38 Unit-Tests
-  in der CI. Die Oberfläche (Formular + Ergebnis + Druck) folgt im nächsten Schritt.
+  in der CI.
+- ✅ **Ausbildungsrechner — Oberfläche** (`#/rechner`, unter Hauptpunkt
+  **Beratung**): Formular (Beruf nach Sparte gruppiert, Beginn, Dauer,
+  Geburtsdatum; Verkürzung, vorzeitige Zulassung §45, Teilzeit §7a mit
+  Quote/Modell, Fehlzeiten §8 mit Bewertung/Rundung) mit **Live-Ergebnis** —
+  frühestmöglicher Prüfungstermin + Periode hervorgehoben, Vertragsenden,
+  Teilzeit-Verlängerung inkl. Cap-/Kappungs-Hinweisen, Fehlzeiten-Ampel +
+  Nachholzeit, Monatsvergütung je Lehrjahr (max. Tarif/MiAV) und Jahresurlaub.
+  **Drucken/PDF** über den Druckbereich; Hinweis „ohne Gewähr". Neue
+  Theme-Komponenten `.bw-fieldset`, `.bw-check`, `.bw-betont`,
+  `.bw-table--paare`. Chromium-getestet (Grundfall, vorzeitig, Teilzeit-Cap,
+  Mobile 390px ohne Überlauf).
 - ⏳ **Berichtsheftkontrolle** und **Ausbildungsberatung (Problem/Lösungs-Doku)**:
   als Startseiten angelegt und mit konkretem Funktionsplan „vorgelegt"; werden in
   den nächsten Iterationen ausgebaut (Kontroll-Status je Auszubildender:m bzw.

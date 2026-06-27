@@ -7,6 +7,10 @@
 import * as store from "./store.js";
 import { ENTITAETEN, NAV_REIHENFOLGE, GALABAU_BEREICHE, STANDARD_STATIONEN_GALABAU } from "./model.js";
 import { rotationsplan, minZuZeit, prueferVerteilen, stationsBelegung } from "./ablauf.js";
+import {
+  BERUFE, berufNach, berechne, getTarifVerguetung, getJahresurlaub,
+  ds as rDs, iso as rIso, addMonths as rAddMonths,
+} from "./ausbildungsrechner.js";
 
 // Vorlage für den Rotations-Ablaufplan (Single Source: model.js) — von Cockpit
 // und automatischer Planung gemeinsam genutzt, je Termin anpassbar.
@@ -199,7 +203,10 @@ function navGruppen() {
       { key: "auswertungen", label: "Auswertungen" },
     ] },
     { link: "berichtsheft", label: "Berichtsheft", routeKey: "berichtsheft" },
-    { link: "beratung", label: "Beratung", routeKey: "beratung" },
+    { label: "Beratung", kinder: [
+      { key: "beratung", label: "Beratungsfälle" },
+      { key: "rechner", label: "Ausbildungsrechner" },
+    ] },
     { link: "vorlagen", label: "Vorlagen", routeKey: "vorlagen" },
   ];
 }
@@ -4310,7 +4317,245 @@ function renderBeratung() {
       <li>Einladung zum Beratungsgespräch erzeugen (<a href="#/vorlagen">Vorlagen</a>).</li>
       <li>Auswertung: offene Fälle, Wiedervorlagen, Themen-Häufung.</li>
     </ul>
-    <p class="bw-klein bw-leise">Bereits nutzbar: die Einladung zum Beratungsgespräch unter <a href="#/vorlagen">Vorlagen</a>.</p>`;
+    <p class="bw-klein bw-leise">Bereits nutzbar: der <a href="#/rechner">Ausbildungsrechner</a> (Fristen, Vergütung, Urlaub)
+      und die Einladung zum Beratungsgespräch unter <a href="#/vorlagen">Vorlagen</a>.</p>`;
+  document.getElementById("inhalt")?.focus?.();
+}
+
+/* ------------------------------------------------- Ausbildungsrechner (grüne Berufe) */
+/** Datum-ISO -> de-DE „TT.MM.JJJJ" (oder „—"). */
+function rFmt(isoStr) {
+  const d = rDs(isoStr);
+  return d ? d.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" }) : "—";
+}
+
+function renderRechner() {
+  // Berufe nach Sparte gruppieren (saubere optgroups).
+  const gruppen = [];
+  BERUFE.forEach((b) => {
+    let g = gruppen.find((x) => x.name === b.group);
+    if (!g) { g = { name: b.group, berufe: [] }; gruppen.push(g); }
+    g.berufe.push(b);
+  });
+  const berufOptions = gruppen.map((g) =>
+    `<optgroup label="${esc(g.name)}">${g.berufe.map((b) =>
+      `<option value="${esc(b.id)}">${esc(b.label)}</option>`).join("")}</optgroup>`).join("");
+
+  appEl().innerHTML = `
+    <h1>Ausbildungsrechner — grüne Berufe</h1>
+    <p class="bw-unterzeile">Frühestmöglicher Prüfungstermin, Verkürzung, Teilzeit (§ 7a BBiG),
+      Fehlzeiten (§ 8 BBiG) sowie Vergütungs- und Urlaubsübersicht für die grünen Berufe in Baden-Württemberg.</p>
+    <div class="bw-flaechen" style="align-items:flex-start">
+      <section class="bw-card" aria-labelledby="rech-h" style="flex:1 1 20rem">
+        <h2 id="rech-h" style="margin-top:0">Angaben</h2>
+        <div class="bw-field"><label for="rech-beruf">Ausbildungsberuf</label>
+          <select id="rech-beruf">${berufOptions}</select></div>
+        <div class="bw-field"><label for="rech-start">Ausbildungsbeginn</label>
+          <input id="rech-start" type="date" value="2025-09-01"></div>
+        <div class="bw-field"><label for="rech-dauer">Reguläre Ausbildungsdauer (Monate)</label>
+          <input id="rech-dauer" type="number" min="1" max="60" step="1" value="36"></div>
+        <div class="bw-field"><label for="rech-geb">Geburtsdatum <span class="bw-leise">(optional, für Jugend-Urlaub)</span></label>
+          <input id="rech-geb" type="date"></div>
+
+        <fieldset class="bw-fieldset">
+          <legend>Verkürzung (§ 8 BBiG)</legend>
+          <label class="bw-check"><input id="rech-verk" type="checkbox"> Verkürzung berücksichtigen</label>
+          <div class="bw-field" id="rech-verk-feld" hidden><label for="rech-verk-monate">Verkürzung (Monate)</label>
+            <input id="rech-verk-monate" type="number" min="0" max="24" step="1" value="6"></div>
+          <label class="bw-check"><input id="rech-vorzeitig" type="checkbox"> Vorzeitige Zulassung (§ 45 II BBiG, −8 statt −2 Monate)</label>
+        </fieldset>
+
+        <fieldset class="bw-fieldset">
+          <legend>Teilzeit (§ 7a BBiG)</legend>
+          <label class="bw-check"><input id="rech-tz" type="checkbox"> Teilzeitberufsausbildung</label>
+          <div id="rech-tz-felder" hidden>
+            <div class="bw-field"><label for="rech-tz-ab">Teilzeit ab</label>
+              <input id="rech-tz-ab" type="date" value="2025-09-01"></div>
+            <div class="bw-field"><label for="rech-tz-quote">Arbeitszeit-Quote (%)</label>
+              <input id="rech-tz-quote" type="number" min="50" max="100" step="5" value="75"></div>
+            <div class="bw-field"><label for="rech-tz-modus">Verlängerungs-Modell</label>
+              <select id="rech-tz-modus">
+                <option value="vz">Bezogen auf Vollzeit-Dauer (Standard)</option>
+                <option value="tz">Reziprok (auf Teilzeit-Quote bezogen)</option>
+              </select></div>
+          </div>
+        </fieldset>
+
+        <fieldset class="bw-fieldset">
+          <legend>Fehlzeiten (§ 8 II BBiG)</legend>
+          <div class="bw-field"><label for="rech-fehltage">Fehltage gesamt (Arbeitstage)</label>
+            <input id="rech-fehltage" type="number" min="0" max="999" step="1" value="0"></div>
+          <div class="bw-field"><label for="rech-komp">Bewertung der Fehlzeiten</label>
+            <select id="rech-komp">
+              <option value="auto">Automatisch (Anrechnung erst über 15 %)</option>
+              <option value="anrechnen">Fehlzeiten anrechnen (Nachholzeit)</option>
+              <option value="kompensiert">Als kompensiert werten (keine Nachholzeit)</option>
+            </select></div>
+          <div class="bw-field"><label for="rech-rundung">Nachholzeit runden auf</label>
+            <select id="rech-rundung">
+              <option value="pruefung">nächste Prüfungsperiode</option>
+              <option value="monat">Monatsende</option>
+              <option value="tag">taggenau</option>
+            </select></div>
+        </fieldset>
+      </section>
+
+      <section class="bw-card" aria-labelledby="rech-erg-h" style="flex:1.4 1 24rem">
+        <h2 id="rech-erg-h" style="margin-top:0">Ergebnis</h2>
+        <div id="rech-ergebnis" aria-live="polite"></div>
+        <div class="bw-toolbar" style="margin-top:var(--bw-space-3)">
+          <button class="bw-btn bw-btn--gelb" type="button" id="rech-druck">Drucken / als PDF speichern</button>
+        </div>
+        <p class="bw-klein bw-leise" style="margin-top:var(--bw-space-2)">
+          Berechnungshilfe ohne Gewähr — ersetzt keine Einzelfallprüfung. Tarif-/Vergütungswerte: Stand siehe Quelle.</p>
+      </section>
+    </div>`;
+
+  const $ = (id) => document.getElementById(id);
+  const verkChk = $("rech-verk"), tzChk = $("rech-tz");
+  const verkFeld = $("rech-verk-feld"), tzFelder = $("rech-tz-felder");
+  const ergebnis = $("rech-ergebnis");
+
+  let letztes = null; // für Druck
+
+  function eingaben() {
+    const komp = $("rech-komp").value;
+    return {
+      berufId: $("rech-beruf").value,
+      start: $("rech-start").value,
+      dauerMonate: $("rech-dauer").value,
+      geburtsdatum: $("rech-geb").value || null,
+      verkuerzungAktiv: verkChk.checked,
+      verkuerzungMonate: $("rech-verk-monate").value,
+      vorzeitig: $("rech-vorzeitig").checked,
+      teilzeitAktiv: tzChk.checked,
+      teilzeitAb: $("rech-tz-ab").value,
+      teilzeitQuote: $("rech-tz-quote").value,
+      verlaengerungModus: $("rech-tz-modus").value,
+      fehltage: $("rech-fehltage").value,
+      kompensation: komp === "anrechnen" ? false : (komp === "kompensiert" ? true : undefined),
+      fehltageRundung: $("rech-rundung").value,
+    };
+  }
+
+  function zoneTag(zone) {
+    const m = { ok: ["bw-tag--ok", "im Rahmen (≤ 10 %)"], grenz: ["bw-tag--aktiv", "grenzwertig (10–15 %)"], kritisch: ["bw-tag--fehler", "kritisch (> 15 %)"] };
+    const [cls, txt] = m[zone] || m.ok;
+    return `<span class="bw-tag ${cls}">${esc(txt)}</span>`;
+  }
+
+  function verguetungZeilen(e) {
+    const start = rDs(e.start);
+    if (!start) return "";
+    return [1, 2, 3].map((lj) => {
+      const datumLJ = rIso(rAddMonths(start, (lj - 1) * 12));
+      const betrag = getTarifVerguetung(e.berufId, datumLJ, lj, e.start);
+      return `<tr><td>${lj}. Ausbildungsjahr</td><td style="text-align:right">${euro(betrag)}</td></tr>`;
+    }).join("");
+  }
+
+  function urlaubText(e) {
+    const start = rDs(e.start);
+    const jahr = start ? start.getFullYear() : new Date().getFullYear();
+    const u = getJahresurlaub(e.berufId, e.geburtsdatum, jahr);
+    const grund = { tarif: "tariflich", u18: "Jugendschutz (unter 18 J.)", u17: "Jugendschutz (unter 17 J.)", u16: "Jugendschutz (unter 16 J.)" }[u.grund] || "tariflich";
+    return `${zahl(u.tage)} Arbeitstage <span class="bw-leise bw-klein">(${esc(grund)}, Bezugsjahr ${jahr})</span>`;
+  }
+
+  function rechnen() {
+    const e = eingaben();
+    let r;
+    try { r = berechne(e); }
+    catch (err) {
+      letztes = null;
+      ergebnis.innerHTML = `<p class="bw-hinweis">Bitte einen gültigen Ausbildungsbeginn angeben.</p>`;
+      return;
+    }
+    letztes = { e, r, beruf: berufNach(e.berufId) };
+
+    const zeilen = [];
+    zeilen.push(["Reguläres Vertragsende", rFmt(r.endeRegulaer)]);
+    if (e.verkuerzungAktiv && r.endeNachVerkuerzung !== r.endeRegulaer)
+      zeilen.push(["Ende nach Verkürzung", rFmt(r.endeNachVerkuerzung)]);
+    if (e.teilzeitAktiv) {
+      zeilen.push(["Teilzeit-Verlängerung", `${zahl(r.teilzeitVerlaengerungMonate)} Monate`
+        + (r.capGreift ? ' <span class="bw-tag bw-tag--aktiv">Höchstdauer § 7a II</span>' : "")
+        + (r.kappung8I ? ' <span class="bw-tag bw-tag--aktiv">Kappung § 8 I</span>' : "")]);
+      zeilen.push(["Ende nach Teilzeit", rFmt(r.endeNachTeilzeit)]);
+    }
+    const fehltage = Math.round(Number(e.fehltage) || 0);
+    if (fehltage > 0) {
+      zeilen.push(["Fehlzeiten-Bewertung", `${zoneTag(r.fehltageZone)} <span class="bw-klein bw-leise">${zahl(r.fehltageProzent)} % der Ausbildungszeit, Schwelle ${zahl(r.geringfuegigSchwelle)} AT</span>`]);
+      if (r.angerechnet)
+        zeilen.push(["Nachholzeit", `${zahl(r.nachholKalendertage)} Kalendertage`
+          + (r.nachholPruefungsperiode ? ` <span class="bw-klein bw-leise">→ ${esc(r.nachholPruefungsperiode)}</span>` : "")]);
+    }
+
+    const docHtml = `
+      <table class="bw-table bw-table--paare">
+        <tbody>
+          ${zeilen.map(([k, v]) => `<tr><th scope="row">${esc(k)}</th><td>${v}</td></tr>`).join("")}
+        </tbody>
+      </table>
+
+      <div class="bw-betont" style="margin:var(--bw-space-3) 0">
+        <div class="bw-klein bw-leise" style="text-transform:uppercase;letter-spacing:.04em">Frühestmöglicher Prüfungstermin</div>
+        <div style="font-size:1.35rem;font-weight:700">${rFmt(r.fruehestePruefung)}</div>
+        <div>${esc(r.pruefungsperiode)} <span class="bw-leise">·  Vertragsende: ${rFmt(r.vertragsende)}</span></div>
+      </div>
+
+      <div class="bw-flaechen" style="gap:var(--bw-space-3)">
+        <div style="flex:1 1 14rem">
+          <h3 style="margin:0 0 var(--bw-space-1)">Monatsvergütung (brutto)</h3>
+          <table class="bw-table"><tbody>${verguetungZeilen(e)}</tbody></table>
+          <p class="bw-klein bw-leise" style="margin-top:var(--bw-space-1)">Höherer Wert aus Tarif und Mindestausbildungsvergütung (§ 17 II BBiG).</p>
+        </div>
+        <div style="flex:1 1 14rem">
+          <h3 style="margin:0 0 var(--bw-space-1)">Jahresurlaub</h3>
+          <p style="margin:0">${urlaubText(e)}</p>
+        </div>
+      </div>
+
+      ${r.hinweise.length ? `<div class="bw-hinweis" style="margin-top:var(--bw-space-3)"><strong>Hinweise:</strong><ul style="margin:var(--bw-space-1) 0 0">${r.hinweise.map((h) => `<li>${esc(h)}</li>`).join("")}</ul></div>` : ""}`;
+
+    ergebnis.innerHTML = docHtml;
+  }
+
+  // Sichtbarkeit der bedingten Felder + Neuberechnung an alle Eingaben hängen.
+  function sync() {
+    verkFeld.hidden = !verkChk.checked;
+    tzFelder.hidden = !tzChk.checked;
+    rechnen();
+  }
+  appEl().querySelectorAll("input, select").forEach((el) => {
+    el.addEventListener("input", sync);
+    el.addEventListener("change", sync);
+  });
+  sync();
+
+  $("rech-druck").addEventListener("click", () => {
+    if (!letztes) { meldung("Bitte zuerst gültige Angaben machen.", "fehler"); return; }
+    const { e, r, beruf } = letztes;
+    const start = rDs(e.start);
+    const jahr = start ? start.getFullYear() : new Date().getFullYear();
+    const u = getJahresurlaub(e.berufId, e.geburtsdatum, jahr);
+    const verg = [1, 2, 3].map((lj) => {
+      const datumLJ = rIso(rAddMonths(start, (lj - 1) * 12));
+      return `<tr><td>${lj}. Ausbildungsjahr</td><td>${euro(getTarifVerguetung(e.berufId, datumLJ, lj, e.start))}</td></tr>`;
+    }).join("");
+    druckbereich().innerHTML = `
+      <h1>Ausbildungsrechner — ${esc(beruf ? beruf.label : "")}</h1>
+      <p>Ausbildungsbeginn: ${rFmt(e.start)} · reguläre Dauer: ${zahl(Math.round(Number(e.dauerMonate) || 36))} Monate</p>
+      <h2>Frühestmöglicher Prüfungstermin: ${rFmt(r.fruehestePruefung)} (${esc(r.pruefungsperiode)})</h2>
+      <p>Vertragsende: ${rFmt(r.vertragsende)} · reguläres Ende: ${rFmt(r.endeRegulaer)}</p>
+      <h3>Monatsvergütung (brutto)</h3>
+      <table><tbody>${verg}</tbody></table>
+      <p>Jahresurlaub: ${zahl(u.tage)} Arbeitstage</p>
+      ${r.hinweise.length ? `<h3>Hinweise</h3><ul>${r.hinweise.map((h) => `<li>${esc(h)}</li>`).join("")}</ul>` : ""}
+      <p><em>Berechnungshilfe ohne Gewähr — ersetzt keine Einzelfallprüfung.</em></p>`;
+    window.print();
+  });
+
   document.getElementById("inhalt")?.focus?.();
 }
 
@@ -4328,6 +4573,7 @@ async function route() {
     else if (r === "vorlagen") { renderVorlagen(); }
     else if (r === "berichtsheft") { renderBerichtsheft(); }
     else if (r === "beratung") { renderBeratung(); }
+    else if (r === "rechner") { renderRechner(); }
     else if (r === "uebersicht") await renderUebersicht();
     else if (r === "pruefungstag") await renderPruefungstag();
     else if (r === "planung") await renderPlanung();

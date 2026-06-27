@@ -173,6 +173,16 @@ label { display: block; font-weight: 700; font-size: var(--bw-fs-klein); margin-
 input, select, textarea { font: inherit; width: 100%; padding: 0.5em 0.65em; background: var(--bw-weiss); color: var(--bw-text); border: 1px solid var(--bw-grau-300); border-radius: var(--bw-radius); }
 .bw-field { margin-bottom: var(--bw-space-2); }
 
+/* Gruppierte Eingaben (z. B. Rechner-Optionen): ruhiger Rahmen statt Karte. */
+.bw-fieldset { border: 1px solid var(--bw-linie); border-radius: var(--bw-radius); padding: var(--bw-space-2) var(--bw-space-3); margin: var(--bw-space-3) 0 0; }
+.bw-fieldset > legend { font-weight: 700; padding: 0 0.4em; }
+.bw-fieldset .bw-field:last-child { margin-bottom: 0; }
+/* Ankreuzfeld mit Beschriftung — Touch-freundlich, ausgerichtet. */
+.bw-check { display: flex; align-items: flex-start; gap: 0.55em; margin: var(--bw-space-1) 0; cursor: pointer; }
+.bw-check input[type="checkbox"] { width: auto; min-width: 1.1em; min-height: 1.1em; margin-top: 0.15em; }
+/* Hervorgehobenes Kernergebnis (Fläche, nicht Deko). */
+.bw-betont { background: var(--bw-grau-50); border: 1px solid var(--bw-linie); border-left: 4px solid var(--bw-gelb); border-radius: var(--bw-radius); padding: var(--bw-space-2) var(--bw-space-3); }
+
 /* ===================== Tabellen =================================== */
 .bw-table { width: 100%; border-collapse: collapse; font-size: var(--bw-fs-klein); }
 .bw-table th, .bw-table td { text-align: left; padding: 0.55em 0.75em; border-bottom: 1px solid var(--bw-linie); }
@@ -182,6 +192,9 @@ input, select, textarea { font: inherit; width: 100%; padding: 0.5em 0.65em; bac
 .bw-table tbody tr:nth-child(even) { background: var(--bw-grau-50); }
 .bw-table tbody tr:hover { background: var(--bw-grau-100); }
 .bw-table .bw-highlight { background: var(--bw-gelb); color: var(--bw-schwarz); font-weight: 700; }
+/* Schlüssel-Wert-Tabelle (Zeilenkopf links, Wert rechts) — z. B. Rechner-Ergebnis. */
+.bw-table--paare th[scope="row"] { font-weight: 600; width: 45%; color: var(--bw-grau-700); }
+.bw-table--paare td { font-weight: 600; }
 
 /* ===================== Störer (rund) ============================== */
 .bw-stoerer { display: inline-flex; align-items: center; justify-content: center; text-align: center; width: 7rem; height: 7rem; border-radius: var(--bw-radius-rund); background: var(--bw-gelb); color: var(--bw-schwarz); font-family: var(--bw-font-serif); font-weight: 700; line-height: 1.05; padding: 0.5rem; }
