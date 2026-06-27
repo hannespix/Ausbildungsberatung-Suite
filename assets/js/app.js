@@ -1214,6 +1214,12 @@ async function renderPruefungstag(pruefungId = null) {
     const stationen = await store.stationenFuer(id);
     const stationenGespeichert = stationen.length > 0;
     const tagPlan = ablaufplanFuer(termin, zugeteilt, stationen);
+    // „Übernommen" = Startzeiten der Prüflinge entsprechen den Gruppenstarts des
+    // aktuellen Ablaufplans (ein Zeitmodell, kein altes Raster mehr).
+    const tagUebernommen = tagPlan.m > 0 && zugeteilt.length > 0 && zugeteilt.every((z, i) => {
+      const g = tagPlan.gruppen[Math.floor(i / tagPlan.m)];
+      return g && z.slot === minZuZeit(g.startMin);
+    });
 
     document.getElementById("tag-inhalt").innerHTML = `
       <div class="bw-card" style="margin-bottom:var(--bw-space-3)">
@@ -1263,9 +1269,11 @@ async function renderPruefungstag(pruefungId = null) {
         <p class="bw-klein bw-leise" style="margin-top:0">Jeder Prüfling durchläuft jede Station genau einmal — ohne Wartezeit, mit der kleinstmöglichen Prüferzahl. Station je 60 Min (50 Prüfung + 10 Bewertung); Pflanzenerkennung 20 Min in Eigenregie des RP.</p>
         ${ablaufKennzahlenHtml(tagPlan)}
         <div class="bw-toolbar" style="margin-top:var(--bw-space-2)">
-          <button class="bw-btn bw-btn--gelb" type="button" id="tag-laufzettel">Laufzettel drucken (je Prüfling)</button>
+          <button class="bw-btn bw-btn--gelb" type="button" id="tag-uebernehmen">Ablaufplan übernehmen</button>
+          <button class="bw-btn bw-btn--sekundaer" type="button" id="tag-laufzettel">Laufzettel drucken (je Prüfling)</button>
           <button class="bw-btn bw-btn--sekundaer" type="button" id="tag-stationsplan">Stationsplan drucken</button>
         </div>
+        <p class="bw-klein bw-leise" style="margin-top:var(--bw-space-1)">„Übernehmen" schreibt Startzeit &amp; Reihenfolge aus dem Ablaufplan auf alle Prüflinge — Anwesenheitsliste, Noten, Niederschrift und Zeugnisse folgen dann genau diesem Takt.${tagUebernommen ? ' <span class="bw-tag bw-tag--ok">übernommen</span>' : ""}</p>
         <p class="bw-klein${stationenGespeichert ? " bw-leise" : ""}">${stationenGespeichert ? "Stationen für diesen Termin gespeichert." : "Standardvorlage (noch nicht gespeichert) — unten anpassen und speichern."}</p>
         <h3>Gruppe 1${tagPlan.gruppen.length > 1 ? ' <span class="bw-klein bw-leise">(' + zahl(tagPlan.gruppen.length) + " Gruppen gesamt)</span>" : ""}</h3>
         <div class="bw-tablewrap">${gruppenRasterHtml(tagPlan, tagPlan.gruppen[0], zugeteilt)}</div>
@@ -1297,6 +1305,17 @@ async function renderPruefungstag(pruefungId = null) {
     an("tag-ablauf", () => tagesablaufDrucken(termin, zugeteilt, prueferZug));
     an("tag-laufzettel", () => laufzettelDrucken(termin, zugeteilt, stationen));
     an("tag-stationsplan", () => stationsplanDrucken(termin, zugeteilt, stationen));
+    an("tag-uebernehmen", async () => {
+      // Standardvorlage festschreiben, damit der gespeicherte Plan dem Takt entspricht.
+      if (!stationenGespeichert) await store.stationenSetzen(id, STATIONEN_GALABAU);
+      const eintraege = [];
+      tagPlan.gruppen.forEach((g) => g.mitglieder.forEach((pl, i) => {
+        eintraege.push({ prueflingId: pl.id, slot: minZuZeit(g.startMin), reihenfolge: g.von + i + 1 });
+      }));
+      const n = await store.ablaufZeitenUebernehmen(id, eintraege);
+      meldung(`Ablaufplan übernommen: ${zahl(n)} Prüflinge getaktet — Anwesenheit, Noten und Niederschrift folgen jetzt diesem Plan.`);
+      tagZeichnen();
+    });
     if (hatPl) stationenEditorBinden(id, stationen, tagZeichnen);
     an("tag-anwesenheit", () => anwesenheitDrucken(termin, zugeteilt));
     an("tag-boegen", () => bewertungsboegenDrucken(termin, zugeteilt));
