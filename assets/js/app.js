@@ -863,6 +863,20 @@ function tagesablaufDrucken(termin, zugeteilt, prueferZug) {
 /** Anzeigename eines zugeteilten Prüflings. */
 function plName(z) { return ((z.nachname || "") + (z.vorname ? ", " + z.vorname : "")) || "Prüfling"; }
 
+/** Map prueferId -> Anzeigename aus der Ausschussliste eines Termins. */
+function prueferNameMap(prueferZug) {
+  return new Map((prueferZug || []).map((p) => [p.id, (p.nachname || "") + (p.vorname ? ", " + p.vorname : "")]));
+}
+
+/** Besetzungs-Text einer Station: Namen, sonst Bedarf bzw. RP-Eigenregie. */
+function stationBesetzung(station, prueferName) {
+  if (station.eigenregie) return "RP-Eigenregie";
+  const ids = station.prueferIds || [];
+  if (ids.length) return ids.map((id) => (prueferName && prueferName.get(id)) || "#" + id).join(", ");
+  const b = station.prueferBedarf || 0;
+  return b ? b + " Prüfer:in" + (b > 1 ? "nen" : "") + " (offen)" : "—";
+}
+
 /** Zeitfenster einer Laufzettel-Station: Prüfung + (optional) Bewertung. */
 function stationsZeitfenster(e) {
   const s = e.station;
@@ -934,6 +948,46 @@ function stationenEditorBinden(pruefungId, start, neuLaden) {
   zeichne();
 }
 
+/**
+ * Bindet den „Prüfer:innen an Stationen verteilen"-Editor: je betreuter Station
+ * Auswahl-Kästchen der zugeteilten Ausschussmitglieder. Speichert die Namen je
+ * Station (über stationenSetzen, Stationsdaten bleiben erhalten).
+ */
+function stationPrueferEditorBinden(pruefungId, stationen, prueferZug, neuLaden) {
+  const wrap = document.getElementById("station-pruefer-editor");
+  if (!wrap) return;
+  const basis = (stationen && stationen.length ? stationen : STATIONEN_GALABAU)
+    .map((s) => ({ ...s, prueferIds: (s.prueferIds || []).slice() }));
+
+  wrap.innerHTML = `
+    ${basis.map((s, i) => s.eigenregie
+      ? `<div class="bw-card" style="margin-top:var(--bw-space-1)"><strong>${esc(s.name)}</strong> <span class="bw-klein bw-leise">— RP-Eigenregie, kein Ausschuss-Prüfer</span></div>`
+      : `<fieldset class="bw-card" style="margin-top:var(--bw-space-1)">
+          <legend><strong>${esc(s.name)}</strong> <span class="bw-klein bw-leise">(Bedarf ${zahl(s.prueferBedarf || 0)})</span></legend>
+          <div class="bw-toolbar" style="margin:0;gap:var(--bw-space-2)">
+            ${prueferZug.map((p) => `<label class="bw-klein" style="display:inline-flex;align-items:center;gap:.4em;flex:0 0 auto">
+              <input type="checkbox" data-st="${i}" value="${p.id}" style="width:auto"${(s.prueferIds || []).includes(p.id) ? " checked" : ""}>
+              ${esc((p.nachname || "") + (p.vorname ? ", " + p.vorname : ""))}${p.rolle ? ` <span class="bw-leise">(${esc(p.rolle)})</span>` : ""}
+            </label>`).join("")}
+          </div>
+        </fieldset>`).join("")}
+    <div class="bw-toolbar" style="margin-top:var(--bw-space-2)">
+      <button type="button" class="bw-btn bw-btn--gelb" id="sp-save">Zuordnung speichern</button>
+    </div>`;
+
+  document.getElementById("sp-save").addEventListener("click", async () => {
+    basis.forEach((s, i) => {
+      if (s.eigenregie) return;
+      s.prueferIds = Array.from(wrap.querySelectorAll(`input[data-st="${i}"]:checked`)).map((c) => Number(c.value));
+    });
+    try {
+      await store.stationenSetzen(pruefungId, basis);
+      meldung("Prüfer-Zuordnung gespeichert.");
+      neuLaden();
+    } catch (e) { console.error(e); meldung("Speichern fehlgeschlagen: " + e.message, "fehler"); }
+  });
+}
+
 /** Kennzahlen-Zeile (Pills) zum Plan — für das Cockpit. */
 function ablaufKennzahlenHtml(plan) {
   if (!plan.gruppen.length) return "";
@@ -947,8 +1001,8 @@ function ablaufKennzahlenHtml(plan) {
 }
 
 /** Stationsraster einer Gruppe: Zeilen = Runden (Uhrzeit), Spalten = Stationen. */
-function gruppenRasterHtml(plan, gruppe, zugeteilt) {
-  const kopf = plan.stationen.map((s) => `<th>${esc(s.name)}${s.eigenregie ? ' <span class="bw-klein bw-leise">(RP)</span>' : ""}</th>`).join("");
+function gruppenRasterHtml(plan, gruppe, zugeteilt, prueferName) {
+  const kopf = plan.stationen.map((s) => `<th>${esc(s.name)}<br><span class="bw-klein bw-leise">${esc(stationBesetzung(s, prueferName))}</span></th>`).join("");
   const zeilen = gruppe.runden.map((r) => {
     const zellen = r.zellen.map((z) => `<td>${z.prueflingIdx == null ? "—" : esc(plName(zugeteilt[z.prueflingIdx]))}</td>`).join("");
     return `<tr><th scope="row">${minZuZeit(r.vonMin)}–${minZuZeit(r.bisMin)}</th>${zellen}</tr>`;
@@ -960,14 +1014,15 @@ function gruppenRasterHtml(plan, gruppe, zugeteilt) {
 }
 
 /** Druckbarer Stationsplan (alle Gruppen als Raster). */
-function stationsplanDrucken(termin, zugeteilt, stationen) {
+function stationsplanDrucken(termin, zugeteilt, stationen, prueferZug) {
   const plan = ablaufplanFuer(termin, zugeteilt, stationen);
   if (!plan.gruppen.length) { meldung("Keine Prüflinge zugeteilt.", "fehler"); return; }
+  const prueferName = prueferNameMap(prueferZug);
   const datum = termin.datum ? new Date(termin.datum).toLocaleDateString("de-DE") : "—";
   const gruppen = plan.gruppen.map((g) => `
     <section style="break-inside:avoid;margin-top:var(--bw-space-3)">
       <h2>Gruppe ${zahl(g.nr)} <span class="bw-klein bw-leise">(${zahl(g.anzahl)} Prüflinge, ab ${minZuZeit(g.startMin)} Uhr)</span></h2>
-      ${gruppenRasterHtml(plan, g, zugeteilt)}
+      ${gruppenRasterHtml(plan, g, zugeteilt, prueferName)}
     </section>`).join("");
   druckbereich().innerHTML = `
     <h1>Ablaufplan (Stationen) — ${esc(termin.titel || "Prüfungstag")}</h1>
@@ -979,24 +1034,26 @@ function stationsplanDrucken(termin, zugeteilt, stationen) {
 }
 
 /** Druckbare persönliche Laufzettel (eine Karte je Prüfling). */
-function laufzettelDrucken(termin, zugeteilt, stationen) {
+function laufzettelDrucken(termin, zugeteilt, stationen, prueferZug) {
   const plan = ablaufplanFuer(termin, zugeteilt, stationen);
   if (!plan.gruppen.length) { meldung("Keine Prüflinge zugeteilt.", "fehler"); return; }
+  const prueferName = prueferNameMap(prueferZug);
   const datum = termin.datum ? new Date(termin.datum).toLocaleDateString("de-DE") : "—";
   const karten = zugeteilt.map((z, i) => {
     const eintraege = plan.laufzettel[i] || [];
     const gruppeNr = Math.floor(i / plan.m) + 1;
     const zeilen = eintraege.map((e) => `<tr>
       <td>${minZuZeit(e.vonMin)}–${minZuZeit(e.bisMin)}</td>
-      <td>${esc(e.station.name)}${e.station.eigenregie ? ' <span class="bw-klein bw-leise">(RP)</span>' : ""}</td>
+      <td>${esc(e.station.name)}</td>
+      <td class="bw-klein">${esc(stationBesetzung(e.station, prueferName))}</td>
       <td class="bw-klein">${stationsZeitfenster(e)}</td>
     </tr>`).join("");
     return `<section style="break-inside:avoid;page-break-after:always;margin-top:var(--bw-space-3)">
       <h2>Laufzettel — ${esc(plName(z))}</h2>
       <p class="bw-klein">${esc(termin.titel || "Prüfungstag")} · ${esc(datum)}${termin.ort ? " · " + esc(termin.ort) : ""} · Gruppe ${zahl(gruppeNr)}</p>
       <table class="bw-table">
-        <thead><tr><th>Uhrzeit</th><th>Station</th><th>Ablauf</th></tr></thead>
-        <tbody>${zeilen || '<tr><td colspan="3">—</td></tr>'}</tbody>
+        <thead><tr><th>Uhrzeit</th><th>Station</th><th>Prüfer:in</th><th>Ablauf</th></tr></thead>
+        <tbody>${zeilen || '<tr><td colspan="4">—</td></tr>'}</tbody>
       </table>
     </section>`;
   }).join("");
@@ -1220,6 +1277,7 @@ async function renderPruefungstag(pruefungId = null) {
       const g = tagPlan.gruppen[Math.floor(i / tagPlan.m)];
       return g && z.slot === minZuZeit(g.startMin);
     });
+    const prueferName = prueferNameMap(prueferZug);
 
     document.getElementById("tag-inhalt").innerHTML = `
       <div class="bw-card" style="margin-bottom:var(--bw-space-3)">
@@ -1276,11 +1334,15 @@ async function renderPruefungstag(pruefungId = null) {
         <p class="bw-klein bw-leise" style="margin-top:var(--bw-space-1)">„Übernehmen" schreibt Startzeit &amp; Reihenfolge aus dem Ablaufplan auf alle Prüflinge — Anwesenheitsliste, Noten, Niederschrift und Zeugnisse folgen dann genau diesem Takt.${tagUebernommen ? ' <span class="bw-tag bw-tag--ok">übernommen</span>' : ""}</p>
         <p class="bw-klein${stationenGespeichert ? " bw-leise" : ""}">${stationenGespeichert ? "Stationen für diesen Termin gespeichert." : "Standardvorlage (noch nicht gespeichert) — unten anpassen und speichern."}</p>
         <h3>Gruppe 1${tagPlan.gruppen.length > 1 ? ' <span class="bw-klein bw-leise">(' + zahl(tagPlan.gruppen.length) + " Gruppen gesamt)</span>" : ""}</h3>
-        <div class="bw-tablewrap">${gruppenRasterHtml(tagPlan, tagPlan.gruppen[0], zugeteilt)}</div>
+        <div class="bw-tablewrap">${gruppenRasterHtml(tagPlan, tagPlan.gruppen[0], zugeteilt, prueferName)}</div>
         <details class="bw-disclosure" style="margin-top:var(--bw-space-3)">
           <summary>Stationen bearbeiten</summary>
           <div id="stationen-editor"></div>
         </details>
+        ${prueferZug.length ? `<details class="bw-disclosure" style="margin-top:var(--bw-space-2)">
+          <summary>Prüfer:innen an Stationen verteilen</summary>
+          <div id="station-pruefer-editor"></div>
+        </details>` : '<p class="bw-klein bw-leise" style="margin-top:var(--bw-space-2)">Für die namentliche Stationsbesetzung erst den <a href="#/planung?termin=' + id + '">Ausschuss zuteilen</a>.</p>'}
       </section>` : ""}
 
       <h2 style="margin-top:var(--bw-space-4)">Prüflinge (${zahl(zugeteilt.length)})</h2>
@@ -1303,8 +1365,8 @@ async function renderPruefungstag(pruefungId = null) {
     });
     an("tag-mappe", () => mappeDrucken(termin, zugeteilt, prueferZug));
     an("tag-ablauf", () => tagesablaufDrucken(termin, zugeteilt, prueferZug));
-    an("tag-laufzettel", () => laufzettelDrucken(termin, zugeteilt, stationen));
-    an("tag-stationsplan", () => stationsplanDrucken(termin, zugeteilt, stationen));
+    an("tag-laufzettel", () => laufzettelDrucken(termin, zugeteilt, stationen, prueferZug));
+    an("tag-stationsplan", () => stationsplanDrucken(termin, zugeteilt, stationen, prueferZug));
     an("tag-uebernehmen", async () => {
       // Standardvorlage festschreiben, damit der gespeicherte Plan dem Takt entspricht.
       if (!stationenGespeichert) await store.stationenSetzen(id, STATIONEN_GALABAU);
@@ -1317,6 +1379,7 @@ async function renderPruefungstag(pruefungId = null) {
       tagZeichnen();
     });
     if (hatPl) stationenEditorBinden(id, stationen, tagZeichnen);
+    if (hatPl && prueferZug.length) stationPrueferEditorBinden(id, stationen, prueferZug, tagZeichnen);
     an("tag-anwesenheit", () => anwesenheitDrucken(termin, zugeteilt));
     an("tag-boegen", () => bewertungsboegenDrucken(termin, zugeteilt));
     an("tag-niederschrift", () => niederschriftDrucken(termin, ergebnisse, prueferZug));

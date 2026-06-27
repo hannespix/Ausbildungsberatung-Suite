@@ -189,10 +189,19 @@ als eigene 20-Min-Station in Eigenregie des RP (ohne Ausschuss-Prüfer).
   entspricht. `store.ablaufZeitenUebernehmen`. Chromium-getestet (8 Prüflinge →
   Gruppe 1 = 08:00 ×6, Gruppe 2 = 14:00 ×2, Reihenfolge 1–8, Niederschrift &
   Anwesenheit folgen dem Takt, Readiness 8/8, Mobile 390px, Galabau-Mathe).
-- _Nächster Schritt:_ konkrete Ausschuss-Prüfer:innen den einzelnen Stationen
-  zuordnen (Namen je Station statt nur Bedarfszahl); danach die globale
-  „Automatische Prüfungsplanung" vom 20-Min-Raster auf das Ablaufplan-Modell
-  umstellen, damit auch der Masseneinstieg demselben Uhrwerk folgt.
+- ✅ **Prüfer:innen namentlich an Stationen**: im Cockpit unter „Prüfer:innen an
+  Stationen verteilen" werden den betreuten Stationen konkrete Ausschuss-
+  mitglieder per Auswahlkästchen zugeordnet (Eigenregie-Stationen brauchen
+  keine). Die Namen erscheinen im **Stationsraster, Stationsplan und auf den
+  Laufzetteln** (statt nur „2 Prüfer:innen") — so weiß jede:r genau, an welcher
+  Station er/sie steht. Gespeichert je Station (neue Spalte `pruefer_ids`,
+  durch `stationenFuer`/`stationenSetzen` und die Engine `normalisiereStationen`
+  durchgereicht). Chromium-getestet (Zuordnung speichern → Name im Raster &
+  Stationsplan, Persistenz über `stationenFuer`, Mobile 390px, Galabau-Mathe).
+- _Nächster Schritt:_ die globale „Automatische Prüfungsplanung" vom
+  20-Min-Raster auf das Ablaufplan-Modell umstellen (Masseneinstieg folgt
+  demselben Takt); danach ein Prüfungstag-Assistent (ein Knopf: Stationen
+  sichern → Ausschuss auf Stationen verteilen → Ablaufplan übernehmen → Mappe).
 
 ### M3d — Ergebnis-Niederschrift je Termin ✅
 „Ergebnis-Niederschrift" in der Planung: druckbares Protokoll je Prüfungstag,

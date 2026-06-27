@@ -56,6 +56,7 @@ export function normalisiereStationen(stationen) {
       pruefMin: dauerMin - bewertungMin,
       prueferBedarf: bedarf(s),
       eigenregie,
+      prueferIds: Array.isArray(s.prueferIds) ? s.prueferIds.slice() : [],
     };
   });
 }
