@@ -249,6 +249,13 @@ als eigene 20-Min-Station in Eigenregie des RP (ohne Ausschuss-Prüfer).
   Chromium-getestet (Pause nach Station 3/45 Min → Pause 11:00–11:45, Runde 4 auf
   11:45, Pause-Zeile in Raster & Laufzettel, Persistenz, Mobile 390px,
   Galabau-Mathe).
+- ✅ **Stationskarten für Prüfer:innen**: Gegenstück zum Laufzettel — je Station
+  eine druckbare Karte mit der **Folge der Prüflinge** (Uhrzeit · Name · Betrieb ·
+  Bewertungsspalte), den zugeordneten Prüfer:innen und dem Prüf-/Bewertungsraster.
+  So weiß jede:r Prüfer:in an der Station, wer wann kommt. Reine Engine-Funktion
+  `stationsBelegung(plan)` (Transponierte der Laufzettel), +16 Unit-Tests
+  (99 gesamt). Chromium-getestet (6 Stationen → 6 Karten, Station 1 mit 6 Prüflingen
+  in Zeitreihenfolge + Prüfername + 08:00–09:00, Mobile 390px, Galabau-Mathe).
 
 ### M3d — Ergebnis-Niederschrift je Termin ✅
 „Ergebnis-Niederschrift" in der Planung: druckbares Protokoll je Prüfungstag,

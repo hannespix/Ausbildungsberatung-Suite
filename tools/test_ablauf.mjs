@@ -2,7 +2,7 @@
 // Läuft ohne Browser/DB in Node und in der CI. Aufruf: node tools/test_ablauf.mjs
 
 import {
-  minZuZeit, normalisiereStationen, prueferProRunde, rotationsplan, prueferVerteilen, kapazitaetProTag,
+  minZuZeit, normalisiereStationen, prueferProRunde, rotationsplan, prueferVerteilen, kapazitaetProTag, stationsBelegung,
 } from "../assets/js/ablauf.js";
 
 let fehler = 0, geprueft = 0;
@@ -156,6 +156,22 @@ eq(minZuZeit(pp.gruppen[1].startMin), "12:30", "Gruppe 2 ab 12:30 (mit Pausenver
 pp = rotationsplan(pst, 4, { startMin: 8 * 60, pauseNachRunde: 4, pauseMin: 30 });
 eq(pp.pauseNachRunde, 0, "Pause am/über Tagesende -> inaktiv");
 eq(pp.gruppen[0].pause, null, "keine Pause-Markierung wenn inaktiv");
+
+// --- stationsBelegung: je Station die Prüflingsfolge in Zeitreihenfolge ---
+const bplan = rotationsplan([{ name: "A" }, { name: "B" }, { name: "C" }, { name: "D" }], 4, { startMin: 8 * 60 });
+const bel = stationsBelegung(bplan);
+eq(bel.length, 4, "Belegung für 4 Stationen");
+bel.forEach((arr, sIdx) => {
+  ok(arr.length === 4, `Station ${sIdx}: 4 Prüflinge über den Tag`);
+  ok(new Set(arr.map((x) => x.prueflingIdx)).size === 4, `Station ${sIdx}: alle Prüflinge verschieden`);
+  const zeiten = arr.map((x) => x.vonMin);
+  ok(zeiten.every((t, i) => i === 0 || t > zeiten[i - 1]), `Station ${sIdx}: zeitlich aufsteigend`);
+});
+eq(minZuZeit(bel[0][0].vonMin), "08:00", "Station A erster Prüfling 08:00");
+eq(minZuZeit(bel[0][3].vonMin), "11:00", "Station A vierter Prüfling 11:00");
+// Mehrere Gruppen: Station sieht alle Prüflinge (8 bei 2 Gruppen).
+const bel8 = stationsBelegung(rotationsplan([{ name: "A" }, { name: "B" }], 4));
+eq(bel8[0].length, 4, "2 Stationen / 4 Prüflinge -> Station A sieht 4");
 
 console.log(`${geprueft} Prüfungen, ${fehler} Fehler.`);
 if (fehler) { console.error("ABLAUF-TESTS FEHLGESCHLAGEN"); process.exit(1); }

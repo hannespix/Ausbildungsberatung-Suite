@@ -6,7 +6,7 @@
 
 import * as store from "./store.js";
 import { ENTITAETEN, NAV_REIHENFOLGE, GALABAU_BEREICHE, STANDARD_STATIONEN_GALABAU } from "./model.js";
-import { rotationsplan, minZuZeit, prueferVerteilen } from "./ablauf.js";
+import { rotationsplan, minZuZeit, prueferVerteilen, stationsBelegung } from "./ablauf.js";
 
 // Vorlage für den Rotations-Ablaufplan (Single Source: model.js) — von Cockpit
 // und automatischer Planung gemeinsam genutzt, je Termin anpassbar.
@@ -1074,6 +1074,38 @@ function laufzettelDrucken(termin, zugeteilt, stationen, prueferZug, pause) {
   window.print();
 }
 
+/** Druckbare Stationskarten je Station (für die Prüfer:innen): wer kommt wann. */
+function stationskartenDrucken(termin, zugeteilt, stationen, prueferZug, pause) {
+  const plan = ablaufplanFuer(termin, zugeteilt, stationen, pause);
+  if (!plan.gruppen.length) { meldung("Keine Prüflinge zugeteilt.", "fehler"); return; }
+  const prueferName = prueferNameMap(prueferZug);
+  const belegung = stationsBelegung(plan);
+  const datum = termin.datum ? new Date(termin.datum).toLocaleDateString("de-DE") : "—";
+  const karten = plan.stationen.map((s, sIdx) => {
+    const folge = belegung[sIdx] || [];
+    const zeilen = folge.map((b) => `<tr>
+      <td>${minZuZeit(b.vonMin)}–${minZuZeit(b.bisMin)}</td>
+      <td>${esc(plName(zugeteilt[b.prueflingIdx]))}</td>
+      <td>${esc((zugeteilt[b.prueflingIdx] || {}).betrieb || "")}</td>
+      <td style="min-width:7rem">&nbsp;</td>
+    </tr>`).join("");
+    return `<section style="break-inside:avoid;page-break-after:always;margin-top:var(--bw-space-3)">
+      <h2>Station: ${esc(s.name)}</h2>
+      <p class="bw-klein">${esc(termin.titel || "Prüfungstag")} · ${esc(datum)}${termin.ort ? " · " + esc(termin.ort) : ""}</p>
+      <p>Prüfer:innen: ${esc(stationBesetzung(s, prueferName))}${s.bewertungMin > 0 ? ` · je Prüfling ${zahl(s.pruefMin)} Min Prüfung + ${zahl(s.bewertungMin)} Min Bewertung` : ` · ${zahl(s.dauerMin)} Min`}</p>
+      <table class="bw-table">
+        <thead><tr><th>Uhrzeit</th><th>Prüfling</th><th>Ausbildungsbetrieb</th><th>Bewertung/Notiz</th></tr></thead>
+        <tbody>${zeilen || '<tr><td colspan="4">—</td></tr>'}</tbody>
+      </table>
+    </section>`;
+  }).join("");
+  druckbereich().innerHTML = `
+    <h1>Stationskarten — ${esc(termin.titel || "Prüfungstag")}</h1>
+    <p class="bw-klein bw-leise">Je Station eine Seite: welche Prüflinge in welcher Reihenfolge kommen. ${zahl(plan.m)} Stationen.</p>
+    ${karten}`;
+  window.print();
+}
+
 /** Druckbare Anwesenheitsliste (Unterschriftenspalte) je Prüfungstag. */
 function anwesenheitDrucken(termin, zugeteilt) {
   if (!zugeteilt.length) { meldung("Keine Prüflinge zugeteilt.", "fehler"); return; }
@@ -1344,6 +1376,7 @@ async function renderPruefungstag(pruefungId = null) {
           <button class="bw-btn bw-btn--gelb" type="button" id="tag-assistent">Tag automatisch organisieren</button>
           <button class="bw-btn bw-btn--sekundaer" type="button" id="tag-uebernehmen">Nur Ablaufplan übernehmen</button>
           <button class="bw-btn bw-btn--sekundaer" type="button" id="tag-laufzettel">Laufzettel drucken (je Prüfling)</button>
+          <button class="bw-btn bw-btn--sekundaer" type="button" id="tag-stationskarten">Stationskarten drucken (je Prüfer:in)</button>
           <button class="bw-btn bw-btn--sekundaer" type="button" id="tag-stationsplan">Stationsplan drucken</button>
         </div>
         <p class="bw-klein bw-leise" style="margin-top:var(--bw-space-1)">„Tag automatisch organisieren" sichert die Stationen, verteilt den Ausschuss darauf und übernimmt den Ablaufplan in einem Schritt. „Übernehmen" schreibt nur Startzeit &amp; Reihenfolge auf alle Prüflinge — Anwesenheitsliste, Noten, Niederschrift und Zeugnisse folgen dann diesem Takt.${tagUebernommen ? ' <span class="bw-tag bw-tag--ok">übernommen</span>' : ""}</p>
@@ -1393,6 +1426,7 @@ async function renderPruefungstag(pruefungId = null) {
     an("tag-mappe", () => mappeDrucken(termin, zugeteilt, prueferZug));
     an("tag-ablauf", () => tagesablaufDrucken(termin, zugeteilt, prueferZug));
     an("tag-laufzettel", () => laufzettelDrucken(termin, zugeteilt, stationen, prueferZug, pause));
+    an("tag-stationskarten", () => stationskartenDrucken(termin, zugeteilt, stationen, prueferZug, pause));
     an("tag-stationsplan", () => stationsplanDrucken(termin, zugeteilt, stationen, prueferZug, pause));
     document.getElementById("pause-save")?.addEventListener("click", async () => {
       const nach = Math.max(0, parseInt(document.getElementById("pause-nach").value, 10) || 0);
