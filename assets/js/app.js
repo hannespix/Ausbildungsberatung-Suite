@@ -879,6 +879,18 @@ function stationsZeitfenster(e) {
   return s.bewertungMin > 0 ? `${txt} · ${minZuZeit(pruefBis)}–${minZuZeit(e.bisMin)} Bewertung` : txt;
 }
 
+/** Mittagspause eines Termins laden (je Termin gespeichert; Fallback: alt-global). */
+async function pauseLaden(pruefungId) {
+  const nach = Number(await store.getEinstellung(`ablauf_pause_nach:${pruefungId}`, await store.getEinstellung("ablauf_pause_nach", 0))) || 0;
+  const min = Number(await store.getEinstellung(`ablauf_pause_min:${pruefungId}`, await store.getEinstellung("ablauf_pause_min", 0))) || 0;
+  return { nachRunde: nach, min };
+}
+/** Mittagspause eines Termins speichern (je Termin). */
+async function pauseSpeichern(pruefungId, nach, min) {
+  await store.setEinstellung(`ablauf_pause_nach:${pruefungId}`, String(nach));
+  await store.setEinstellung(`ablauf_pause_min:${pruefungId}`, String(min));
+}
+
 /** Rotations-Plan für einen Termin aus den (gespeicherten) Stationen. */
 function ablaufplanFuer(termin, zugeteilt, stationen, pause) {
   const st = stationen && stationen.length ? stationen : STATIONEN_GALABAU;
@@ -1368,10 +1380,7 @@ async function renderPruefungstag(pruefungId = null) {
     const pill = bereitschaftPunkt;
     const stationen = await store.stationenFuer(id);
     const stationenGespeichert = stationen.length > 0;
-    const pause = {
-      nachRunde: Number(await store.getEinstellung("ablauf_pause_nach", 0)) || 0,
-      min: Number(await store.getEinstellung("ablauf_pause_min", 0)) || 0,
-    };
+    const pause = await pauseLaden(id);
     const tagPlan = ablaufplanFuer(termin, zugeteilt, stationen, pause);
     // „Übernommen" = Startzeiten der Prüflinge entsprechen den Gruppenstarts des
     // aktuellen Ablaufplans (ein Zeitmodell, kein altes Raster mehr).
@@ -1487,9 +1496,8 @@ async function renderPruefungstag(pruefungId = null) {
     document.getElementById("pause-save")?.addEventListener("click", async () => {
       const nach = Math.max(0, parseInt(document.getElementById("pause-nach").value, 10) || 0);
       const min = Math.max(0, parseInt(document.getElementById("pause-min").value, 10) || 0);
-      await store.setEinstellung("ablauf_pause_nach", String(nach));
-      await store.setEinstellung("ablauf_pause_min", String(min));
-      meldung(nach && min ? `Mittagspause gesetzt: ${zahl(min)} Min nach Station ${zahl(nach)}.` : "Mittagspause entfernt.");
+      await pauseSpeichern(id, nach, min);
+      meldung(nach && min ? `Mittagspause gesetzt: ${zahl(min)} Min nach Station ${zahl(nach)} (für diesen Termin).` : "Mittagspause entfernt.");
       tagZeichnen();
     });
     // Schreibt Startzeit + Reihenfolge aus dem Ablaufplan (gegebener Stationen) auf alle Prüflinge.
@@ -1820,11 +1828,7 @@ async function renderPlanung() {
     document.getElementById("mappe-btn")?.addEventListener("click", async () => {
       try {
         const st = await store.stationenFuer(id);
-        const pause = {
-          nachRunde: Number(await store.getEinstellung("ablauf_pause_nach", 0)) || 0,
-          min: Number(await store.getEinstellung("ablauf_pause_min", 0)) || 0,
-        };
-        await mappeDrucken(termin, zugeteilt, prueferZug, st, pause);
+        await mappeDrucken(termin, zugeteilt, prueferZug, st, await pauseLaden(id));
       } catch (e) { console.error(e); meldung("Prüfungstag-Mappe fehlgeschlagen: " + e.message, "fehler"); }
     });
 

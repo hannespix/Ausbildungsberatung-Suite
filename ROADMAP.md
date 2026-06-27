@@ -249,6 +249,12 @@ als eigene 20-Min-Station in Eigenregie des RP (ohne Ausschuss-Prüfer).
   Chromium-getestet (Pause nach Station 3/45 Min → Pause 11:00–11:45, Runde 4 auf
   11:45, Pause-Zeile in Raster & Laufzettel, Persistenz, Mobile 390px,
   Galabau-Mathe).
+- ✅ **Mittagspause je Termin**: die Pause wird jetzt pro Prüfungstag gespeichert
+  (Schlüssel `ablauf_pause_*:<id>`, Fallback auf den früheren globalen Wert) statt
+  global — verschiedene Tage können verschiedene Pausen haben. Helfer
+  `pauseLaden`/`pauseSpeichern` bündeln Lesen/Schreiben für Cockpit und
+  Planungs-Mappe. Chromium-getestet (Pause an Termin A → Termin B unberührt; A
+  bleibt persistent; Schlüssel je Termin; Mobile 390px, Galabau).
 - ✅ **Mappen-Deckblatt mit Inhaltsverzeichnis**: die Tagesmappe beginnt jetzt mit
   einem Deckblatt — Eckdaten (Datum, Ort, Fachrichtung, Zeitrahmen, Mittagspause),
   Kennzahlen (Prüflinge, Stationen/Gruppen, gleichzeitige Prüfer:innen), die
