@@ -12,6 +12,27 @@ Auto-Merge (siehe `AGENTS.md`).
 
 ---
 
+## Ausweitung: Plattform der Ausbildungsberatung
+Die Suite wird vom reinen Prüfungs-Werkzeug zur Arbeitsplattform der
+Ausbildungsberatung (Prüfung + Berichtsheftkontrolle + Beratung + Vordrucke).
+- ✅ **Neue Hauptmenü-Struktur**: der gesamte Prüfungsteil ist unter einem
+  Hauptpunkt **„Prüfung"** gebündelt (Tagescockpit, Tagesplanung, Prüfer-Plan,
+  Noten, Zeugnisse, Auswertungen). Neue Hauptbereiche **Berichtsheft**,
+  **Beratung**, **Vorlagen** angelegt.
+- ✅ **Vorlagen & Vordrucke (funktionsfähig)**: häufige Schreiben der
+  Ausbildungsberatung als Vordrucke — Betriebsanerkennung-Unterlagen,
+  Ausbildereignung (AEVO), Eingangsbestätigung Berufsausbildungsvertrag,
+  Berichtsheft/Ausbildungsnachweis anfordern, Einladung zum Beratungsgespräch.
+  Platzhalter (Anrede, Datum, Frist, Bearbeiter:in) werden ersetzt, der Text
+  bleibt editierbar; **kopieren** (offline-tauglich mit Fallback), **als E-Mail
+  öffnen** (mailto) und **drucken**. Chromium-getestet.
+- ⏳ **Berichtsheftkontrolle** und **Ausbildungsberatung (Problem/Lösungs-Doku)**:
+  als Startseiten angelegt und mit konkretem Funktionsplan „vorgelegt"; werden in
+  den nächsten Iterationen ausgebaut (Kontroll-Status je Auszubildender:m bzw.
+  Beratungsfälle mit Verlauf/Wiedervorlage).
+
+---
+
 ## Infrastruktur
 - ✅ **Zugangsschutz + Benutzerverwaltung (leicht)**: Beim Start ist das Tool
   **gesperrt** — ohne Anmeldung ist nichts erreichbar (Route-Guard, leere

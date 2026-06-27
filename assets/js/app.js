@@ -190,16 +190,17 @@ function navGruppen() {
       { key: "pruefungen", label: ent("pruefungen") },
       { key: "kontakte", label: "Adressliste" },
     ] },
-    { label: "Planung", kinder: [
+    { label: "Prüfung", kinder: [
+      { key: "pruefungstag", label: "Tagescockpit" },
       { key: "planung", label: "Tagesplanung" },
       { key: "planungsliste", label: "Prüfer-Plan" },
-    ] },
-    { label: "Prüfungstag", kinder: [
-      { key: "pruefungstag", label: "Tagescockpit" },
       { key: "noten", label: "Noten" },
       { key: "zeugnisse", label: "Zeugnisse" },
+      { key: "auswertungen", label: "Auswertungen" },
     ] },
-    { link: "auswertungen", label: "Auswertungen", routeKey: "auswertungen" },
+    { link: "berichtsheft", label: "Berichtsheft", routeKey: "berichtsheft" },
+    { link: "beratung", label: "Beratung", routeKey: "beratung" },
+    { link: "vorlagen", label: "Vorlagen", routeKey: "vorlagen" },
   ];
 }
 
@@ -4183,6 +4184,133 @@ function renderBarrierefreiheit() {
        Regierungspräsidiums Freiburg melden (siehe <a href="#/impressum">Impressum</a>).</p>`);
 }
 
+/* --------------------------------------------------------------- Vorlagen
+   Vordrucke für häufig versendete E-Mails/Schreiben der Ausbildungsberatung.
+   Vollständig offline: Platzhalter werden ersetzt, Text ist editierbar und kann
+   kopiert, als E-Mail geöffnet (mailto) oder gedruckt werden. */
+const VORLAGEN = [
+  { id: "betriebsanerkennung", titel: "Betriebsanerkennung — Unterlagen anfordern",
+    betreff: "Anerkennung als Ausbildungsbetrieb — benötigte Unterlagen",
+    text: `{{anrede}}\n\nfür die Prüfung der Eignung Ihres Betriebs als Ausbildungsstätte benötigen wir folgende Unterlagen:\n\n- Beschreibung des Ausbildungsbetriebs (Tätigkeitsfelder, Ausstattung, Flächen)\n- Nachweis der persönlichen und fachlichen Eignung der Ausbilder:innen (siehe gesondertes Schreiben)\n- Angaben zu Art und Umfang der zu vermittelnden Ausbildungsinhalte\n\nBitte senden Sie uns die Unterlagen bis zum {{frist}} zu.\n\nFür Rückfragen stehen wir gerne zur Verfügung.\n\nMit freundlichen Grüßen\n{{bearbeiter}}\nAusbildungsberatung — Regierungspräsidium Freiburg` },
+  { id: "ausbildereignung", titel: "Ausbildereignung — Nachweis anfordern",
+    betreff: "Nachweis der Ausbildereignung (AEVO)",
+    text: `{{anrede}}\n\nzur Anerkennung als Ausbilder:in benötigen wir den Nachweis der berufs- und arbeitspädagogischen Eignung (Ausbildereignungsverordnung — AEVO) sowie den Nachweis der fachlichen Eignung.\n\nBitte reichen Sie die entsprechenden Zeugnisse/Bescheinigungen bis zum {{frist}} ein.\n\nMit freundlichen Grüßen\n{{bearbeiter}}\nAusbildungsberatung — Regierungspräsidium Freiburg` },
+  { id: "ausbildungsvertrag", titel: "Berufsausbildungsvertrag — Eingangsbestätigung",
+    betreff: "Eingang Ihres Berufsausbildungsvertrags",
+    text: `{{anrede}}\n\nwir bestätigen den Eingang des Berufsausbildungsvertrags. Der Vertrag wird geprüft und in das Verzeichnis der Berufsausbildungsverhältnisse eingetragen.\n\nSollten Unterlagen fehlen, melden wir uns gesondert. Andernfalls erhalten Sie die Eintragungsbestätigung.\n\nMit freundlichen Grüßen\n{{bearbeiter}}\nAusbildungsberatung — Regierungspräsidium Freiburg` },
+  { id: "berichtsheft", titel: "Berichtsheft / Ausbildungsnachweis anfordern",
+    betreff: "Vorlage des Ausbildungsnachweises (Berichtsheft)",
+    text: `{{anrede}}\n\nim Rahmen der Ausbildungsberatung bitten wir um Vorlage des aktuellen Ausbildungsnachweises (Berichtsheft) der/des Auszubildenden.\n\nBitte legen Sie den Nachweis bis zum {{frist}} vor (vollständig geführt und von Ausbilder:in und Auszubildender/Auszubildendem abgezeichnet).\n\nMit freundlichen Grüßen\n{{bearbeiter}}\nAusbildungsberatung — Regierungspräsidium Freiburg` },
+  { id: "beratungsgespraech", titel: "Einladung zum Beratungsgespräch",
+    betreff: "Einladung zu einem Beratungsgespräch",
+    text: `{{anrede}}\n\nzur Klärung offener Fragen im Ausbildungsverhältnis laden wir Sie zu einem Beratungsgespräch ein. Bitte schlagen Sie uns zwei mögliche Termine vor.\n\nZiel des Gesprächs ist eine einvernehmliche, im Sinne der Ausbildung tragfähige Lösung.\n\nMit freundlichen Grüßen\n{{bearbeiter}}\nAusbildungsberatung — Regierungspräsidium Freiburg` },
+];
+
+/** Robustes Kopieren in die Zwischenablage (offline/file://-tauglich). */
+async function inZwischenablage(text) {
+  try { if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(text); return true; } } catch { /* Fallback */ }
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.focus(); ta.select();
+    const ok = document.execCommand("copy"); ta.remove(); return ok;
+  } catch { return false; }
+}
+
+function renderVorlagen() {
+  const heute = new Date().toLocaleDateString("de-DE");
+  appEl().innerHTML = `
+    <h1>Vorlagen &amp; Vordrucke</h1>
+    <p class="bw-unterzeile">Häufige Schreiben der Ausbildungsberatung — Platzhalter werden ersetzt, Text bleibt editierbar. Kopieren, als E-Mail öffnen oder drucken.</p>
+    <div class="bw-flaechen">
+      <section class="bw-card" aria-labelledby="vl-h" style="flex:1 1 18rem">
+        <h2 id="vl-h" style="margin-top:0">Vordruck wählen</h2>
+        <div class="bw-field"><label for="vl-auswahl">Vorlage</label>
+          <select id="vl-auswahl">${VORLAGEN.map((v, i) => `<option value="${i}">${esc(v.titel)}</option>`).join("")}</select></div>
+        <div class="bw-field"><label for="vl-anrede">Anrede</label>
+          <input id="vl-anrede" type="text" value="Sehr geehrte Damen und Herren,"></div>
+        <div class="bw-field"><label for="vl-frist">Frist</label>
+          <input id="vl-frist" type="text" placeholder="z. B. 30.07.2026"></div>
+        <p class="bw-klein bw-leise">Datum (${esc(heute)}) und Bearbeiter:in (${esc(_benutzer ? _benutzer.benutzername : "")}) werden automatisch eingesetzt.</p>
+      </section>
+      <section class="bw-card" aria-labelledby="vl-text-h" style="flex:2 1 26rem">
+        <h2 id="vl-text-h" style="margin-top:0">Text</h2>
+        <div class="bw-field"><label for="vl-betreff">Betreff</label><input id="vl-betreff" type="text"></div>
+        <div class="bw-field"><label for="vl-text">Schreiben</label>
+          <textarea id="vl-text" rows="16" style="font:inherit;width:100%"></textarea></div>
+        <div class="bw-toolbar" style="margin:0">
+          <button class="bw-btn bw-btn--gelb" type="button" id="vl-kopieren">Text kopieren</button>
+          <button class="bw-btn bw-btn--sekundaer" type="button" id="vl-mail">Als E-Mail öffnen</button>
+          <button class="bw-btn bw-btn--sekundaer" type="button" id="vl-druck">Drucken</button>
+        </div>
+      </section>
+    </div>`;
+
+  const auswahl = document.getElementById("vl-auswahl");
+  const anrede = document.getElementById("vl-anrede");
+  const frist = document.getElementById("vl-frist");
+  const betreff = document.getElementById("vl-betreff");
+  const textEl = document.getElementById("vl-text");
+
+  const fuellen = () => {
+    const v = VORLAGEN[Number(auswahl.value)] || VORLAGEN[0];
+    betreff.value = v.betreff;
+    textEl.value = v.text
+      .replace(/\{\{anrede\}\}/g, anrede.value || "Sehr geehrte Damen und Herren,")
+      .replace(/\{\{datum\}\}/g, heute)
+      .replace(/\{\{frist\}\}/g, frist.value || "…")
+      .replace(/\{\{bearbeiter\}\}/g, _benutzer ? _benutzer.benutzername : "");
+  };
+  fuellen();
+  auswahl.addEventListener("change", fuellen);
+  anrede.addEventListener("input", fuellen);
+  frist.addEventListener("input", fuellen);
+
+  document.getElementById("vl-kopieren").addEventListener("click", async () => {
+    const ok = await inZwischenablage(textEl.value);
+    meldung(ok ? "Text in die Zwischenablage kopiert." : "Kopieren nicht möglich — bitte Text manuell markieren und kopieren.", ok ? "erfolg" : "fehler");
+  });
+  document.getElementById("vl-mail").addEventListener("click", () => {
+    location.href = `mailto:?subject=${encodeURIComponent(betreff.value)}&body=${encodeURIComponent(textEl.value)}`;
+  });
+  document.getElementById("vl-druck").addEventListener("click", () => {
+    druckbereich().innerHTML = `<h1>${esc(betreff.value)}</h1><pre style="font:inherit;white-space:pre-wrap">${esc(textEl.value)}</pre>`;
+    window.print();
+  });
+}
+
+/* ------------------------------------------------------------- Berichtsheft */
+function renderBerichtsheft() {
+  appEl().innerHTML = `
+    <h1>Berichtsheftkontrolle</h1>
+    <p class="bw-unterzeile">Übersicht und Kontrolle der Ausbildungsnachweise (Berichtshefte) je Auszubildender/Auszubildendem.</p>
+    <div class="bw-hinweis">Dieser Bereich wird gerade aufgebaut. Geplante Funktionen:</div>
+    <ul>
+      <li>Kontroll-Status je Auszubildender:m (geprüft / Nachweis offen / Mängel) mit Datum.</li>
+      <li>Erinnerungen erzeugen (nutzt die <a href="#/vorlagen">Vorlage „Berichtsheft anfordern"</a>).</li>
+      <li>Verknüpfung mit den Stammdaten der <a href="#/prueflinge">Auszubildenden</a> und <a href="#/betriebe">Betriebe</a>.</li>
+      <li>Druckbare Kontroll-Liste für Betriebsbesuche.</li>
+    </ul>
+    <p class="bw-klein bw-leise">Bereits nutzbar: das passende Anschreiben unter <a href="#/vorlagen">Vorlagen</a>.</p>`;
+  document.getElementById("inhalt")?.focus?.();
+}
+
+/* ---------------------------------------------------------------- Beratung */
+function renderBeratung() {
+  appEl().innerHTML = `
+    <h1>Ausbildungsberatung</h1>
+    <p class="bw-unterzeile">Dokumentation von Problemen und Lösungen in Ausbildungsverhältnissen — Beratungsfälle koordiniert begleiten.</p>
+    <div class="bw-hinweis">Dieser Bereich wird gerade aufgebaut. Geplante Funktionen:</div>
+    <ul>
+      <li>Beratungsfälle anlegen (Betrieb/Auszubildende:r, Anliegen, Status offen/in Bearbeitung/gelöst).</li>
+      <li>Verlauf dokumentieren: Problem, Maßnahmen, Lösung, Wiedervorlage-Datum.</li>
+      <li>Einladung zum Beratungsgespräch erzeugen (<a href="#/vorlagen">Vorlagen</a>).</li>
+      <li>Auswertung: offene Fälle, Wiedervorlagen, Themen-Häufung.</li>
+    </ul>
+    <p class="bw-klein bw-leise">Bereits nutzbar: die Einladung zum Beratungsgespräch unter <a href="#/vorlagen">Vorlagen</a>.</p>`;
+  document.getElementById("inhalt")?.focus?.();
+}
+
 async function route() {
   // Zugangsschutz: ohne Anmeldung ist nichts erreichbar.
   if (!_benutzer) { loginAnzeigen(); return; }
@@ -4194,6 +4322,9 @@ async function route() {
     else if (r === "datenschutz") { renderDatenschutz(); }
     else if (r === "barrierefreiheit") { renderBarrierefreiheit(); }
     else if (r === "benutzer") { await renderBenutzer(); }
+    else if (r === "vorlagen") { renderVorlagen(); }
+    else if (r === "berichtsheft") { renderBerichtsheft(); }
+    else if (r === "beratung") { renderBeratung(); }
     else if (r === "uebersicht") await renderUebersicht();
     else if (r === "pruefungstag") await renderPruefungstag();
     else if (r === "planung") await renderPlanung();
