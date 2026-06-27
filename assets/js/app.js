@@ -38,6 +38,16 @@ function formatWert(feld, value) {
 
 function zahl(n) { return Number(n || 0).toLocaleString("de-DE"); }
 
+/** Geldbetrag in de-DE mit Euro-Zeichen (z. B. 1.234,50 €). */
+function euro(n) {
+  return Number(n || 0).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
+}
+/** Eingabe „12,50" oder „12.50" -> Zahl; leer/ungültig -> 0. */
+function geldOderNull(s) {
+  const n = Number(String(s == null ? "" : s).replace(/\s/g, "").replace(",", "."));
+  return isNaN(n) || n < 0 ? 0 : n;
+}
+
 /**
  * Einfarbige Inline-SVG-Symbole (currentColor, erben die Textfarbe) — statt
  * bunter Emoji, damit das Tool im Landes-CD „wie aus einem Guss" wirkt.
@@ -2472,6 +2482,9 @@ async function renderAuswertungen(jahr = null) {
   const quoten = await store.quoteJeFachrichtung(jahr);
   const konflikte = await store.prueferKonflikte();
   const einsaetze = await store.prueferEinsaetze(jahr);
+  const entschaedigung = await store.entschaedigungVorschau(jahr);
+  const satzTag = geldOderNull(await store.getEinstellung("entsch_tagessatz", ""));
+  const satzFahrt = geldOderNull(await store.getEinstellung("entsch_fahrt", ""));
   const spiegel = await store.notenVerteilung(jahr);
   const spiegelSumme = spiegel.reduce((s, r) => s + r.wert, 0);
   const bereiche = await store.bereichsDurchschnitte(jahr);
@@ -2642,6 +2655,31 @@ async function renderAuswertungen(jahr = null) {
         </table>
       </div>
     </section>
+
+    <section aria-labelledby="entsch-h" style="margin-top:var(--bw-space-4)">
+      <h2 id="entsch-h">Prüferentschädigung</h2>
+      <p class="bw-klein bw-leise">Entschädigung je Prüfer:in aus den tatsächlich wahrgenommenen Sitzungstagen (Absagen zählen nicht). <strong>Sätze selbst eintragen</strong> — das Tool trifft keine Annahme über Höhe oder Rechtsgrundlage. Betrag = Sitzungstage × (Tagessatz + Fahrtkostenpauschale).</p>
+      <div class="bw-toolbar">
+        <div class="bw-field" style="margin:0">
+          <label for="satz-tag">Tagessatz (€ je Sitzungstag)</label>
+          <input type="text" inputmode="decimal" id="satz-tag" value="${satzTag ? String(satzTag).replace(".", ",") : ""}" placeholder="z. B. 25,00" style="max-width:12rem">
+        </div>
+        <div class="bw-field" style="margin:0">
+          <label for="satz-fahrt">Fahrtkostenpauschale (€ je Sitzungstag)</label>
+          <input type="text" inputmode="decimal" id="satz-fahrt" value="${satzFahrt ? String(satzFahrt).replace(".", ",") : ""}" placeholder="z. B. 10,00" style="max-width:12rem">
+        </div>
+        <button class="bw-btn bw-btn--sekundaer" type="button" id="csv-entsch" ${entschaedigung.length ? "" : "disabled"}>Abrechnung als CSV</button>
+        <button class="bw-btn bw-btn--gelb" type="button" id="entsch-drucken" ${entschaedigung.length ? "" : "disabled"}>Abrechnung drucken</button>
+      </div>
+      <div class="bw-tablewrap" style="margin-top:var(--bw-space-2)">
+        <table class="bw-table">
+          <thead><tr><th>Prüfer:in</th><th>Organisation</th><th style="text-align:right">Sitzungstage</th><th style="text-align:right">Einsätze</th><th style="text-align:right">Betrag</th></tr></thead>
+          <tbody id="entsch-body"></tbody>
+          <tfoot><tr><th scope="row" colspan="2">Summe</th><th style="text-align:right" id="entsch-summe-tage">0</th><th></th><th style="text-align:right" id="entsch-summe-betrag">${euro(0)}</th></tr></tfoot>
+        </table>
+      </div>
+      ${entschaedigung.length ? "" : '<p class="bw-leise">Noch keine wahrgenommenen Einsätze. Erst unter <a href="#/planung">Planung</a> Ausschüsse besetzen und Zusagen erfassen.</p>'}
+    </section>
   `;
 
   const mitQuote = quoten.filter((r) => r.quote != null);
@@ -2778,6 +2816,69 @@ async function renderAuswertungen(jahr = null) {
       <p class="bw-klein bw-leise">Saison-Übersicht je Prüfer:in als Grundlage für Einsatzbestätigung und Entschädigung.</p>
       ${gruppen.map(block).join("")}
       <p class="bw-klein bw-leise" style="margin-top:var(--bw-space-3)">Erstellt mit der Ausbildungsberatung-Suite — Regierungspräsidium Freiburg</p>`;
+    window.print();
+  });
+
+  // --- Prüferentschädigung: Sätze frei eingeben, Beträge live berechnen ---
+  const entschTagEl = document.getElementById("satz-tag");
+  const entschFahrtEl = document.getElementById("satz-fahrt");
+  // Liefert {zeilen:[{...,betrag}], summeTage, summeBetrag} zum aktuellen Satz.
+  const entschRechnen = () => {
+    const tag = geldOderNull(entschTagEl?.value);
+    const fahrt = geldOderNull(entschFahrtEl?.value);
+    let summeTage = 0, summeBetrag = 0;
+    const zeilen = entschaedigung.map((r) => {
+      const betrag = r.tage * (tag + fahrt);
+      summeTage += r.tage; summeBetrag += betrag;
+      return { ...r, betrag };
+    });
+    return { zeilen, summeTage, summeBetrag, tag, fahrt };
+  };
+  const entschTabelleZeichnen = () => {
+    const { zeilen, summeTage, summeBetrag } = entschRechnen();
+    const body = document.getElementById("entsch-body");
+    if (body) body.innerHTML = zeilen.length
+      ? zeilen.map((r) => `<tr><td>${esc(r.name)}</td><td>${esc(r.organisation || "—")}</td><td style="text-align:right">${zahl(r.tage)}</td><td style="text-align:right">${zahl(r.einsaetze)}</td><td style="text-align:right">${euro(r.betrag)}</td></tr>`).join("")
+      : '<tr><td colspan="5" class="bw-leise">Keine wahrgenommenen Einsätze.</td></tr>';
+    const st = document.getElementById("entsch-summe-tage");
+    const sb = document.getElementById("entsch-summe-betrag");
+    if (st) st.textContent = zahl(summeTage);
+    if (sb) sb.textContent = euro(summeBetrag);
+  };
+  entschTabelleZeichnen();
+  let entschSpeicherTimer = null;
+  const entschGeaendert = () => {
+    entschTabelleZeichnen();
+    clearTimeout(entschSpeicherTimer);
+    entschSpeicherTimer = setTimeout(() => {
+      store.setEinstellung("entsch_tagessatz", String(geldOderNull(entschTagEl?.value)));
+      store.setEinstellung("entsch_fahrt", String(geldOderNull(entschFahrtEl?.value)));
+    }, 400);
+  };
+  entschTagEl?.addEventListener("input", entschGeaendert);
+  entschFahrtEl?.addEventListener("input", entschGeaendert);
+  document.getElementById("csv-entsch")?.addEventListener("click", () => {
+    const { zeilen, summeTage, summeBetrag, tag, fahrt } = entschRechnen();
+    const kopf = ["Prüfer:in", "Organisation", "Sitzungstage", "Einsätze", "Tagessatz", "Fahrtpauschale", "Betrag"];
+    const reihen = zeilen.map((r) => [r.name, r.organisation || "", r.tage, r.einsaetze, tag, fahrt, r.betrag]);
+    reihen.push(["Summe", "", summeTage, "", "", "", summeBetrag]);
+    dateiDownload(`Pruefer-Entschaedigung${jahr ? "-" + jahr : ""}.csv`, csvText(kopf, reihen), "text/csv;charset=utf-8");
+    meldung(`Entschädigungs-Abrechnung exportiert: ${zahl(zeilen.length)} Prüfer:innen.`);
+  });
+  document.getElementById("entsch-drucken")?.addEventListener("click", () => {
+    const { zeilen, summeTage, summeBetrag, tag, fahrt } = entschRechnen();
+    if (!zeilen.length) { meldung("Keine wahrgenommenen Einsätze zum Abrechnen."); return; }
+    const heute = new Date().toLocaleDateString("de-DE");
+    druckbereich().innerHTML = `
+      <h1>Prüferentschädigung — Abschlussprüfung Gärtner/in</h1>
+      <p>${jahr ? "Prüfungsjahr " + esc(String(jahr)) : "Alle Prüfungsjahre"} · Stand ${esc(heute)}</p>
+      <p>Tagessatz ${euro(tag)} · Fahrtkostenpauschale ${euro(fahrt)} je Sitzungstag · Betrag = Sitzungstage × (Tagessatz + Fahrtkostenpauschale).</p>
+      <table class="bw-table">
+        <thead><tr><th>Prüfer:in</th><th>Organisation</th><th style="text-align:right">Sitzungstage</th><th style="text-align:right">Einsätze</th><th style="text-align:right">Betrag</th></tr></thead>
+        <tbody>${zeilen.map((r) => `<tr><td>${esc(r.name)}</td><td>${esc(r.organisation || "—")}</td><td style="text-align:right">${zahl(r.tage)}</td><td style="text-align:right">${zahl(r.einsaetze)}</td><td style="text-align:right">${euro(r.betrag)}</td></tr>`).join("")}</tbody>
+        <tfoot><tr><th scope="row" colspan="2">Summe</th><th style="text-align:right">${zahl(summeTage)}</th><th></th><th style="text-align:right">${euro(summeBetrag)}</th></tr></tfoot>
+      </table>
+      <p class="bw-klein bw-leise" style="margin-top:var(--bw-space-3)">Die Sätze wurden von der sachbearbeitenden Stelle eingetragen; das Tool trifft keine Annahme über Höhe oder Rechtsgrundlage. Erstellt mit der Ausbildungsberatung-Suite — Regierungspräsidium Freiburg</p>`;
     window.print();
   });
   document.getElementById("bericht-drucken")?.addEventListener("click", () => {
