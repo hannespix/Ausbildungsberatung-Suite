@@ -391,6 +391,12 @@ markiert. Jeder Eintrag öffnet den Termin direkt in der Planung
 Zeitraster, ohne einzeln je Termin nachzusehen (`prueftagBereitschaft()`).
 Chromium-getestet (bereiter Tag = 3 grün, lückenhafter Tag „Uhrzeiten 0/2",
 Verlinkung, Mobile 390px inkl. Hamburger ohne Overflow).
+✅ **Prüfungstag-Fokus**: jeder Board-Eintrag verlinkt jetzt sowohl in die
+**Planung** als auch direkt in die **Noten-Erfassung** des Termins; ein Termin am
+heutigen Tag trägt einen „Heute"-Marker. Dafür neuer Deep-Link
+`#/noten?termin=…` (termingefilterte Noten-Ansicht, z. B. vom Board am
+Prüfungstag). Chromium-getestet (Heute-Marker, Planung-/Noten-Link, Deep-Link
+filtert auf den Termin, Mobile 390px).
 
 ### „Was ist zu tun?" — Aufgaben-Panel ✅
 Übersicht erkennt automatisch Handlungsbedarf über alle Stationen und verlinkt
