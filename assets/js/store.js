@@ -235,7 +235,7 @@ export async function zuteilungenFuer(pruefungId) {
 export async function terminErgebnisse(pruefungId) {
   const res = await _pg.query(
     `SELECT z.slot, p.nachname, p.vorname, p.betrieb,
-            b.praxis, b.kenntnis, b.gesamt, b.bestanden,
+            b.praxis, b.kenntnis, b.gesamt, b.bestanden, b.bemerkung,
             b.p1, b.p2, b.p3, b.p4, b.p5, b.k1, b.k2, b.k3, b.k4,
             b.ergaenzung_bereich, b.ergaenzung_note
        FROM zuteilungen z JOIN prueflinge p ON p.id = z.pruefling_id

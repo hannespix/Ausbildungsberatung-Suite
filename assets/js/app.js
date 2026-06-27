@@ -791,6 +791,15 @@ function niederschriftHtml(termin, ergebnisse, prueferZug) {
       <tbody>${nichtBestanden.map((x) => `
         <tr><td>${esc((x.r.nachname || "") + ", " + (x.r.vorname || ""))}</td><td>${x.gruende.map(esc).join("; ")}</td></tr>`).join("")}</tbody>
     </table>` : "";
+  // Bemerkungen des Ausschusses je Prüfling (sofern erfasst) — fürs Protokoll.
+  const mitBemerkung = ergebnisse.filter((r) => r.bemerkung && String(r.bemerkung).trim());
+  const bemerkungen = mitBemerkung.length ? `
+    <h2>Bemerkungen des Ausschusses</h2>
+    <table class="bw-table">
+      <thead><tr><th>Name</th><th>Bemerkung</th></tr></thead>
+      <tbody>${mitBemerkung.map((r) => `
+        <tr><td>${esc((r.nachname || "") + ", " + (r.vorname || ""))}</td><td>${esc(r.bemerkung)}</td></tr>`).join("")}</tbody>
+    </table>` : "";
 
   return `
     <h1>Ergebnis-Niederschrift — ${esc(termin.titel)}</h1>
@@ -811,6 +820,7 @@ function niederschriftHtml(termin, ergebnisse, prueferZug) {
         </tr>`).join("")}</tbody>
     </table>
     ${begruendung}
+    ${bemerkungen}
 
     <h2>Prüfungsausschuss</h2>
     <table class="bw-table">

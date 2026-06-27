@@ -153,6 +153,12 @@ das Planung und Noten verbindet — alle zugeteilten Prüflinge in Slot-Reihenfo
 mit Praxis-/Kenntnis-Schnitt, Gesamtnote und Ergebnis, dazu Kennzahlen
 (bewertet/bestanden), Ausschuss mit Unterschriftenspalte und Ort/Datum.
 `store.terminErgebnisse(id)`. Smoke-getestet (inkl. Mobile).
+✅ **Bemerkungen des Ausschusses im Protokoll**: hat der Ausschuss zu einem
+Prüfling eine Bemerkung erfasst, erscheint sie in der Niederschrift als eigener
+Abschnitt „Bemerkungen des Ausschusses" (neben „Begründung Nichtbestehen") —
+amtlich dokumentiert statt nur in der Akte. `terminErgebnisse` liefert dafür
+`bemerkung`. Chromium-getestet (Abschnitt mit Text bei vorhandener Bemerkung,
+kein leerer Abschnitt sonst, Mobile 390px).
 
 ### M4 — Prüfer-Organisation
 Ausschuss-Zusammenstellung (Vorsitz/Beisitz/Lehrkraft), ausgewogene Zuteilung,
