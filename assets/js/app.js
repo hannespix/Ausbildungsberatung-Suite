@@ -95,6 +95,7 @@ function bereitschaftPunkt(ok) {
 /** Ein Prüfungstag im Bereitschafts-Board (Ausschuss, Zusagen, Uhrzeiten). */
 function bereitschaftEintrag(t) {
   const datum = t.datum ? new Date(t.datum).toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit" }) : "—";
+  const istHeute = t.datum && new Date(t.datum).toISOString().slice(0, 10) === new Date().toISOString().slice(0, 10);
   const hatPl = t.prueflinge > 0;
   const ausschussOk = t.ausschuss >= 3;
   const zusagenOk = t.ausschuss > 0 && t.zusagen_offen === 0;
@@ -109,11 +110,14 @@ function bereitschaftEintrag(t) {
   return `
     <li>
       <span>
-        <strong>${esc(datum)}</strong> · ${esc(t.titel || "Termin")}
+        <strong>${esc(datum)}</strong>${istHeute ? ' <span class="bw-tag bw-tag--ok">Heute</span>' : ""} · ${esc(t.titel || "Termin")}
         <span class="bw-klein bw-leise">${t.beruf ? esc(t.beruf) + " · " : ""}${zahl(t.prueflinge)} Prüflinge</span>
         ${chips}
       </span>
-      <a class="bw-btn bw-btn--sekundaer" href="#/planung?termin=${t.id}" style="margin-left:auto">Öffnen</a>
+      <span class="bw-toolbar" style="margin:0 0 0 auto;gap:var(--bw-space-1)">
+        <a class="bw-btn bw-btn--sekundaer" href="#/planung?termin=${t.id}">Planung</a>
+        <a class="bw-btn bw-btn--sekundaer" href="#/noten?termin=${t.id}"${hatPl ? "" : ' aria-disabled="true" tabindex="-1" style="opacity:.5;pointer-events:none"'}>Noten</a>
+      </span>
     </li>`;
 }
 
@@ -1369,6 +1373,8 @@ function ergebnisBadge(bestanden) {
 }
 
 async function renderNoten(pruefungId = null) {
+  // Deep-Link #/noten?termin=… (z. B. aus dem Bereitschafts-Board am Prüfungstag).
+  if (pruefungId == null) { const tp = routeParams().termin; if (tp) pruefungId = Number(tp); }
   const termine = await store.liste("pruefungen");
   const rows = await store.bewertungenListe(pruefungId);
   const verteilung = await store.notenVerteilung();
