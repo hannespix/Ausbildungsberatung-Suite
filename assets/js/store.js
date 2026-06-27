@@ -6,7 +6,8 @@
 // wenn die Umgebung OPFS nicht erlaubt (Barrierefreiheit: nie weißer Schirm).
 
 import { initDB, createTable, globaleSuche } from "./db.js";
-import { ENTITAETEN, suchspalten } from "./model.js";
+import { ENTITAETEN, suchspalten, STANDARD_STATIONEN_GALABAU } from "./model.js";
+import { rotationsplan, minZuZeit, prueferVerteilen } from "./ablauf.js";
 // Reine Notenlogik liegt in galabau.js (isoliert testbar). Intern genutzt und
 // für die UI über store re-exportiert.
 import {
@@ -483,37 +484,32 @@ export async function anfrageStellen(pruefungId) {
  * legt fehlende Termine automatisch an und besetzt je Termin einen Ausschuss
  * (Vorsitz + 2 Beisitz) aus dem Prüfer-Pool (Last ausgeglichen).
  */
-/** Addiert Minuten auf eine "HH:MM"-Zeit (24-h, ohne Datum). */
-function _addMinuten(hhmm, minuten) {
-  const teile = String(hhmm || "08:00").split(":");
-  const h = parseInt(teile[0], 10) || 0;
-  const m = parseInt(teile[1], 10) || 0;
-  const total = h * 60 + m + Math.round(minuten);
-  const hh = Math.floor(total / 60) % 24;
-  const mm = ((total % 60) + 60) % 60;
-  return String(hh).padStart(2, "0") + ":" + String(mm).padStart(2, "0");
+/** "HH:MM" -> Minuten ab Mitternacht (Default 08:00). */
+function hhmmToMin(hhmm) {
+  const m = String(hhmm || "08:00").match(/(\d{1,2}):(\d{2})/);
+  return m ? Math.min(23, Number(m[1])) * 60 + Math.min(59, Number(m[2])) : 8 * 60;
 }
 
-const ZEITRASTER_MINUTEN = 20; // Standard-Taktung je Prüfling
-
 /**
- * Vergibt fortlaufende Uhrzeit-Slots an alle Prüflinge eines Termins (in der
- * vorhandenen Reihenfolge). Verbindet Planung und Tagesablauf: aus einer Aktion
- * entsteht der komplette Zeitplan des Prüfungstags.
- * @returns {{anzahl:number, beginn:string, minuten:number}}
+ * Übernimmt den Stationen-Rotations-Ablaufplan als verbindlichen Takt eines
+ * Termins: vergibt jeder/jedem Prüfling Startzeit (slot = Gruppenstart) und
+ * Reihenfolge aus der Karussell-Rotation. Sind noch keine Stationen gespeichert,
+ * wird die GaLaBau-Standardvorlage festgeschrieben. Ersetzt das frühere
+ * 20-Minuten-Raster — ein einziges Zeitmodell für Planung und Prüfungstag.
+ * @returns {{getaktet:number, gruppen:number, prueferProRunde:number, beginn:string}}
  */
-export async function zeitrasterVergeben(pruefungId, start = null, minuten = ZEITRASTER_MINUTEN) {
-  const t = (await _pg.query(`SELECT zeit_von FROM pruefungen WHERE id = $1`, [pruefungId])).rows[0];
-  const beginn = start || (t && t.zeit_von) || "08:00";
-  const step = Math.max(1, Number(minuten) || ZEITRASTER_MINUTEN);
-  const rows = (await _pg.query(
-    `SELECT id FROM zuteilungen WHERE pruefung_id = $1 ORDER BY reihenfolge, slot NULLS LAST, id`,
-    [pruefungId]
-  )).rows;
-  for (let i = 0; i < rows.length; i++) {
-    await _pg.query(`UPDATE zuteilungen SET slot = $2 WHERE id = $1`, [rows[i].id, _addMinuten(beginn, i * step)]);
-  }
-  return { anzahl: rows.length, beginn, minuten: step };
+export async function ablaufplanTakten(pruefungId) {
+  const id = Number(pruefungId);
+  const t = (await _pg.query(`SELECT zeit_von FROM pruefungen WHERE id = $1`, [id])).rows[0] || {};
+  let st = await stationenFuer(id);
+  if (!st.length) { await stationenSetzen(id, STANDARD_STATIONEN_GALABAU); st = await stationenFuer(id); }
+  const pl = await zuteilungenFuer(id); // Reihenfolge: slot, reihenfolge, Name
+  const plan = rotationsplan(st, pl, { startMin: hhmmToMin(t.zeit_von) });
+  const eintraege = [];
+  plan.gruppen.forEach((g) => g.mitglieder.forEach((p, i) =>
+    eintraege.push({ prueflingId: p.id, slot: minZuZeit(g.startMin), reihenfolge: g.von + i + 1 })));
+  await ablaufZeitenUebernehmen(id, eintraege);
+  return { getaktet: eintraege.length, gruppen: plan.gruppen.length, prueferProRunde: plan.prueferProRunde, beginn: minZuZeit(plan.startMin) };
 }
 
 /** Löscht die Uhrzeit-Slots eines Termins (Reihenfolge bleibt erhalten). */
@@ -523,7 +519,7 @@ export async function zeitrasterLoeschen(pruefungId) {
 
 export async function planungAutomatisch(kapazitaet = 12) {
   const cap = Math.max(1, Number(kapazitaet) || 12);
-  await _pg.exec(`TRUNCATE zuteilungen RESTART IDENTITY; TRUNCATE pruefer_zuteilungen RESTART IDENTITY;`);
+  await _pg.exec(`TRUNCATE zuteilungen RESTART IDENTITY; TRUNCATE pruefer_zuteilungen RESTART IDENTITY; TRUNCATE stationen RESTART IDENTITY;`);
 
   const pruefer = (await _pg.query(`SELECT id FROM pruefer ORDER BY nachname, vorname`)).rows;
   // Abwesenheiten je Tag: an diesen Tagen wird die Person nicht eingeteilt.
@@ -567,7 +563,7 @@ export async function planungAutomatisch(kapazitaet = 12) {
     `SELECT DISTINCT beruf FROM prueflinge WHERE beruf IS NOT NULL AND btrim(beruf) <> '' ORDER BY beruf`
   )).rows.map((r) => r.beruf);
 
-  const zRows = [], pzRows = [];
+  const zRows = [], pzRows = [], stRows = [];
   let summeTermine = 0;
   const ROLLEN = ["Vorsitz", "Beisitz Arbeitgeber", "Beisitz Arbeitnehmer"];
 
@@ -614,21 +610,30 @@ export async function planungAutomatisch(kapazitaet = 12) {
       const size = base + (g < extra ? 1 : 0);
       const termin = termine[g];
       const beginn = termin.zeit_von || "08:00";
-      for (let k = 0; k < size; k++, idx++) {
-        zRows.push({
-          pruefung_id: termin.id, pruefling_id: pl[idx].id,
-          slot: _addMinuten(beginn, k * ZEITRASTER_MINUTEN), reihenfolge: k + 1,
-        });
-      }
+      // Prüflinge dieser Gruppe in PLZ/Name-Reihenfolge einsammeln.
+      const gruppePl = [];
+      for (let k = 0; k < size; k++, idx++) gruppePl.push({ id: pl[idx].id });
+      // Ausschuss bestimmen und namentlich auf die Stationen verteilen.
       const ausschuss = naechstePruefer(ROLLEN.length, termin.datum ? isoDatum(termin.datum) : ("g" + g));
       ausschuss.forEach((prId, i) =>
         pzRows.push({ pruefung_id: termin.id, pruefer_id: prId, rolle: ROLLEN[i] || "Beisitz", status: "offen" })
       );
+      const vert = prueferVerteilen(STANDARD_STATIONEN_GALABAU, ausschuss);
+      vert.stationen.forEach((s, si) => stRows.push({
+        pruefung_id: termin.id, name: s.name, dauer_min: s.dauerMin, bewertung_min: s.bewertungMin,
+        pruefer_bedarf: s.eigenregie ? 0 : s.prueferBedarf, eigenregie: s.eigenregie,
+        reihenfolge: si, pruefer_ids: (s.prueferIds || []).length ? s.prueferIds.join(",") : null,
+      }));
+      // Startzeit & Reihenfolge je Prüfling aus der Stationen-Rotation (kein 20-Min-Raster).
+      const plan = rotationsplan(vert.stationen, gruppePl, { startMin: hhmmToMin(beginn) });
+      plan.gruppen.forEach((grp) => grp.mitglieder.forEach((p, i) =>
+        zRows.push({ pruefung_id: termin.id, pruefling_id: p.id, slot: minZuZeit(grp.startMin), reihenfolge: grp.von + i + 1 })));
     }
   }
 
   await bulkInsert("zuteilungen", ["pruefung_id", "pruefling_id", "slot", "reihenfolge"], zRows);
   await bulkInsert("pruefer_zuteilungen", ["pruefung_id", "pruefer_id", "rolle", "status"], pzRows);
+  await bulkInsert("stationen", ["pruefung_id", "name", "dauer_min", "bewertung_min", "pruefer_bedarf", "eigenregie", "reihenfolge", "pruefer_ids"], stRows);
   // Ohne Fachrichtung lässt sich kein:e Prüfling einplanen — Zahl zurückgeben,
   // damit die Oberfläche es transparent meldet (kein stilles Übergehen).
   const uebersprungen = (await _pg.query(
@@ -1342,7 +1347,7 @@ export async function hinweise() {
                      WHERE z.pruefung_id = pr.id AND (z.slot IS NULL OR btrim(z.slot) = ''))`
   )).rows[0].n;
   if (ohneUhrzeit) items.push({ key: "ohne_uhrzeit", n: ohneUhrzeit, route: "#/planung", art: "hinweis",
-    text: `${ohneUhrzeit} anstehende(r) Prüfungstermin(e) mit Prüflingen ohne Uhrzeit (Zeitraster erzeugen)` });
+    text: `${ohneUhrzeit} anstehende(r) Prüfungstermin(e) mit Prüflingen ohne Uhrzeit (Ablaufplan übernehmen)` });
 
   const offeneTermine = (await _pg.query(
     `SELECT count(*)::int AS n FROM pruefungen pr
