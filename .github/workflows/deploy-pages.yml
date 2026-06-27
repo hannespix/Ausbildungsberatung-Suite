@@ -1,0 +1,51 @@
+name: GitHub Pages deployen
+
+# Deployt das Tool nach jedem Update auf main auf eine GitHub Page,
+# damit man es im Browser testen kann. Manuell per "Run workflow" auslösbar.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Rechte für das offizielle Pages-Deployment (Quelle: GitHub Actions).
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Immer nur ein Deployment gleichzeitig; laufende abbrechen.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # Sicherheitsnetz: nur deployen, wenn das Tool wirklich offline-fähig ist
+      # (keine externen Lade-Referenzen) — gleiche Prüfung wie im PR-CI.
+      - name: Offline-Fähigkeit prüfen
+        run: python3 tools/check_offline.py
+
+      # Nur die Laufzeitdateien veröffentlichen (kein CLAUDE.md/AGENTS.md/tools).
+      # Alle Pfade im Tool sind relativ → läuft auch unter dem Pages-Unterpfad.
+      - name: Seite zusammenstellen
+        run: |
+          mkdir -p _site
+          cp -r index.html bw-theme.css site.webmanifest assets _site/
+          [ -d download ] && cp -r download _site/ || true
+          touch _site/.nojekyll
+          echo "Inhalt von _site:" && ls -1 _site
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - name: Auf GitHub Pages deployen
+        id: deployment
+        uses: actions/deploy-pages@v4
