@@ -207,6 +207,9 @@ function navGruppen() {
 function navAufbauen() {
   const ul = document.getElementById("navlinks");
   if (!ul) return;
+  // Suche/Menü-Knöpfe nur bei Anmeldung zeigen (saubere Login-Maske).
+  const aktionen = document.getElementById("nav-aktionen");
+  if (aktionen) aktionen.style.display = _benutzer ? "" : "none";
   // Ohne Anmeldung keine Navigation (Tool ist gesperrt).
   if (!_benutzer) { ul.innerHTML = ""; return; }
   const route = aktiveRoute();
@@ -4076,8 +4079,8 @@ async function renderBenutzer() {
       <td>${esc(u.benutzername)}</td>
       <td>${u.rolle === "admin" ? "Administrator:in" : "Benutzer:in"}</td>
       <td class="bw-toolbar" style="margin:0;gap:var(--bw-space-1)">
-        <button class="bw-btn bw-btn--sekundaer" type="button" data-pw="${u.id}" data-name="${esc(u.benutzername)}">Passwort</button>
-        <button class="bw-iconbtn" type="button" data-del="${u.id}" data-name="${esc(u.benutzername)}" aria-label="Benutzer:in entfernen">${icon("muell")}</button>
+        <button class="bw-iconbtn" type="button" data-pw="${u.id}" data-name="${esc(u.benutzername)}" title="Passwort setzen" aria-label="Passwort für ${esc(u.benutzername)} setzen">${icon("stift")}</button>
+        <button class="bw-iconbtn" type="button" data-del="${u.id}" data-name="${esc(u.benutzername)}" title="Entfernen" aria-label="Benutzer:in entfernen">${icon("muell")}</button>
       </td>
     </tr>`;
   appEl().innerHTML = `
@@ -4146,7 +4149,7 @@ function renderImpressum() {
     <h2>Kontakt</h2>
     <p>Telefon: 0761 208-0<br>E-Mail: poststelle@rpf.bwl.de</p>
     <h2>Zuständige Aufsichtsbehörde</h2>
-    <p>Ministerium für Ernährung, Ländlichen Raum und Verbraucherschutz Baden-Württemberg.</p>
+    <p>Ministerium für Ländlichen Raum, Landwirtschaft und Heimat Baden-Württemberg.</p>
     <p class="bw-hinweis">Internes Werkzeug der Ausbildungsberatung. Die konkreten Verantwortlichen sind vor Veröffentlichung durch die Dienststelle zu ergänzen/zu prüfen.</p>`);
 }
 

@@ -26,6 +26,13 @@ Ausbildungsberatung (Prüfung + Berichtsheftkontrolle + Beratung + Vordrucke).
   Platzhalter (Anrede, Datum, Frist, Bearbeiter:in) werden ersetzt, der Text
   bleibt editierbar; **kopieren** (offline-tauglich mit Fallback), **als E-Mail
   öffnen** (mailto) und **drucken**. Chromium-getestet.
+- ✅ **UI-/Design-Politur + Korrekturen**: Impressum nennt jetzt den **aktuellen
+  Namen** der Aufsichtsbehörde („Ministerium für Ländlichen Raum, Landwirtschaft
+  und Heimat Baden-Württemberg", Umbenennung 2026). Login-Maske aufgeräumt:
+  Suche-/Menü-Knöpfe erscheinen erst nach der Anmeldung. Aktionsspalten in
+  Tabellen (Benutzerverwaltung) als kompakte Icon-Knöpfe → keine abgeschnittenen
+  Buttons mehr in der Mobilansicht. Gesamtes Layout per 390px-Audit über alle
+  Routen auf Überlauf geprüft (sauber). Chromium-getestet.
 - ⏳ **Berichtsheftkontrolle** und **Ausbildungsberatung (Problem/Lösungs-Doku)**:
   als Startseiten angelegt und mit konkretem Funktionsplan „vorgelegt"; werden in
   den nächsten Iterationen ausgebaut (Kontroll-Status je Auszubildender:m bzw.
