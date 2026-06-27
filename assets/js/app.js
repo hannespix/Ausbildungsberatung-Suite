@@ -6,7 +6,7 @@
 
 import * as store from "./store.js";
 import { ENTITAETEN, NAV_REIHENFOLGE, GALABAU_BEREICHE } from "./model.js";
-import { rotationsplan, minZuZeit, PFLANZEN_DAUER } from "./ablauf.js";
+import { rotationsplan, minZuZeit, PFLANZEN_DAUER, prueferVerteilen } from "./ablauf.js";
 
 /**
  * Standard-Stationen des praktischen Prüfungstags GaLaBau: die fünf praktischen
@@ -1327,11 +1327,12 @@ async function renderPruefungstag(pruefungId = null) {
         <p class="bw-klein bw-leise" style="margin-top:0">Jeder Prüfling durchläuft jede Station genau einmal — ohne Wartezeit, mit der kleinstmöglichen Prüferzahl. Station je 60 Min (50 Prüfung + 10 Bewertung); Pflanzenerkennung 20 Min in Eigenregie des RP.</p>
         ${ablaufKennzahlenHtml(tagPlan)}
         <div class="bw-toolbar" style="margin-top:var(--bw-space-2)">
-          <button class="bw-btn bw-btn--gelb" type="button" id="tag-uebernehmen">Ablaufplan übernehmen</button>
+          <button class="bw-btn bw-btn--gelb" type="button" id="tag-assistent">Tag automatisch organisieren</button>
+          <button class="bw-btn bw-btn--sekundaer" type="button" id="tag-uebernehmen">Nur Ablaufplan übernehmen</button>
           <button class="bw-btn bw-btn--sekundaer" type="button" id="tag-laufzettel">Laufzettel drucken (je Prüfling)</button>
           <button class="bw-btn bw-btn--sekundaer" type="button" id="tag-stationsplan">Stationsplan drucken</button>
         </div>
-        <p class="bw-klein bw-leise" style="margin-top:var(--bw-space-1)">„Übernehmen" schreibt Startzeit &amp; Reihenfolge aus dem Ablaufplan auf alle Prüflinge — Anwesenheitsliste, Noten, Niederschrift und Zeugnisse folgen dann genau diesem Takt.${tagUebernommen ? ' <span class="bw-tag bw-tag--ok">übernommen</span>' : ""}</p>
+        <p class="bw-klein bw-leise" style="margin-top:var(--bw-space-1)">„Tag automatisch organisieren" sichert die Stationen, verteilt den Ausschuss darauf und übernimmt den Ablaufplan in einem Schritt. „Übernehmen" schreibt nur Startzeit &amp; Reihenfolge auf alle Prüflinge — Anwesenheitsliste, Noten, Niederschrift und Zeugnisse folgen dann diesem Takt.${tagUebernommen ? ' <span class="bw-tag bw-tag--ok">übernommen</span>' : ""}</p>
         <p class="bw-klein${stationenGespeichert ? " bw-leise" : ""}">${stationenGespeichert ? "Stationen für diesen Termin gespeichert." : "Standardvorlage (noch nicht gespeichert) — unten anpassen und speichern."}</p>
         <h3>Gruppe 1${tagPlan.gruppen.length > 1 ? ' <span class="bw-klein bw-leise">(' + zahl(tagPlan.gruppen.length) + " Gruppen gesamt)</span>" : ""}</h3>
         <div class="bw-tablewrap">${gruppenRasterHtml(tagPlan, tagPlan.gruppen[0], zugeteilt, prueferName)}</div>
@@ -1367,15 +1368,33 @@ async function renderPruefungstag(pruefungId = null) {
     an("tag-ablauf", () => tagesablaufDrucken(termin, zugeteilt, prueferZug));
     an("tag-laufzettel", () => laufzettelDrucken(termin, zugeteilt, stationen, prueferZug));
     an("tag-stationsplan", () => stationsplanDrucken(termin, zugeteilt, stationen, prueferZug));
+    // Schreibt Startzeit + Reihenfolge aus dem Ablaufplan (gegebener Stationen) auf alle Prüflinge.
+    const taktenSchreiben = async (st) => {
+      const plan = ablaufplanFuer(termin, zugeteilt, st);
+      const eintraege = [];
+      plan.gruppen.forEach((g) => g.mitglieder.forEach((pl, i) => {
+        eintraege.push({ prueflingId: pl.id, slot: minZuZeit(g.startMin), reihenfolge: g.von + i + 1 });
+      }));
+      return store.ablaufZeitenUebernehmen(id, eintraege);
+    };
     an("tag-uebernehmen", async () => {
       // Standardvorlage festschreiben, damit der gespeicherte Plan dem Takt entspricht.
       if (!stationenGespeichert) await store.stationenSetzen(id, STATIONEN_GALABAU);
-      const eintraege = [];
-      tagPlan.gruppen.forEach((g) => g.mitglieder.forEach((pl, i) => {
-        eintraege.push({ prueflingId: pl.id, slot: minZuZeit(g.startMin), reihenfolge: g.von + i + 1 });
-      }));
-      const n = await store.ablaufZeitenUebernehmen(id, eintraege);
+      const n = await taktenSchreiben(await store.stationenFuer(id));
       meldung(`Ablaufplan übernommen: ${zahl(n)} Prüflinge getaktet — Anwesenheit, Noten und Niederschrift folgen jetzt diesem Plan.`);
+      tagZeichnen();
+    });
+    an("tag-assistent", async () => {
+      // 1. Stationen sichern (Standardvorlage festschreiben, falls noch keine).
+      let aktuell = stationen;
+      if (!stationenGespeichert) { await store.stationenSetzen(id, STATIONEN_GALABAU); aktuell = await store.stationenFuer(id); }
+      // 2. Ausschuss (nicht abgesagt) auf die betreuten Stationen verteilen.
+      const pool = prueferZug.filter((p) => (p.status || "offen") !== "abgesagt").map((p) => p.id);
+      const vert = prueferVerteilen(aktuell, pool);
+      await store.stationenSetzen(id, vert.stationen);
+      // 3. Ablaufplan übernehmen (Startzeit & Reihenfolge), wenn Prüflinge zugeteilt sind.
+      const getaktet = zugeteilt.length ? await taktenSchreiben(await store.stationenFuer(id)) : 0;
+      meldung(`Tag organisiert: ${zahl(vert.verteilt)}/${zahl(vert.bedarf)} Stationsplätze besetzt${vert.fehlen ? ` (${zahl(vert.fehlen)} offen — mehr Ausschuss zuteilen)` : ""}, ${zahl(getaktet)} Prüflinge getaktet.`);
       tagZeichnen();
     });
     if (hatPl) stationenEditorBinden(id, stationen, tagZeichnen);

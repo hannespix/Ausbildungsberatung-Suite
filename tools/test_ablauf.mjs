@@ -2,7 +2,7 @@
 // Läuft ohne Browser/DB in Node und in der CI. Aufruf: node tools/test_ablauf.mjs
 
 import {
-  minZuZeit, normalisiereStationen, prueferProRunde, rotationsplan,
+  minZuZeit, normalisiereStationen, prueferProRunde, rotationsplan, prueferVerteilen,
 } from "../assets/js/ablauf.js";
 
 let fehler = 0, geprueft = 0;
@@ -89,6 +89,42 @@ eq(rotationsplan([{ name: "X" }], 0).gruppen.length, 0, "keine Prüflinge -> kei
 // Prüf-/Bewertungsfenster am Laufzettel: erste Station 08:00, Dauer 60.
 eq(p4.laufzettel[0][0].vonMin, 8 * 60, "Laufzettel beginnt 08:00");
 eq(p4.laufzettel[0][0].bisMin - p4.laufzettel[0][0].vonMin, 60, "erste Station 60 Min");
+
+// --- prueferVerteilen: Restbedarf auffüllen, Eigenregie leer, Knappheit ---
+const vStat = [
+  { name: "S1", prueferBedarf: 1 },
+  { name: "S2", prueferBedarf: 2 },
+  { name: "Pflanzen", dauerMin: 20, eigenregie: true },
+];
+// Genug Prüfer:innen (3 für Bedarf 3): voll besetzt, Eigenregie leer.
+let v = prueferVerteilen(vStat, [10, 11, 12]);
+eq(v.bedarf, 3, "Bedarf 1+2 = 3");
+eq(v.verteilt, 3, "alle 3 verteilt");
+eq(v.fehlen, 0, "nichts fehlt");
+eq(v.stationen[0].prueferIds, [10], "S1 bekommt 1");
+eq(v.stationen[1].prueferIds, [11, 12], "S2 bekommt 2");
+eq(v.stationen[2].prueferIds, [], "Eigenregie ohne Prüfer");
+// Jede Person nur an einer Station.
+const flach = v.stationen.flatMap((s) => s.prueferIds);
+ok(new Set(flach).size === flach.length, "keine Person doppelt verteilt");
+
+// Knappheit: nur 2 Prüfer:innen für Bedarf 3 -> einer fehlt.
+v = prueferVerteilen(vStat, [10, 11]);
+eq(v.verteilt, 2, "2 von 3 verteilt");
+eq(v.fehlen, 1, "1 fehlt");
+
+// Bestehende gültige Zuordnung bleibt erhalten, Rest wird aufgefüllt.
+const vorbelegt = [
+  { name: "S1", prueferBedarf: 1, prueferIds: [11] },
+  { name: "S2", prueferBedarf: 2, prueferIds: [] },
+];
+v = prueferVerteilen(vorbelegt, [10, 11, 12]);
+eq(v.stationen[0].prueferIds, [11], "vorhandene Zuordnung bleibt");
+ok(v.stationen[1].prueferIds.length === 2 && !v.stationen[1].prueferIds.includes(11), "S2 mit anderen aufgefüllt");
+
+// Überzählige Prüfer:innen werden als 'uebrig' gemeldet.
+v = prueferVerteilen([{ name: "S1", prueferBedarf: 1 }], [10, 11, 12]);
+eq(v.uebrig, 2, "2 übrig bei Bedarf 1");
 
 console.log(`${geprueft} Prüfungen, ${fehler} Fehler.`);
 if (fehler) { console.error("ABLAUF-TESTS FEHLGESCHLAGEN"); process.exit(1); }
