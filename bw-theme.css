@@ -310,6 +310,10 @@ mark.bw-treffer { background: var(--bw-gelb); color: var(--bw-schwarz); padding:
 
 /* ===================== Barrierefreiheit ========================== */
 :where(a, button, input, select, textarea, [tabindex]):focus-visible { outline: 3px solid var(--bw-fokus); outline-offset: 2px; }
+/* Der Inhalts-Container (Skip-Link-Ziel) wird nach jedem Rendern per Skript
+   fokussiert (Screenreader/Scroll) — er braucht aber KEINEN sichtbaren Rahmen
+   um den ganzen Inhalt. Interaktive Elemente behalten ihren Fokusring. */
+#inhalt:focus, #inhalt:focus-visible { outline: none; }
 .bw-skip-link { position: absolute; left: -9999px; top: 0; background: var(--bw-schwarz); color: var(--bw-weiss); padding: var(--bw-space-1) var(--bw-space-2); }
 .bw-skip-link:focus { left: var(--bw-space-2); top: var(--bw-space-2); z-index: 10; }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
