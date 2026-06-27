@@ -24,6 +24,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Galabau-Notenlogik testen
         run: node tools/test_galabau.mjs
+      - name: Ablaufplan-Rotationslogik testen
+        run: node tools/test_ablauf.mjs
       - name: Bundle packen
         run: |
           mkdir -p dist

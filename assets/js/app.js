@@ -6,6 +6,25 @@
 
 import * as store from "./store.js";
 import { ENTITAETEN, NAV_REIHENFOLGE, GALABAU_BEREICHE } from "./model.js";
+import { rotationsplan, minZuZeit, PFLANZEN_DAUER } from "./ablauf.js";
+
+/**
+ * Standard-Stationen des praktischen Prüfungstags GaLaBau: die fünf praktischen
+ * Prüfungsbereiche (je 60 Min, 50 Prüfung + 10 Bewertung) plus die in
+ * Eigenregie des RP betreute Pflanzenerkennung (20 Min, ohne Ausschuss-Prüfer).
+ * Vorlage für den Rotations-Ablaufplan — Prüferbedarf je Station ist später je
+ * Termin anpassbar.
+ */
+const STATIONEN_GALABAU = GALABAU_BEREICHE.praxis
+  .map((name) => ({ name, dauerMin: 60, bewertungMin: 10, prueferBedarf: 1, eigenregie: false }))
+  .concat([{ name: "Pflanzenerkennung", dauerMin: PFLANZEN_DAUER, bewertungMin: 0, prueferBedarf: 0, eigenregie: true }]);
+
+/** "08:00"/"8:00 Uhr" -> Minuten ab Mitternacht; ungültig -> Default. */
+function zeitZuMin(text, fallback = 8 * 60) {
+  const m = String(text || "").match(/(\d{1,2}):(\d{2})/);
+  if (!m) return fallback;
+  return Math.min(23, Number(m[1])) * 60 + Math.min(59, Number(m[2]));
+}
 
 let DB_MODUS = null;
 const appEl = () => document.getElementById("app");
@@ -839,6 +858,97 @@ function tagesablaufDrucken(termin, zugeteilt, prueferZug) {
   window.print();
 }
 
+/* ----------------------------------------- Stationen-Rotation (Ablaufplan) */
+
+/** Anzeigename eines zugeteilten Prüflings. */
+function plName(z) { return ((z.nachname || "") + (z.vorname ? ", " + z.vorname : "")) || "Prüfling"; }
+
+/** Zeitfenster einer Laufzettel-Station: Prüfung + (optional) Bewertung. */
+function stationsZeitfenster(e) {
+  const s = e.station;
+  const pruefBis = e.vonMin + s.pruefMin;
+  const txt = `${minZuZeit(e.vonMin)}–${minZuZeit(pruefBis)} Prüfung`;
+  return s.bewertungMin > 0 ? `${txt} · ${minZuZeit(pruefBis)}–${minZuZeit(e.bisMin)} Bewertung` : txt;
+}
+
+/** Rotations-Plan für einen Termin aus der Standard-Stationsvorlage. */
+function ablaufplanFuer(termin, zugeteilt) {
+  return rotationsplan(STATIONEN_GALABAU, zugeteilt, { startMin: zeitZuMin(termin.zeit_von) });
+}
+
+/** Kennzahlen-Zeile (Pills) zum Plan — für das Cockpit. */
+function ablaufKennzahlenHtml(plan) {
+  if (!plan.gruppen.length) return "";
+  return `<div class="bw-bereitschaft" style="margin-top:var(--bw-space-2)">
+    <span>${zahl(plan.m)} Stationen</span>
+    <span>${zahl(plan.gruppen.length)} ${plan.gruppen.length === 1 ? "Gruppe" : "Gruppen"} à max. ${zahl(plan.m)}</span>
+    <span>${zahl(plan.prueferProRunde)} Prüfer:innen gleichzeitig</span>
+    <span>${minZuZeit(plan.startMin)}–${minZuZeit(plan.endeMin)} Uhr</span>
+    <span>0 Min Wartezeit</span>
+  </div>`;
+}
+
+/** Stationsraster einer Gruppe: Zeilen = Runden (Uhrzeit), Spalten = Stationen. */
+function gruppenRasterHtml(plan, gruppe, zugeteilt) {
+  const kopf = plan.stationen.map((s) => `<th>${esc(s.name)}${s.eigenregie ? ' <span class="bw-klein bw-leise">(RP)</span>' : ""}</th>`).join("");
+  const zeilen = gruppe.runden.map((r) => {
+    const zellen = r.zellen.map((z) => `<td>${z.prueflingIdx == null ? "—" : esc(plName(zugeteilt[z.prueflingIdx]))}</td>`).join("");
+    return `<tr><th scope="row">${minZuZeit(r.vonMin)}–${minZuZeit(r.bisMin)}</th>${zellen}</tr>`;
+  }).join("");
+  return `<table class="bw-table">
+    <thead><tr><th>Uhrzeit</th>${kopf}</tr></thead>
+    <tbody>${zeilen}</tbody>
+  </table>`;
+}
+
+/** Druckbarer Stationsplan (alle Gruppen als Raster). */
+function stationsplanDrucken(termin, zugeteilt) {
+  const plan = ablaufplanFuer(termin, zugeteilt);
+  if (!plan.gruppen.length) { meldung("Keine Prüflinge zugeteilt.", "fehler"); return; }
+  const datum = termin.datum ? new Date(termin.datum).toLocaleDateString("de-DE") : "—";
+  const gruppen = plan.gruppen.map((g) => `
+    <section style="break-inside:avoid;margin-top:var(--bw-space-3)">
+      <h2>Gruppe ${zahl(g.nr)} <span class="bw-klein bw-leise">(${zahl(g.anzahl)} Prüflinge, ab ${minZuZeit(g.startMin)} Uhr)</span></h2>
+      ${gruppenRasterHtml(plan, g, zugeteilt)}
+    </section>`).join("");
+  druckbereich().innerHTML = `
+    <h1>Ablaufplan (Stationen) — ${esc(termin.titel || "Prüfungstag")}</h1>
+    <p>${esc(datum)}${termin.ort ? " · " + esc(termin.ort) : ""} · ${zahl(plan.anzahl)} Prüflinge · ${zahl(plan.m)} Stationen · ${zahl(plan.prueferProRunde)} Prüfer:innen gleichzeitig · ${minZuZeit(plan.startMin)}–${minZuZeit(plan.endeMin)} Uhr</p>
+    <p class="bw-klein bw-leise">Karussell-Rotation: jeder Prüfling durchläuft jede Station genau einmal, ohne Leerlauf. Station je 60 Min (50 Prüfung + 10 Bewertung); Pflanzenerkennung 20 Min in Eigenregie des RP.</p>
+    ${gruppen}
+    <p class="bw-klein bw-leise" style="margin-top:var(--bw-space-3)">Erstellt mit der Ausbildungsberatung-Suite — Regierungspräsidium Freiburg</p>`;
+  window.print();
+}
+
+/** Druckbare persönliche Laufzettel (eine Karte je Prüfling). */
+function laufzettelDrucken(termin, zugeteilt) {
+  const plan = ablaufplanFuer(termin, zugeteilt);
+  if (!plan.gruppen.length) { meldung("Keine Prüflinge zugeteilt.", "fehler"); return; }
+  const datum = termin.datum ? new Date(termin.datum).toLocaleDateString("de-DE") : "—";
+  const karten = zugeteilt.map((z, i) => {
+    const eintraege = plan.laufzettel[i] || [];
+    const gruppeNr = Math.floor(i / plan.m) + 1;
+    const zeilen = eintraege.map((e) => `<tr>
+      <td>${minZuZeit(e.vonMin)}–${minZuZeit(e.bisMin)}</td>
+      <td>${esc(e.station.name)}${e.station.eigenregie ? ' <span class="bw-klein bw-leise">(RP)</span>' : ""}</td>
+      <td class="bw-klein">${stationsZeitfenster(e)}</td>
+    </tr>`).join("");
+    return `<section style="break-inside:avoid;page-break-after:always;margin-top:var(--bw-space-3)">
+      <h2>Laufzettel — ${esc(plName(z))}</h2>
+      <p class="bw-klein">${esc(termin.titel || "Prüfungstag")} · ${esc(datum)}${termin.ort ? " · " + esc(termin.ort) : ""} · Gruppe ${zahl(gruppeNr)}</p>
+      <table class="bw-table">
+        <thead><tr><th>Uhrzeit</th><th>Station</th><th>Ablauf</th></tr></thead>
+        <tbody>${zeilen || '<tr><td colspan="3">—</td></tr>'}</tbody>
+      </table>
+    </section>`;
+  }).join("");
+  druckbereich().innerHTML = `
+    <h1>Laufzettel — ${esc(termin.titel || "Prüfungstag")}</h1>
+    <p class="bw-klein bw-leise">Je Prüfling eine Seite: wann an welcher Station. ${zahl(plan.anzahl)} Prüflinge.</p>
+    ${karten}`;
+  window.print();
+}
+
 /** Druckbare Anwesenheitsliste (Unterschriftenspalte) je Prüfungstag. */
 function anwesenheitDrucken(termin, zugeteilt) {
   if (!zugeteilt.length) { meldung("Keine Prüflinge zugeteilt.", "fehler"); return; }
@@ -1043,6 +1153,7 @@ async function renderPruefungstag(pruefungId = null) {
     const bestanden = ergebnisse.filter((r) => r.bestanden === true).length;
     const hatPl = zugeteilt.length > 0;
     const pill = bereitschaftPunkt;
+    const tagPlan = ablaufplanFuer(termin, zugeteilt);
 
     document.getElementById("tag-inhalt").innerHTML = `
       <div class="bw-card" style="margin-bottom:var(--bw-space-3)">
@@ -1087,6 +1198,18 @@ async function renderPruefungstag(pruefungId = null) {
         </section>
       </div>
 
+      ${hatPl ? `<section class="bw-card" aria-labelledby="tag-ablaufplan" style="margin-top:var(--bw-space-3)">
+        <h2 id="tag-ablaufplan" style="margin-top:0">Ablaufplan (Stationen-Rotation)</h2>
+        <p class="bw-klein bw-leise" style="margin-top:0">Jeder Prüfling durchläuft jede Station genau einmal — ohne Wartezeit, mit der kleinstmöglichen Prüferzahl. Station je 60 Min (50 Prüfung + 10 Bewertung); Pflanzenerkennung 20 Min in Eigenregie des RP.</p>
+        ${ablaufKennzahlenHtml(tagPlan)}
+        <div class="bw-toolbar" style="margin-top:var(--bw-space-2)">
+          <button class="bw-btn bw-btn--gelb" type="button" id="tag-laufzettel">Laufzettel drucken (je Prüfling)</button>
+          <button class="bw-btn bw-btn--sekundaer" type="button" id="tag-stationsplan">Stationsplan drucken</button>
+        </div>
+        <h3>Gruppe 1${tagPlan.gruppen.length > 1 ? ' <span class="bw-klein bw-leise">(' + zahl(tagPlan.gruppen.length) + " Gruppen gesamt)</span>" : ""}</h3>
+        <div class="bw-tablewrap">${gruppenRasterHtml(tagPlan, tagPlan.gruppen[0], zugeteilt)}</div>
+      </section>` : ""}
+
       <h2 style="margin-top:var(--bw-space-4)">Prüflinge (${zahl(zugeteilt.length)})</h2>
       <div class="bw-tablewrap">
         <table class="bw-table">
@@ -1107,6 +1230,8 @@ async function renderPruefungstag(pruefungId = null) {
     });
     an("tag-mappe", () => mappeDrucken(termin, zugeteilt, prueferZug));
     an("tag-ablauf", () => tagesablaufDrucken(termin, zugeteilt, prueferZug));
+    an("tag-laufzettel", () => laufzettelDrucken(termin, zugeteilt));
+    an("tag-stationsplan", () => stationsplanDrucken(termin, zugeteilt));
     an("tag-anwesenheit", () => anwesenheitDrucken(termin, zugeteilt));
     an("tag-boegen", () => bewertungsboegenDrucken(termin, zugeteilt));
     an("tag-niederschrift", () => niederschriftDrucken(termin, ergebnisse, prueferZug));
