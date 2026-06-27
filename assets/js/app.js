@@ -323,7 +323,7 @@ async function renderUebersicht() {
     <section aria-labelledby="autoplan-h" style="margin-top:var(--bw-space-4)">
       <h2 id="autoplan-h">Automatische Prüfungsplanung</h2>
       <div class="bw-card">
-        <p class="bw-klein bw-leise">Verteilt alle Prüflinge je Fachrichtung gleichmäßig auf passend viele Prüfungstermine (Kapazität je Tag), nach PLZ geclustert, legt fehlende Termine an, besetzt je Termin einen Ausschuss und erstellt den Stationen-Ablaufplan: Ausschuss auf Stationen verteilt, Startzeit &amp; Reihenfolge je Prüfling aus der Karussell-Rotation (kein 20-Minuten-Raster). Ergebnis im <a href="#/planungsliste">Prüfer-Plan</a>, in der <a href="#/planung">Planung</a> und im <a href="#/pruefungstag">Prüfungstag-Cockpit</a>.</p>
+        <p class="bw-klein bw-leise">Verteilt alle Prüflinge je Fachrichtung gleichmäßig auf passend viele Prüfungstermine (Kapazität je Tag automatisch aus Ablaufplan &amp; Tageslänge, optional überschreibbar), nach PLZ geclustert, legt fehlende Termine an, besetzt je Termin einen Ausschuss und erstellt den Stationen-Ablaufplan: Ausschuss auf Stationen verteilt, Startzeit &amp; Reihenfolge je Prüfling aus der Karussell-Rotation (kein 20-Minuten-Raster). Ergebnis im <a href="#/planungsliste">Prüfer-Plan</a>, in der <a href="#/planung">Planung</a> und im <a href="#/pruefungstag">Prüfungstag-Cockpit</a>.</p>
         <div class="bw-toolbar" style="margin-top:var(--bw-space-2)">
           <button class="bw-btn bw-btn--gelb" type="button" id="autoplan-btn">Jetzt automatisch planen</button>
         </div>
@@ -358,10 +358,11 @@ async function renderUebersicht() {
     catch (e) { console.error(e); meldung("Löschen fehlgeschlagen: " + e.message, "fehler"); }
   });
   document.getElementById("autoplan-btn").addEventListener("click", async () => {
-    const eingabe = prompt("Kapazität je Prüfungstermin (Prüflinge pro Tag):", "12");
+    const eingabe = prompt("Kapazität je Prüfungstermin (Prüflinge pro Tag) — leer lassen für automatisch aus dem Ablaufplan:", "");
     if (eingabe === null) return;
-    const cap = Math.max(1, parseInt(eingabe, 10) || 12);
-    if (!confirm(`Alle Prüflinge automatisch auf Termine (max. ${cap} je Termin) verteilen und Ausschüsse besetzen? Bestehende Zuteilungen werden ersetzt.`)) return;
+    const cap = parseInt(eingabe, 10) > 0 ? parseInt(eingabe, 10) : null;
+    const wie = cap ? `max. ${cap} je Termin` : "Kapazität automatisch aus dem Ablaufplan";
+    if (!confirm(`Alle Prüflinge automatisch auf Termine verteilen (${wie}) und Ausschüsse besetzen? Bestehende Zuteilungen werden ersetzt.`)) return;
     meldung("Planung wird erstellt…");
     try {
       const r = await store.planungAutomatisch(cap);

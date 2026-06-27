@@ -2,7 +2,7 @@
 // Läuft ohne Browser/DB in Node und in der CI. Aufruf: node tools/test_ablauf.mjs
 
 import {
-  minZuZeit, normalisiereStationen, prueferProRunde, rotationsplan, prueferVerteilen,
+  minZuZeit, normalisiereStationen, prueferProRunde, rotationsplan, prueferVerteilen, kapazitaetProTag,
 } from "../assets/js/ablauf.js";
 
 let fehler = 0, geprueft = 0;
@@ -125,6 +125,15 @@ ok(v.stationen[1].prueferIds.length === 2 && !v.stationen[1].prueferIds.includes
 // Überzählige Prüfer:innen werden als 'uebrig' gemeldet.
 v = prueferVerteilen([{ name: "S1", prueferBedarf: 1 }], [10, 11, 12]);
 eq(v.uebrig, 2, "2 übrig bei Bedarf 1");
+
+// --- kapazitaetProTag: Gruppen aus Tageslänge ---
+const sechs = Array.from({ length: 6 }, (_, i) => ({ name: "S" + i })); // 6 Stationen × 60 Min
+eq(kapazitaetProTag(sechs, 8 * 60), 6, "08–16 Uhr (480) -> 1 Gruppe -> 6");
+eq(kapazitaetProTag(sechs, 12 * 60), 12, "720 Min -> 2 Gruppen -> 12");
+eq(kapazitaetProTag(sechs, 60), 6, "zu kurzer Tag -> mind. 1 Gruppe -> 6");
+eq(kapazitaetProTag([], 480), 0, "keine Stationen -> 0");
+// Mit kürzerer Eigenregie-Station bleibt die Rundenlänge 60 (Max).
+eq(kapazitaetProTag(sechs.concat([{ name: "Pflanzen", dauerMin: 20, eigenregie: true }]), 7 * 60), 7, "7 Stationen, 420 Min -> 1 Gruppe -> 7");
 
 console.log(`${geprueft} Prüfungen, ${fehler} Fehler.`);
 if (fehler) { console.error("ABLAUF-TESTS FEHLGESCHLAGEN"); process.exit(1); }
