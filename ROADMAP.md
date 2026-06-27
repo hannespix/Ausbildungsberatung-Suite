@@ -103,6 +103,14 @@ Neue Ansicht „Planung": Prüflinge je Prüfungstermin **zuteilen** (mit Uhrzei
 Slot), Tagesliste mit Entfernen, Konflikt-/Doppelbelegungswarnung am selben Tag,
 saubere Aufräumung abhängiger Zuteilungen beim Löschen. Smoke-getestet (Chromium).
 
+### Termine-Liste mit Belegung ✅
+Die Termine-Stammdatenliste zeigt jetzt abgeleitete Spalten **Prüflinge** und
+**Ausschuss** je Termin (aus `auslastung()`) sowie ein 📅-Symbol, das den Termin
+direkt in der Planung öffnet — so sieht man bei der Saisonverwaltung auf einen
+Blick, welche Tage leer/voll bzw. ohne Ausschuss sind (Ausschuss 0 rot). In
+CSV-Export und Druck enthalten. Chromium-getestet (Spalten, Voll=2/Leer=0,
+Planung-Link, Mobile 390px).
+
 ### Termin direkt aus der Planung bearbeiten ✅
 In der Planung lassen sich Termindetails (Datum, Ort, Raum, Uhrzeit, …) jetzt per
 „Termin bearbeiten" direkt im Cockpit ändern — ohne Umweg über die Termine-
