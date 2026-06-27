@@ -61,6 +61,23 @@ export function normalisiereStationen(stationen) {
   });
 }
 
+/**
+ * Liefert die nächsten `anzahl` Werktage (Mo–Fr) NACH dem Basisdatum als
+ * ISO-Strings (YYYY-MM-DD). Wochenenden werden übersprungen — für die
+ * Mehrtages-Verteilung automatisch angelegter Folgetermine.
+ */
+export function werktageNach(basisISO, anzahl) {
+  const out = [];
+  const d = new Date(String(basisISO || "") + "T12:00:00");
+  if (isNaN(d)) return out;
+  const iso = (x) => `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
+  for (let k = 0; k < Math.max(0, anzahl); k++) {
+    do { d.setDate(d.getDate() + 1); } while (d.getDay() === 0 || d.getDay() === 6);
+    out.push(iso(d));
+  }
+  return out;
+}
+
 /** Gleichzeitig nötige Prüfer:innen für eine Aufstellung (Summe Bedarf). */
 export function prueferProRunde(stationen) {
   return normalisiereStationen(stationen).reduce((s, x) => s + x.prueferBedarf, 0);
