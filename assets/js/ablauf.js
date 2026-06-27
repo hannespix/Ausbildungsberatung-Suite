@@ -61,19 +61,63 @@ export function normalisiereStationen(stationen) {
   });
 }
 
+/** ISO-Datum (YYYY-MM-DD) aus einem Date (lokale Felder, keine TZ-Verschiebung). */
+function isoDatumLokal(x) {
+  return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
+}
+
+/** Ostersonntag eines Jahres als ISO (Gauß/Meeus-Algorithmus, gregorianisch). */
+export function osterSonntagISO(jahr) {
+  const a = jahr % 19, b = Math.floor(jahr / 100), c = jahr % 100;
+  const d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const monat = Math.floor((h + l - 7 * m + 114) / 31), tag = ((h + l - 7 * m + 114) % 31) + 1;
+  return `${jahr}-${String(monat).padStart(2, "0")}-${String(tag).padStart(2, "0")}`;
+}
+
 /**
- * Liefert die nächsten `anzahl` Werktage (Mo–Fr) NACH dem Basisdatum als
- * ISO-Strings (YYYY-MM-DD). Wochenenden werden übersprungen — für die
- * Mehrtages-Verteilung automatisch angelegter Folgetermine.
+ * Gesetzliche Feiertage in Baden-Württemberg eines Jahres als Set von ISO-Daten.
+ * Feste Tage + bewegliche (osterabhängige) inkl. der BW-spezifischen
+ * (Heilige Drei Könige, Fronleichnam, Allerheiligen).
+ */
+export function feiertageBW(jahr) {
+  const o = new Date(osterSonntagISO(jahr) + "T12:00:00");
+  const plus = (n) => { const x = new Date(o); x.setDate(x.getDate() + n); return isoDatumLokal(x); };
+  return new Set([
+    `${jahr}-01-01`, // Neujahr
+    `${jahr}-01-06`, // Heilige Drei Könige (BW)
+    plus(-2),        // Karfreitag
+    plus(1),         // Ostermontag
+    `${jahr}-05-01`, // Tag der Arbeit
+    plus(39),        // Christi Himmelfahrt
+    plus(50),        // Pfingstmontag
+    plus(60),        // Fronleichnam (BW)
+    `${jahr}-10-03`, // Tag der Deutschen Einheit
+    `${jahr}-11-01`, // Allerheiligen (BW)
+    `${jahr}-12-25`, // 1. Weihnachtstag
+    `${jahr}-12-26`, // 2. Weihnachtstag
+  ]);
+}
+
+/**
+ * Liefert die nächsten `anzahl` Werktage NACH dem Basisdatum als ISO-Strings
+ * (YYYY-MM-DD). Übersprungen werden Wochenenden UND gesetzliche Feiertage in
+ * Baden-Württemberg — für die Mehrtages-Verteilung automatisch angelegter
+ * Folgetermine.
  */
 export function werktageNach(basisISO, anzahl) {
   const out = [];
   const d = new Date(String(basisISO || "") + "T12:00:00");
   if (isNaN(d)) return out;
-  const iso = (x) => `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
+  const cache = new Map();
+  const feiertage = (y) => { if (!cache.has(y)) cache.set(y, feiertageBW(y)); return cache.get(y); };
   for (let k = 0; k < Math.max(0, anzahl); k++) {
-    do { d.setDate(d.getDate() + 1); } while (d.getDay() === 0 || d.getDay() === 6);
-    out.push(iso(d));
+    do {
+      d.setDate(d.getDate() + 1);
+    } while (d.getDay() === 0 || d.getDay() === 6 || feiertage(d.getFullYear()).has(isoDatumLokal(d)));
+    out.push(isoDatumLokal(d));
   }
   return out;
 }

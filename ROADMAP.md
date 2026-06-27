@@ -231,12 +231,15 @@ als eigene 20-Min-Station in Eigenregie des RP (ohne Ausschuss-Prüfer).
   ist entfernt. Chromium-getestet (Auto-Plan: 10 Prüflinge → 6×08:00 + 4×14:00,
   keine :20/:40-Slots, 6 Stationen, Ausschuss verteilt, Eigenregie frei,
   eindeutige Reihenfolge, Mobile 390px, Galabau-Mathe).
-- ✅ **Mehrtages-Verteilung überspringt Wochenenden**: legt die automatische
-  Planung Folgetermine an, liegen diese nur noch auf **Werktagen (Mo–Fr)** — die
+- ✅ **Mehrtages-Verteilung überspringt Wochenenden & Feiertage (BW)**: legt die
+  automatische Planung Folgetermine an, liegen diese nur noch auf **Werktagen
+  (Mo–Fr)** und **nicht auf gesetzlichen Feiertagen in Baden-Württemberg** — die
   nächsten freien Werktage nach dem letzten vorhandenen Termin. Reine, getestete
-  Funktion `ablauf.js → werktageNach(basisISO, anzahl)` (+5 Unit-Tests, 104
-  gesamt). Chromium-getestet (20 Prüflinge → 4 Termine Di–Fr, kein Sa/So,
-  eindeutige Daten, Mobile 390px, Galabau-Mathe).
+  Funktionen `ablauf.js → werktageNach`, `osterSonntagISO` (Gauß/Meeus) und
+  `feiertageBW` (feste + bewegliche inkl. Heilige Drei Könige, Fronleichnam,
+  Allerheiligen); 113 Unit-Tests gesamt. Chromium-getestet (Termine um Ostern
+  2026 springen über Karfreitag/Wochenende/Ostermontag → 07./08./09.04.; kein
+  WE/Feiertag; Mobile 390px, Galabau-Mathe).
 - ✅ **Kapazität je Tag aus dem Ablaufplan**: die automatische Planung leitet die
   Prüflingszahl je Termin jetzt aus dem Ablaufplan ab — `kapazitaetProTag` rechnet
   `floor(Tageslänge / (Stationen × Rundenlänge)) × Stationen` (mind. eine Gruppe),

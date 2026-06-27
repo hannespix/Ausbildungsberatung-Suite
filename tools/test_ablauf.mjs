@@ -3,6 +3,7 @@
 
 import {
   minZuZeit, normalisiereStationen, prueferProRunde, rotationsplan, prueferVerteilen, kapazitaetProTag, stationsBelegung, werktageNach,
+  osterSonntagISO, feiertageBW,
 } from "../assets/js/ablauf.js";
 
 let fehler = 0, geprueft = 0;
@@ -183,6 +184,21 @@ const wt = werktageNach("2026-07-10", 10);
 ok(wt.every((s) => { const g = new Date(s + "T12:00:00").getDay(); return g >= 1 && g <= 5; }), "nur Werktage");
 ok(wt.every((s, i) => i === 0 || s > wt[i - 1]), "streng aufsteigend");
 eq(werktageNach("2026-07-10", 0), [], "anzahl 0 -> leer");
+
+// --- Ostersonntag + BW-Feiertage ---
+eq(osterSonntagISO(2026), "2026-04-05", "Ostersonntag 2026 = 05.04.");
+eq(osterSonntagISO(2025), "2025-04-20", "Ostersonntag 2025 = 20.04.");
+const fb = feiertageBW(2026);
+ok(fb.has("2026-04-03"), "Karfreitag 2026 ist Feiertag");
+ok(fb.has("2026-04-06"), "Ostermontag 2026 ist Feiertag");
+ok(fb.has("2026-01-06"), "Heilige Drei Könige (BW)");
+ok(fb.has("2026-06-04"), "Fronleichnam 2026 (BW, Ostern+60)");
+ok(fb.has("2026-12-25") && fb.has("2026-12-26"), "Weihnachtsfeiertage");
+ok(!fb.has("2026-07-14"), "normaler Werktag ist kein Feiertag");
+
+// --- werktageNach überspringt Feiertage (Karfreitag/Ostermontag 2026) ---
+// Basis Do 02.04.: Fr 03. (Karfreitag) + WE + Mo 06. (Ostermontag) raus -> Di 07., Mi 08.
+eq(werktageNach("2026-04-02", 2), ["2026-04-07", "2026-04-08"], "Oster-Feiertage + WE übersprungen");
 
 console.log(`${geprueft} Prüfungen, ${fehler} Fehler.`);
 if (fehler) { console.error("ABLAUF-TESTS FEHLGESCHLAGEN"); process.exit(1); }
