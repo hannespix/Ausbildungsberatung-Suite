@@ -249,6 +249,12 @@ als eigene 20-Min-Station in Eigenregie des RP (ohne Ausschuss-Prüfer).
   Chromium-getestet (Pause nach Station 3/45 Min → Pause 11:00–11:45, Runde 4 auf
   11:45, Pause-Zeile in Raster & Laufzettel, Persistenz, Mobile 390px,
   Galabau-Mathe).
+- ✅ **Mappen-Deckblatt mit Inhaltsverzeichnis**: die Tagesmappe beginnt jetzt mit
+  einem Deckblatt — Eckdaten (Datum, Ort, Fachrichtung, Zeitrahmen, Mittagspause),
+  Kennzahlen (Prüflinge, Stationen/Gruppen, gleichzeitige Prüfer:innen), die
+  Ausschussliste und ein Inhaltsverzeichnis der Mappe. Ersetzt die alte
+  Phasentabelle als Auftakt. Chromium-getestet (erste Seite = Deckblatt mit
+  Eckdaten/Ausschuss/Inhalt, Folgeseiten vorhanden, Mobile 390px, Galabau-Mathe).
 - ✅ **Komplette Tagesmappe (ein Klick)**: „Prüfungstag-Mappe drucken" bündelt
   jetzt das ganze Tagespaket in Ablaufreihenfolge — Übersicht, **Stationsplan**,
   **Laufzettel je Prüfling**, **Stationskarten je Prüfer:in**, Bewertungsbögen

@@ -1266,17 +1266,53 @@ function bewertungsboegenDrucken(termin, zugeteilt) {
  * leerer Bewertungsbogen und die Ergebnis-Niederschrift — eine Aktion für die
  * gesamte Durchführung (je Abschnitt eine Seite).
  */
+/** Deckblatt der Tagesmappe: Eckdaten, Kennzahlen, Ausschuss, Inhaltsverzeichnis. */
+function mappeDeckblattHtml(termin, plan, zugeteilt, prueferZug) {
+  const datum = termin.datum
+    ? new Date(termin.datum).toLocaleDateString("de-DE", { weekday: "long", year: "numeric", month: "long", day: "numeric" })
+    : "—";
+  const p0 = plan.gruppen[0] && plan.gruppen[0].pause;
+  const eck = (label, wert) => `<tr><th scope="row">${esc(label)}</th><td>${wert}</td></tr>`;
+  const inhalt = [
+    "Stationsplan (Gesamtraster)",
+    "Laufzettel je Prüfling",
+    "Stationskarten je Prüfer:in",
+    "Bewertungsbögen",
+    "Ergebnis-Niederschrift",
+  ];
+  return `
+    <p class="bw-klein bw-leise">Regierungspräsidium Freiburg · Ausbildungsberatung</p>
+    <h1>Prüfungstag-Mappe — ${esc(termin.titel || "Prüfungstag")}</h1>
+    <table class="bw-table bw-zeugnis"><tbody>
+      ${eck("Datum", esc(datum))}
+      ${eck("Ort", esc(termin.ort || "—") + (termin.raum ? ", " + esc(termin.raum) : ""))}
+      ${eck("Fachrichtung", esc(termin.beruf || "—"))}
+      ${plan.gruppen.length ? eck("Zeitrahmen", minZuZeit(plan.startMin) + "–" + minZuZeit(plan.endeMin) + " Uhr") : ""}
+      ${p0 ? eck("Mittagspause", minZuZeit(p0.vonMin) + "–" + minZuZeit(p0.bisMin) + " Uhr") : ""}
+      ${eck("Prüflinge", zahl(zugeteilt.length))}
+      ${plan.gruppen.length ? eck("Stationen", zahl(plan.m) + " · " + zahl(plan.gruppen.length) + " " + (plan.gruppen.length === 1 ? "Gruppe" : "Gruppen")) : ""}
+      ${plan.gruppen.length ? eck("Prüfer:innen gleichzeitig", zahl(plan.prueferProRunde)) : ""}
+    </tbody></table>
+    <h2>Prüfungsausschuss (${zahl(prueferZug.length)})</h2>
+    ${prueferZug.length
+      ? `<ul>${prueferZug.map((p) => `<li>${esc((p.nachname || "") + (p.vorname ? ", " + p.vorname : ""))}${p.rolle ? " — " + esc(p.rolle) : ""}</li>`).join("")}</ul>`
+      : '<p class="bw-leise">Noch kein Ausschuss zugeteilt.</p>'}
+    <h2>Inhalt dieser Mappe</h2>
+    <ol>${inhalt.map((x) => `<li>${esc(x)}</li>`).join("")}</ol>
+    <p class="bw-klein bw-leise">Erstellt mit der Ausbildungsberatung-Suite — Regierungspräsidium Freiburg</p>`;
+}
+
 async function mappeDrucken(termin, zugeteilt, prueferZug, stationen, pause) {
   if (!zugeteilt.length) { meldung("Keine Prüflinge zugeteilt.", "fehler"); return; }
   const ergebnisse = await store.terminErgebnisse(termin.id);
   const plan = ablaufplanFuer(termin, zugeteilt, stationen, pause);
   const prueferName = prueferNameMap(prueferZug);
   const blatt = (html) => `<section class="bw-zeugnisblatt">${html}</section>`;
-  // Komplette Tagesmappe in Ablaufreihenfolge: Übersicht/Stationsplan →
+  // Komplette Tagesmappe in Ablaufreihenfolge: Deckblatt → Stationsplan →
   // Laufzettel (Prüflinge) → Stationskarten (Prüfer:innen) → Bewertungsbögen →
   // Niederschrift. Nutzt dieselben Bausteine wie die Einzeldrucke.
   druckbereich().innerHTML =
-    blatt(tagesablaufHtml(termin, zugeteilt, prueferZug)) +
+    blatt(mappeDeckblattHtml(termin, plan, zugeteilt, prueferZug)) +
     (plan.gruppen.length ? blatt(stationsplanHtml(termin, plan, zugeteilt, prueferName)) : "") +
     (plan.gruppen.length ? blatt(laufzettelHtml(termin, plan, zugeteilt, prueferName)) : "") +
     (plan.gruppen.length ? blatt(stationskartenHtml(termin, plan, zugeteilt, prueferName)) : "") +
