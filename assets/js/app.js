@@ -110,6 +110,7 @@ function navGruppen() {
       { key: "planungsliste", label: "Prüfer-Plan" },
     ] },
     { label: "Prüfungstag", kinder: [
+      { key: "pruefungstag", label: "Tagescockpit" },
       { key: "noten", label: "Noten" },
       { key: "zeugnisse", label: "Zeugnisse" },
     ] },
@@ -987,6 +988,126 @@ async function mappeDrucken(termin, zugeteilt, prueferZug) {
   window.print();
 }
 
+/* --------------------------------------------------------- Prüfungstag-Cockpit
+   Tag-zentriertes Dashboard: ein Termin gewählt → Status, Bulk-Dokumente und
+   Schnellzugriff (Noten/Zeugnisse/Planung) an einem Ort. Verwendet die
+   vorhandenen Druck-/Status-Funktionen wieder (keine Logik-Duplikate). */
+async function renderPruefungstag(pruefungId = null) {
+  if (pruefungId == null) { const tp = routeParams().termin; if (tp) pruefungId = Number(tp); }
+  const termine = await store.liste("pruefungen");
+  if (!termine.length) {
+    appEl().innerHTML = `<h1>Prüfungstag</h1>
+      <p class="bw-hinweis">Noch keine Prüfungstermine. Erst unter <a href="#/pruefungen">Prüfungstermine</a> anlegen oder über die <a href="#/">Übersicht</a> „Automatische Prüfungsplanung" starten.</p>`;
+    return;
+  }
+  if (pruefungId == null) pruefungId = termine[0].id;
+
+  appEl().innerHTML = `
+    <h1>Prüfungstag</h1>
+    <p class="bw-unterzeile">Alles für den Prüfungstag an einem Ort — Vorbereitung, Durchführung, Abschluss.</p>
+    <div class="bw-toolbar">
+      <div class="bw-field" style="max-width:36rem;flex:1 1 22rem;margin:0">
+        <label for="tag-termin">Prüfungstermin</label>
+        <select id="tag-termin">
+          ${termine.map((t) => `<option value="${t.id}"${String(t.id) === String(pruefungId) ? " selected" : ""}>${esc(terminLabel(t))}</option>`).join("")}
+        </select>
+      </div>
+    </div>
+    <div id="tag-inhalt" aria-live="polite"></div>`;
+
+  const wahl = document.getElementById("tag-termin");
+
+  async function tagZeichnen() {
+    const id = Number(wahl.value);
+    const termin = termine.find((t) => t.id === id) || {};
+    const zugeteilt = await store.zuteilungenFuer(id);
+    const prueferZug = await store.prueferFuer(id);
+    const ergebnisse = await store.terminErgebnisse(id);
+
+    const datum = termin.datum ? new Date(termin.datum).toLocaleDateString("de-DE", { weekday: "long", day: "2-digit", month: "2-digit", year: "numeric" }) : "ohne Datum";
+    const istHeute = termin.datum && new Date(termin.datum).toISOString().slice(0, 10) === new Date().toISOString().slice(0, 10);
+    const mitSlot = zugeteilt.filter((z) => z.slot).length;
+    const zugesagt = prueferZug.filter((p) => (p.status || "offen") === "zugesagt").length;
+    const offenZ = prueferZug.filter((p) => ["offen", "angefragt"].includes(p.status || "offen")).length;
+    const bewertet = ergebnisse.filter((r) => r.gesamt != null).length;
+    const bestanden = ergebnisse.filter((r) => r.bestanden === true).length;
+    const hatPl = zugeteilt.length > 0;
+    const pill = bereitschaftPunkt;
+
+    document.getElementById("tag-inhalt").innerHTML = `
+      <div class="bw-card" style="margin-bottom:var(--bw-space-3)">
+        <strong style="font-size:var(--bw-fs-h3)">${esc(termin.titel || "Termin")}</strong>
+        ${istHeute ? ' <span class="bw-tag bw-tag--ok">Heute</span>' : ""}
+        <div class="bw-klein bw-leise" style="margin-top:var(--bw-space-1)">
+          ${esc(datum)}${termin.zeit_von ? " · ab " + esc(termin.zeit_von) + " Uhr" : ""}${termin.ort ? " · " + esc(termin.ort) : ""}${termin.raum ? ", " + esc(termin.raum) : ""}${termin.beruf ? " · " + esc(termin.beruf) : ""}
+        </div>
+        ${hatPl ? `<div class="bw-bereitschaft" style="margin-top:var(--bw-space-2)">
+          <span>${pill(prueferZug.length >= 3)} Ausschuss ${zahl(prueferZug.length)}/3</span>
+          <span>${pill(prueferZug.length > 0 && offenZ === 0)} Zusagen ${offenZ ? zahl(offenZ) + " offen" : "ok"}</span>
+          <span>${pill(mitSlot === zugeteilt.length)} Uhrzeiten ${zahl(mitSlot)}/${zahl(zugeteilt.length)}</span>
+          <span>${pill(bewertet === zugeteilt.length)} Bewertet ${zahl(bewertet)}/${zahl(zugeteilt.length)}${bewertet ? " · " + zahl(bestanden) + " bestanden" : ""}</span>
+        </div>` : '<p class="bw-hinweis" style="margin-top:var(--bw-space-2)">Noch keine Prüflinge zugeteilt — in der <a href="#/planung?termin=' + id + '">Tagesplanung</a> zuteilen.</p>'}
+      </div>
+
+      <div class="bw-flaechen">
+        <section class="bw-card" aria-labelledby="tag-dok">
+          <h2 id="tag-dok" style="margin-top:0">Dokumente für den Tag</h2>
+          <div class="bw-toolbar" style="margin:0">
+            <button class="bw-btn bw-btn--gelb" type="button" id="tag-mappe" ${hatPl ? "" : "disabled title=\"Keine Prüflinge zugeteilt\""}>Prüfungstag-Mappe drucken</button>
+            <button class="bw-btn bw-btn--sekundaer" type="button" id="tag-ablauf" ${hatPl || prueferZug.length ? "" : "disabled"}>Tagesablauf</button>
+            <button class="bw-btn bw-btn--sekundaer" type="button" id="tag-anwesenheit" ${hatPl ? "" : "disabled"}>Anwesenheitsliste</button>
+            <button class="bw-btn bw-btn--sekundaer" type="button" id="tag-boegen" ${hatPl ? "" : "disabled"}>Bewertungsbögen</button>
+            <button class="bw-btn bw-btn--sekundaer" type="button" id="tag-niederschrift" ${hatPl ? "" : "disabled"}>Ergebnis-Niederschrift</button>
+            <button class="bw-btn bw-btn--sekundaer" type="button" id="tag-zeugnisse" ${bewertet ? "" : "disabled title=\"Erst bewerten\""}>Zeugnisse/Mitteilungen (Serie)</button>
+            <button class="bw-btn bw-btn--sekundaer" type="button" id="tag-ics" ${termin.datum ? "" : "disabled title=\"Termin ohne Datum\""}>Termin als .ics</button>
+          </div>
+        </section>
+
+        <section class="bw-card" aria-labelledby="tag-weiter">
+          <h2 id="tag-weiter" style="margin-top:0">Weiter zu</h2>
+          <div class="bw-toolbar" style="margin:0">
+            <a class="bw-btn bw-btn--sekundaer" href="#/noten?termin=${id}">Noten erfassen</a>
+            <a class="bw-btn bw-btn--sekundaer" href="#/zeugnisse?termin=${id}">Zeugnisse</a>
+            <a class="bw-btn bw-btn--sekundaer" href="#/planung?termin=${id}">In der Planung bearbeiten</a>
+          </div>
+          <h3>Ausschuss (${zahl(prueferZug.length)})</h3>
+          ${prueferZug.length
+            ? `<ul class="bw-klein" style="margin:0;padding-left:1.2em">${prueferZug.map((p) => `<li>${esc((p.nachname || "") + (p.vorname ? ", " + p.vorname : ""))}${p.rolle ? " — " + esc(p.rolle) : ""} ${zusageBadge(p.status)}</li>`).join("")}</ul>`
+            : '<p class="bw-leise bw-klein">Noch kein Ausschuss — in der <a href="#/planung?termin=' + id + '">Planung</a> besetzen.</p>'}
+        </section>
+      </div>
+
+      <h2 style="margin-top:var(--bw-space-4)">Prüflinge (${zahl(zugeteilt.length)})</h2>
+      <div class="bw-tablewrap">
+        <table class="bw-table">
+          <thead><tr><th>Uhrzeit</th><th>Name</th><th>Betrieb</th><th style="text-align:right">Gesamtnote</th><th>Ergebnis</th></tr></thead>
+          <tbody>${ergebnisse.length ? ergebnisse.map((r) => `
+            <tr>
+              <td>${esc(r.slot || "—")}</td>
+              <td>${esc((r.nachname || "") + ", " + (r.vorname || ""))}</td>
+              <td>${esc(r.betrieb || "")}</td>
+              <td style="text-align:right">${formatNote(r.gesamt)}</td>
+              <td>${ergebnisBadge(r.bestanden)}</td>
+            </tr>`).join("") : '<tr><td colspan="5" class="bw-leise">Noch keine Prüflinge zugeteilt.</td></tr>'}</tbody>
+        </table>
+      </div>`;
+
+    const an = (idAttr, fn) => document.getElementById(idAttr)?.addEventListener("click", async () => {
+      try { await fn(); } catch (e) { console.error(e); meldung("Aktion fehlgeschlagen: " + e.message, "fehler"); }
+    });
+    an("tag-mappe", () => mappeDrucken(termin, zugeteilt, prueferZug));
+    an("tag-ablauf", () => tagesablaufDrucken(termin, zugeteilt, prueferZug));
+    an("tag-anwesenheit", () => anwesenheitDrucken(termin, zugeteilt));
+    an("tag-boegen", () => bewertungsboegenDrucken(termin, zugeteilt));
+    an("tag-niederschrift", () => niederschriftDrucken(termin, ergebnisse, prueferZug));
+    an("tag-zeugnisse", () => serienZeugnisDruck(id));
+    an("tag-ics", () => { icsDownload("Pruefungstag-" + (termin.titel || "Termin").replace(/[^\wäöüÄÖÜß-]/g, "_") + ".ics", icsBauen([termin])); meldung("Termin als .ics exportiert."); });
+  }
+
+  wahl.addEventListener("change", () => renderPruefungstag(Number(wahl.value)));
+  await tagZeichnen();
+}
+
 async function renderPlanung() {
   const termine = await store.liste("pruefungen");
   if (!termine.length) {
@@ -1746,6 +1867,8 @@ function roem(n) { return ["", "I", "II", "III", "IV", "V"][n] || String(n); }
 /* --------------------------------------------------------------- Zeugnisse */
 
 async function renderZeugnisse(pruefungId = null) {
+  // Deep-Link #/zeugnisse?termin=… (z. B. aus dem Tagescockpit).
+  if (pruefungId == null) { const tp = routeParams().termin; if (tp) pruefungId = Number(tp); }
   const termine = await store.liste("pruefungen");
   const rows = await store.bewertungenListe(pruefungId);
   const bewertete = rows.filter((r) => r.gesamt != null).length;
@@ -3313,6 +3436,7 @@ async function route() {
   const r = aktiveRoute();
   try {
     if (r === "uebersicht") await renderUebersicht();
+    else if (r === "pruefungstag") await renderPruefungstag();
     else if (r === "planung") await renderPlanung();
     else if (r === "planungsliste") await renderPlanungsliste();
     else if (r === "noten") await renderNoten();
