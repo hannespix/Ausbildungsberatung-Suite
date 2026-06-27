@@ -67,6 +67,40 @@ export function prueferProRunde(stationen) {
 }
 
 /**
+ * Verteilt verfügbare Prüfer:innen auf die betreuten Stationen: bereits
+ * zugeordnete (gültige) Personen bleiben erhalten, der Restbedarf wird der
+ * Reihe nach mit noch freien Prüfer:innen aufgefüllt. Jede Person betreut
+ * höchstens eine Station (im Karussell laufen alle Stationen gleichzeitig).
+ * Eigenregie-Stationen erhalten keine Prüfer:innen.
+ * @returns {{stationen:Array, bedarf:number, verteilt:number, fehlen:number, uebrig:number}}
+ */
+export function prueferVerteilen(stationen, prueferIds) {
+  const st = normalisiereStationen(stationen);
+  const alle = (prueferIds || []).map(Number).filter((x) => x > 0);
+  const benutzt = new Set();
+  // 1) Vorhandene, gültige Zuordnungen behalten (bis Bedarf), ohne Doppelung.
+  const ergebnis = st.map((s) => {
+    if (s.eigenregie) return { ...s, prueferIds: [] };
+    const behalten = (s.prueferIds || [])
+      .map(Number)
+      .filter((id) => alle.includes(id) && !benutzt.has(id))
+      .slice(0, s.prueferBedarf);
+    behalten.forEach((id) => benutzt.add(id));
+    return { ...s, prueferIds: behalten };
+  });
+  // 2) Restbedarf mit noch freien Prüfer:innen auffüllen.
+  const frei = alle.filter((id) => !benutzt.has(id));
+  let fi = 0;
+  ergebnis.forEach((s) => {
+    if (s.eigenregie) return;
+    while (s.prueferIds.length < s.prueferBedarf && fi < frei.length) s.prueferIds.push(frei[fi++]);
+  });
+  const bedarf = ergebnis.reduce((n, s) => n + (s.eigenregie ? 0 : s.prueferBedarf), 0);
+  const verteilt = ergebnis.reduce((n, s) => n + s.prueferIds.length, 0);
+  return { stationen: ergebnis, bedarf, verteilt, fehlen: Math.max(0, bedarf - verteilt), uebrig: Math.max(0, alle.length - verteilt) };
+}
+
+/**
  * Baut den optimierten Rotations-Ablaufplan.
  * @param {Array} stationen  Stationsdefinitionen (siehe normalisiereStationen).
  * @param {number|Array} prueflinge  Anzahl oder Liste {id,name,...}.

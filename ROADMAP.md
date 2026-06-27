@@ -198,10 +198,19 @@ als eigene 20-Min-Station in Eigenregie des RP (ohne Ausschuss-Prüfer).
   durch `stationenFuer`/`stationenSetzen` und die Engine `normalisiereStationen`
   durchgereicht). Chromium-getestet (Zuordnung speichern → Name im Raster &
   Stationsplan, Persistenz über `stationenFuer`, Mobile 390px, Galabau-Mathe).
+- ✅ **Prüfungstag-Assistent (ein Knopf)**: „Tag automatisch organisieren" im
+  Cockpit erledigt den ganzen Tag in einem Schritt — Stationen sichern (Standard-
+  vorlage, falls noch keine), den nicht abgesagten Ausschuss auf die betreuten
+  Stationen verteilen (bestehende Zuordnungen bleiben, Restbedarf wird aufgefüllt,
+  Eigenregie bleibt frei) und den Ablaufplan übernehmen (Startzeit & Reihenfolge
+  auf alle Prüflinge). Rückmeldung fasst zusammen, wie viele Stationsplätze
+  besetzt sind (offene werden benannt) und wie viele Prüflinge getaktet wurden.
+  Reine, testbare Verteil-Logik `ablauf.js → prueferVerteilen` (62 Unit-Tests).
+  Chromium-getestet (1 Klick: 6 Stationen, 3 Ausschuss → 3/5 besetzt + 2 offen
+  gemeldet, Eigenregie frei, 8/8 getaktet, Mobile 390px, Galabau-Mathe).
 - _Nächster Schritt:_ die globale „Automatische Prüfungsplanung" vom
   20-Min-Raster auf das Ablaufplan-Modell umstellen (Masseneinstieg folgt
-  demselben Takt); danach ein Prüfungstag-Assistent (ein Knopf: Stationen
-  sichern → Ausschuss auf Stationen verteilen → Ablaufplan übernehmen → Mappe).
+  demselben Takt).
 
 ### M3d — Ergebnis-Niederschrift je Termin ✅
 „Ergebnis-Niederschrift" in der Planung: druckbares Protokoll je Prüfungstag,
