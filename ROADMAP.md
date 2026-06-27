@@ -331,6 +331,12 @@ CSV/Excel; Format für nachgelagerte Systeme (z. B. Listen, Seriendruck).
   vorhandene ICS-Infrastruktur (`icsBauen`, jetzt mit „Rolle:" je Termin).
   Chromium-getestet (nur datierter Einsatz im VEVENT, SUMMARY/DTSTART/Rolle
   korrekt, Mobile 390px).
+- ✅ **Prüflings-Termin als .ics**: in der Prüflings-Akte exportiert „Termin als
+  Kalender (.ics)" den persönlichen Prüfungstermin als VCALENDAR — Startzeit ist
+  der Uhrzeit-Slot des Prüflings (sonst der Terminbeginn), mit Ort/Raum und
+  Fachrichtung. Ergänzt die gedruckte Einladung digital (Outlook-Import),
+  symmetrisch zum Prüfer-ICS. Chromium-getestet (1 VEVENT, DTSTART nutzt den
+  Slot 08:40, SUMMARY mit Fachrichtung, Mobile 390px).
 - Offen: vCard-Export der Adress-/Telefonliste; `mailto:`-Einladung (Prüfer-Plan
   vorhanden).
 

@@ -1974,6 +1974,7 @@ async function renderPrueflingAkte(id) {
     <div class="bw-toolbar" style="margin-bottom:var(--bw-space-3)">
       <button class="bw-btn bw-btn--gelb" type="button" id="akte-bewerten">${bewertet ? "Note ändern" : "Bewerten"}</button>
       <button class="bw-btn bw-btn--sekundaer" type="button" id="akte-einladung" ${a.termine.length ? "" : "disabled title=\"Erst einem Termin zuteilen\""}>Einladung drucken</button>
+      <button class="bw-btn bw-btn--sekundaer" type="button" id="akte-ics" ${a.termine.some((t) => t.datum) ? "" : "disabled title=\"Kein datierter Prüfungstermin\""}>Termin als Kalender (.ics)</button>
       <button class="bw-btn bw-btn--sekundaer" type="button" id="akte-zeugnis" ${bewertet ? "" : "disabled title=\"Erst bewerten\""}>${bewertet && b && b.bestanden === false ? "Ergebnis-Mitteilung drucken" : "Zeugnis drucken"}</button>
       <button class="bw-btn bw-btn--sekundaer" type="button" id="akte-bearbeiten">Stammdaten bearbeiten</button>
       ${zurueckgezogen
@@ -2036,6 +2037,18 @@ async function renderPrueflingAkte(id) {
   document.getElementById("akte-einladung").addEventListener("click", async () => {
     try { await einladungDrucken(p.id); }
     catch (e) { console.error(e); meldung("Einladung konnte nicht erstellt werden: " + e.message, "fehler"); }
+  });
+  document.getElementById("akte-ics")?.addEventListener("click", () => {
+    // Persönlicher Prüfungstermin als Kalendereintrag — Startzeit ist der
+    // Uhrzeit-Slot des Prüflings (sonst der Terminbeginn).
+    const termine = a.termine.filter((t) => t.datum).map((t) => ({
+      id: t.id, titel: "Abschlussprüfung Gärtner/in" + (t.beruf ? " — " + t.beruf : ""),
+      beruf: t.beruf, datum: t.datum, zeit_von: t.slot || t.zeit_von, ort: t.ort, raum: t.raum,
+    }));
+    if (!termine.length) { meldung("Kein datierter Prüfungstermin für den Kalender-Export.", "fehler"); return; }
+    const dn = `Pruefungstermin-${(p.nachname || "Pruefling").replace(/[^\wäöüÄÖÜß-]/g, "_")}.ics`;
+    icsDownload(dn, icsBauen(termine));
+    meldung(`Prüfungstermin als Kalender (.ics) exportiert. In Outlook über „Datei → Öffnen/Importieren" einlesen.`);
   });
   document.getElementById("akte-bearbeiten").addEventListener("click", () => {
     formularOeffnen("prueflinge", p, () => renderPrueflingAkte(id));
