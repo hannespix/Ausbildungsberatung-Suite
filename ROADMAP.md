@@ -178,8 +178,21 @@ als eigene 20-Min-Station in Eigenregie des RP (ohne Ausschuss-Prüfer).
   greift die Standardvorlage. Eigenregie-Stationen zählen 0 Prüfer:innen.
   Chromium-getestet (Bedarf 3 speichern → 7 Prüfer:innen, Persistenz,
   Eigenregie-Toggle deaktiviert den Bedarf, Mobile 390px, Galabau-Mathe).
+- ✅ **Ablaufplan als verbindlicher Takt („unter einen Hut")**: ein Klick
+  „Ablaufplan übernehmen" im Cockpit schreibt **Startzeit (slot) und
+  Reihenfolge** aus der Stationen-Rotation auf alle Prüflinge (sichert die
+  Stationen vorher, falls noch Standardvorlage). Damit gibt es **ein einziges
+  Zeitmodell** statt des alten, verworfenen 20-Minuten-Rasters: Anwesenheits-
+  liste, Noten-Reihenfolge, Ergebnis-Niederschrift und Zeugnisreihenfolge folgen
+  exakt dem Ablaufplan, und die Readiness-Zeile „Uhrzeiten x/n" wird grün. Ein
+  „übernommen"-Marker zeigt, dass der gespeicherte Stand dem aktuellen Plan
+  entspricht. `store.ablaufZeitenUebernehmen`. Chromium-getestet (8 Prüflinge →
+  Gruppe 1 = 08:00 ×6, Gruppe 2 = 14:00 ×2, Reihenfolge 1–8, Niederschrift &
+  Anwesenheit folgen dem Takt, Readiness 8/8, Mobile 390px, Galabau-Mathe).
 - _Nächster Schritt:_ konkrete Ausschuss-Prüfer:innen den einzelnen Stationen
-  zuordnen (Namen je Station statt nur Bedarfszahl).
+  zuordnen (Namen je Station statt nur Bedarfszahl); danach die globale
+  „Automatische Prüfungsplanung" vom 20-Min-Raster auf das Ablaufplan-Modell
+  umstellen, damit auch der Masseneinstieg demselben Uhrwerk folgt.
 
 ### M3d — Ergebnis-Niederschrift je Termin ✅
 „Ergebnis-Niederschrift" in der Planung: druckbares Protokoll je Prüfungstag,

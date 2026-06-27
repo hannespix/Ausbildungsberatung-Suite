@@ -310,6 +310,28 @@ export async function entferneZuteilung(zuteilungId) {
 }
 
 /**
+ * Übernimmt den Stationen-Rotations-Ablaufplan als verbindlichen Takt: schreibt
+ * je Prüfling Startzeit (slot) und Reihenfolge in die Zuteilung. Danach folgen
+ * alle Ansichten (Anwesenheit, Noten, Niederschrift, Zeugnisreihenfolge) dem
+ * Ablaufplan — ein einziges Zeitmodell statt konkurrierender Raster.
+ * @param {Array<{prueflingId,slot,reihenfolge}>} eintraege
+ * @returns {number} Anzahl aktualisierter Zuteilungen.
+ */
+export async function ablaufZeitenUebernehmen(pruefungId, eintraege) {
+  const pid = Number(pruefungId);
+  let n = 0;
+  for (const e of eintraege || []) {
+    const res = await _pg.query(
+      `UPDATE zuteilungen SET slot = $3, reihenfolge = $4
+        WHERE pruefung_id = $1 AND pruefling_id = $2 RETURNING pruefling_id`,
+      [pid, Number(e.prueflingId), e.slot || null, Math.round(Number(e.reihenfolge) || 0)]
+    );
+    n += res.rows.length;
+  }
+  return n;
+}
+
+/**
  * Teilt alle noch nicht zugeteilten Prüflinge der Termin-Fachrichtung diesem
  * Termin zu (alphabetische Reihenfolge). Uhrzeiten bleiben offen und werden
  * manuell oder später per Tagesraster vergeben.
