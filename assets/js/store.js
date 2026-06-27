@@ -154,7 +154,106 @@ export async function oeffnen() {
       angelegt timestamptz DEFAULT now()
     );
   `);
+  // Berichtsheftkontrolle: eine Kontrolle je Auszubildende:m (= Prüfling) pro
+  // Ausbildungsjahr und Durchsicht. UNIQUE verhindert versehentliche Doppel-
+  // erfassung (Quelle-Bug: dort fehlte die Eindeutigkeit). Wiedervorlage-Frist
+  // wird gespeichert, der WV-Status aber stets aus der Frist abgeleitet
+  // (kein veraltender Status in der DB).
+  await _pg.exec(`
+    CREATE TABLE IF NOT EXISTS berichtsheft_kontrollen (
+      id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      pruefling_id bigint NOT NULL,
+      datum date NOT NULL,
+      ausbildungsjahr int,
+      durchsicht_nr int DEFAULT 1,
+      ergebnis text NOT NULL DEFAULT 'in_ordnung',
+      maengel text,
+      fehltage int DEFAULT 0,
+      bemerkung text,
+      wiedervorlage_frist date,
+      wiedervorlage_erledigt boolean DEFAULT false,
+      wiedervorlage_erledigt_am date,
+      erstellt_am timestamptz DEFAULT now(),
+      UNIQUE (pruefling_id, ausbildungsjahr, durchsicht_nr)
+    );
+  `);
   return { pg: _pg, modus: _modus };
+}
+
+/* ----------------------------------------------------- Berichtsheftkontrolle */
+
+/** Kontrolle anlegen/aktualisieren (Upsert je Prüfling/Ausbildungsjahr/Durchsicht). */
+export async function berichtsheftSpeichern(d) {
+  const r = await _pg.query(
+    `INSERT INTO berichtsheft_kontrollen
+       (pruefling_id, datum, ausbildungsjahr, durchsicht_nr, ergebnis, maengel, fehltage, bemerkung, wiedervorlage_frist)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+     ON CONFLICT (pruefling_id, ausbildungsjahr, durchsicht_nr) DO UPDATE SET
+       datum = EXCLUDED.datum, ergebnis = EXCLUDED.ergebnis, maengel = EXCLUDED.maengel,
+       fehltage = EXCLUDED.fehltage, bemerkung = EXCLUDED.bemerkung,
+       wiedervorlage_frist = EXCLUDED.wiedervorlage_frist,
+       wiedervorlage_erledigt = false, wiedervorlage_erledigt_am = NULL
+     RETURNING id`,
+    [Number(d.prueflingId), d.datum, d.ausbildungsjahr == null ? null : Number(d.ausbildungsjahr),
+     Number(d.durchsichtNr || 1), d.ergebnis || "in_ordnung", d.maengel || null,
+     Number(d.fehltage || 0), d.bemerkung || null, d.wiedervorlageFrist || null]
+  );
+  return r.rows[0].id;
+}
+
+/** Übersicht je Auszubildende:m mit letzter Kontrolle (für Dashboard/Ampel). */
+export async function berichtsheftUebersicht() {
+  const res = await _pg.query(`
+    SELECT p.id AS pruefling_id, p.nachname, p.vorname, p.betrieb, p.beruf,
+           k.datum, k.ergebnis, k.maengel, k.fehltage, k.ausbildungsjahr, k.durchsicht_nr,
+           k.wiedervorlage_frist, k.wiedervorlage_erledigt, k.id AS kontroll_id,
+           (SELECT count(*)::int FROM berichtsheft_kontrollen kk WHERE kk.pruefling_id = p.id) AS anzahl
+    FROM prueflinge p
+    LEFT JOIN LATERAL (
+      SELECT * FROM berichtsheft_kontrollen b
+      WHERE b.pruefling_id = p.id
+      ORDER BY b.datum DESC, b.id DESC LIMIT 1
+    ) k ON true
+    ORDER BY p.nachname, p.vorname
+  `);
+  return res.rows;
+}
+
+/** Alle Kontrollen eines Prüflings (neueste zuerst). */
+export async function berichtsheftFuerPruefling(prueflingId) {
+  const res = await _pg.query(
+    `SELECT * FROM berichtsheft_kontrollen WHERE pruefling_id = $1 ORDER BY datum DESC, id DESC`,
+    [Number(prueflingId)]
+  );
+  return res.rows;
+}
+
+/** Offene/erledigte Wiedervorlagen (mit Frist) inkl. Prüflingsname. */
+export async function berichtsheftWiedervorlagen() {
+  const res = await _pg.query(`
+    SELECT k.*, p.nachname, p.vorname, p.betrieb
+    FROM berichtsheft_kontrollen k
+    JOIN prueflinge p ON p.id = k.pruefling_id
+    WHERE k.wiedervorlage_frist IS NOT NULL
+    ORDER BY k.wiedervorlage_erledigt, k.wiedervorlage_frist
+  `);
+  return res.rows;
+}
+
+/** Wiedervorlage als erledigt markieren (oder zurücksetzen). */
+export async function berichtsheftWvErledigen(id, erledigt = true) {
+  await _pg.query(
+    `UPDATE berichtsheft_kontrollen
+       SET wiedervorlage_erledigt = $2,
+           wiedervorlage_erledigt_am = CASE WHEN $2 THEN current_date ELSE NULL END
+     WHERE id = $1`,
+    [Number(id), !!erledigt]
+  );
+}
+
+/** Eine Kontrolle löschen. */
+export async function berichtsheftLoeschen(id) {
+  await _pg.query(`DELETE FROM berichtsheft_kontrollen WHERE id = $1`, [Number(id)]);
 }
 
 /** Liest eine Einstellung (Schlüssel/Wert); Fallback, wenn nicht gesetzt. */
