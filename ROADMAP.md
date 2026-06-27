@@ -13,6 +13,26 @@ Auto-Merge (siehe `AGENTS.md`).
 ---
 
 ## Infrastruktur
+- ✅ **Zugangsschutz + Benutzerverwaltung (leicht)**: Beim Start ist das Tool
+  **gesperrt** — ohne Anmeldung ist nichts erreichbar (Route-Guard, leere
+  Navigation). Rollen **Admin** und **Benutzer:in**; vorbelegter Admin-Zugang
+  `admin` / `azubi2027` beim ersten Start. Admins verwalten unter „Benutzer"
+  Zugänge (anlegen, Passwort setzen, löschen — letzter Admin geschützt). Sitzung
+  gilt pro Browser-Tab (`sessionStorage`). Passwörter werden **gesalzen + iteriert
+  gehasht** gespeichert (eigene Offline-SHA-256 in `assets/js/auth.js`, ohne
+  `crypto.subtle`, damit es auch per Doppelklick/`file://` läuft), nie im Klartext.
+  Neue Tabelle `benutzer`; Store-Funktionen `login`/`benutzerSeed`/
+  `benutzerAnlegen`/`passwortSetzen`/`benutzerLoeschen`. **Ehrliche Einordnung:**
+  nur eine leichte Zugangshürde für ein lokales Offline-Werkzeug, kein
+  vollwertiger Schutz gegen direkten Geräte-/Dateizugriff. 10 Auth-Unit-Tests
+  (SHA-256-Testvektoren), in der CI. Chromium-getestet (Gate, falsches Passwort,
+  Admin-Login, Reload-Session, User anlegen, Rollen-Schutz, Mobile 390px).
+- ✅ **Impressum / Datenschutz / Barrierefreiheit**: rechtliche Seiten als eigene
+  Routen, im Footer verlinkt. Datenschutz beschreibt die Offline-Verarbeitung
+  (nur lokal, keine Übertragung, kein Tracking; Echtdaten nur über BITBW/LVN);
+  Impressum mit RP-Freiburg-Angaben (von der Dienststelle final zu prüfen);
+  Barrierefreiheits-Erklärung (WCAG 2.1 AA). Chromium-getestet (erreichbar nach
+  Login, Offline-Hinweis vorhanden).
 - ✅ **GitHub-Pages-Deployment**: Workflow `.github/workflows/deploy-pages.yml`
   veröffentlicht das Tool nach jedem Update auf `main` (und manuell per „Run
   workflow") auf eine GitHub Page zum Testen im Browser. Prüft vorher die

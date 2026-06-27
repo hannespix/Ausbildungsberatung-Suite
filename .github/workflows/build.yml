@@ -26,6 +26,8 @@ jobs:
         run: node tools/test_galabau.mjs
       - name: Ablaufplan-Rotationslogik testen
         run: node tools/test_ablauf.mjs
+      - name: Auth-/Hash-Logik testen
+        run: node tools/test_auth.mjs
       - name: Bundle packen
         run: |
           mkdir -p dist
