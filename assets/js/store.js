@@ -127,8 +127,10 @@ export async function oeffnen() {
       bewertung_min int DEFAULT 10,
       pruefer_bedarf int DEFAULT 1,
       eigenregie boolean DEFAULT false,
-      reihenfolge int DEFAULT 0
+      reihenfolge int DEFAULT 0,
+      pruefer_ids text
     );
+    ALTER TABLE stationen ADD COLUMN IF NOT EXISTS pruefer_ids text;
   `);
   // Schlüssel/Wert-Einstellungen (z. B. Entschädigungssätze) — keine fachlichen
   // Daten, überleben einen Datenreset bewusst.
@@ -1049,7 +1051,7 @@ export async function entschaedigungVorschau(jahr = null) {
  */
 export async function stationenFuer(pruefungId) {
   const res = await _pg.query(
-    `SELECT id, name, dauer_min, bewertung_min, pruefer_bedarf, eigenregie
+    `SELECT id, name, dauer_min, bewertung_min, pruefer_bedarf, eigenregie, pruefer_ids
        FROM stationen WHERE pruefung_id = $1
       ORDER BY reihenfolge, id`,
     [Number(pruefungId)]
@@ -1061,6 +1063,7 @@ export async function stationenFuer(pruefungId) {
     bewertungMin: r.bewertung_min,
     prueferBedarf: r.pruefer_bedarf,
     eigenregie: !!r.eigenregie,
+    prueferIds: String(r.pruefer_ids || "").split(",").map((x) => Number(x)).filter((x) => x > 0),
   }));
 }
 
@@ -1075,9 +1078,12 @@ export async function stationenSetzen(pruefungId, liste) {
   for (let i = 0; i < rows.length; i++) {
     const s = rows[i];
     const eigen = !!s.eigenregie;
+    const prueferIds = Array.isArray(s.prueferIds)
+      ? s.prueferIds.map((x) => Number(x)).filter((x) => x > 0)
+      : [];
     await _pg.query(
-      `INSERT INTO stationen (pruefung_id, name, dauer_min, bewertung_min, pruefer_bedarf, eigenregie, reihenfolge)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      `INSERT INTO stationen (pruefung_id, name, dauer_min, bewertung_min, pruefer_bedarf, eigenregie, reihenfolge, pruefer_ids)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
       [
         pid,
         String(s.name).trim(),
@@ -1086,6 +1092,7 @@ export async function stationenSetzen(pruefungId, liste) {
         eigen ? 0 : Math.min(3, Math.max(0, Math.round(Number(s.prueferBedarf) || 1))),
         eigen,
         i,
+        prueferIds.length ? prueferIds.join(",") : null,
       ]
     );
   }
