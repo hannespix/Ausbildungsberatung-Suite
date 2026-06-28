@@ -120,6 +120,13 @@ Ausbildungsberatung (Prüfung + Berichtsheftkontrolle + Beratung + Vordrucke).
   und überfällige Wiedervorlagen aus **Berichtsheft und Beratung** gebündelt
   (nach Frist sortiert, überfällige markiert, Direktlink) — nichts rutscht durch.
   Chromium-getestet.
+- ✅ **Datensicherung vollständig (Fehlerbehebung)**: Sicherung/Wiederherstellung
+  und „alle Daten löschen" erfassten die neuen Tabellen nicht — Backups verloren
+  **Berichtsheft (Kontrollen, KW-Raster, Termine), Beratung (Fälle, Verlauf) und
+  Stationen**, und „alle löschen" ließ sie stehen. Jetzt vollständig: die JSON-
+  Sicherung enthält alle fachlichen Tabellen (IDs/Beziehungen erhalten),
+  Wiederherstellung und Reset decken sie ab (Benutzer/Einstellungen überleben
+  bewusst). Round-Trip Chromium-getestet (sichern → löschen → wiederherstellen).
 - ⏳ **Weiterer Ausbau**: Berichtsheft-Import (CSV), weitere Auswertungen.
 
 ---
