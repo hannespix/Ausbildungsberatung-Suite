@@ -158,6 +158,7 @@ a:hover { text-decoration: none; }
 .bw-btn--gelb { background: var(--bw-gelb); color: var(--bw-schwarz); border-color: var(--bw-schwarz); }
 .bw-btn--gelb:hover { background: var(--bw-schwarz); color: var(--bw-weiss); }
 .bw-btn:disabled { background: var(--bw-grau-200); border-color: var(--bw-grau-300); color: var(--bw-grau-500); cursor: not-allowed; }
+.bw-btn--klein { font-size: 0.85em; padding: 0.3em 0.7em; }
 
 /* Aufklappbare Knopf-Gruppe (native <details>) — bündelt seltener genutzte
    Aktionen, hält Werkzeugleisten aufgeräumt. Nur --bw-*-Tokens, keine Deko. */

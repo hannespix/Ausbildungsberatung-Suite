@@ -3,8 +3,9 @@
 import raster from "./raster.mjs";
 import backup from "./backup.mjs";
 import maengel from "./maengel.mjs";
+import vorlagen from "./vorlagen.mjs";
 
-const smokes = [["raster", raster], ["backup", backup], ["maengel", maengel]];
+const smokes = [["raster", raster], ["backup", backup], ["maengel", maengel], ["vorlagen", vorlagen]];
 let fehler = 0;
 for (const [name, fn] of smokes) {
   console.log(`\n=== Smoke: ${name} ===`);

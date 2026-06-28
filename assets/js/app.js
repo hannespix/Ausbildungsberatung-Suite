@@ -7,6 +7,7 @@
 import * as store from "./store.js";
 import { ENTITAETEN, NAV_REIHENFOLGE, GALABAU_BEREICHE, STANDARD_STATIONEN_GALABAU } from "./model.js";
 import { rotationsplan, minZuZeit, prueferVerteilen, stationsBelegung } from "./ablauf.js";
+import { emlBauen, base64FromBytes } from "./eml.js";
 import {
   BERUFE, berufNach, berechne, getTarifVerguetung, getJahresurlaub,
   ds as rDs, iso as rIso, addMonths as rAddMonths,
@@ -4240,16 +4241,41 @@ function renderBarrierefreiheit() {
    Vordrucke für häufig versendete E-Mails/Schreiben der Ausbildungsberatung.
    Vollständig offline: Platzhalter werden ersetzt, Text ist editierbar und kann
    kopiert, als E-Mail geöffnet (mailto) oder gedruckt werden. */
+// Gebündelte Formular-Anlagen (assets/anlagen/). Quelle/Stand werden im Tool
+// angezeigt; Aktualität prüft die Dienststelle (siehe assets/anlagen/QUELLEN.md).
+// Neue Datei: hier registrieren UND in assets/anlagen/ ablegen.
+const ANLAGEN = {
+  bav: {
+    datei: "Berufsausbildungsvertrag-gruene-Berufe.pdf",
+    label: "Berufsausbildungsvertrag (Muster, grüne Berufe)",
+    mime: "application/pdf",
+    stand: "Stand 05/2020",
+    quelle: "RP Baden-Württemberg / RP Freiburg",
+  },
+};
+
 const VORLAGEN = [
   { id: "betriebsanerkennung", titel: "Betriebsanerkennung — Unterlagen anfordern",
     betreff: "Anerkennung als Ausbildungsbetrieb — benötigte Unterlagen",
-    text: `{{anrede}}\n\nfür die Prüfung der Eignung Ihres Betriebs als Ausbildungsstätte benötigen wir folgende Unterlagen:\n\n- Beschreibung des Ausbildungsbetriebs (Tätigkeitsfelder, Ausstattung, Flächen)\n- Nachweis der persönlichen und fachlichen Eignung der Ausbilder:innen (siehe gesondertes Schreiben)\n- Angaben zu Art und Umfang der zu vermittelnden Ausbildungsinhalte\n\nBitte senden Sie uns die Unterlagen bis zum {{frist}} zu.\n\nFür Rückfragen stehen wir gerne zur Verfügung.\n\nMit freundlichen Grüßen\n{{bearbeiter}}\nAusbildungsberatung — Regierungspräsidium Freiburg` },
+    text: `{{anrede}}\n\nfür die Prüfung der Eignung Ihres Betriebs als Ausbildungsstätte benötigen wir folgende Unterlagen:\n\n{{checkliste}}\n\nBitte senden Sie uns die Unterlagen bis zum {{frist}} zu.\n\nFür Rückfragen stehen wir gerne zur Verfügung.\n\nMit freundlichen Grüßen\n{{bearbeiter}}\nAusbildungsberatung — Regierungspräsidium Freiburg`,
+    checkliste: [
+      "Beschreibung des Ausbildungsbetriebs (Tätigkeitsfelder, Ausstattung, Flächen)",
+      "Nachweis der persönlichen und fachlichen Eignung der Ausbilder:innen",
+      "Angaben zu Art und Umfang der zu vermittelnden Ausbildungsinhalte",
+    ] },
   { id: "ausbildereignung", titel: "Ausbildereignung — Nachweis anfordern",
     betreff: "Nachweis der Ausbildereignung (AEVO)",
-    text: `{{anrede}}\n\nzur Anerkennung als Ausbilder:in benötigen wir den Nachweis der berufs- und arbeitspädagogischen Eignung (Ausbildereignungsverordnung — AEVO) sowie den Nachweis der fachlichen Eignung.\n\nBitte reichen Sie die entsprechenden Zeugnisse/Bescheinigungen bis zum {{frist}} ein.\n\nMit freundlichen Grüßen\n{{bearbeiter}}\nAusbildungsberatung — Regierungspräsidium Freiburg` },
-  { id: "ausbildungsvertrag", titel: "Berufsausbildungsvertrag — Eingangsbestätigung",
-    betreff: "Eingang Ihres Berufsausbildungsvertrags",
-    text: `{{anrede}}\n\nwir bestätigen den Eingang des Berufsausbildungsvertrags. Der Vertrag wird geprüft und in das Verzeichnis der Berufsausbildungsverhältnisse eingetragen.\n\nSollten Unterlagen fehlen, melden wir uns gesondert. Andernfalls erhalten Sie die Eintragungsbestätigung.\n\nMit freundlichen Grüßen\n{{bearbeiter}}\nAusbildungsberatung — Regierungspräsidium Freiburg` },
+    text: `{{anrede}}\n\nzur Anerkennung als Ausbilder:in benötigen wir den Nachweis der berufs- und arbeitspädagogischen Eignung (Ausbildereignungsverordnung — AEVO) sowie den Nachweis der fachlichen Eignung. Bitte reichen Sie bis zum {{frist}} ein:\n\n{{checkliste}}\n\nMit freundlichen Grüßen\n{{bearbeiter}}\nAusbildungsberatung — Regierungspräsidium Freiburg`,
+    checkliste: [
+      "Tabellarischer Lebenslauf",
+      "Nachweis der fachlichen Eignung (Berufsabschluss / Meister:in / vergleichbar)",
+      "Nachweis der Ausbildereignung (AEVO-Prüfungszeugnis)",
+      "ggf. weitere Zeugnisse/Bescheinigungen",
+    ] },
+  { id: "ausbildungsvertrag", titel: "Berufsausbildungsvertrag — Vordruck zusenden",
+    betreff: "Berufsausbildungsvertrag — Vordruck und Hinweise",
+    text: `{{anrede}}\n\nanbei erhalten Sie den Vordruck des Berufsausbildungsvertrags für die grünen Berufe. Bitte füllen Sie den Vertrag vollständig aus und senden ihn in dreifacher Ausfertigung, unterschrieben von beiden Vertragsparteien, bis zum {{frist}} an uns zurück.\n\nNach Prüfung tragen wir das Ausbildungsverhältnis in das Verzeichnis der Berufsausbildungsverhältnisse ein.\n\nMit freundlichen Grüßen\n{{bearbeiter}}\nAusbildungsberatung — Regierungspräsidium Freiburg`,
+    anlagen: ["bav"] },
   { id: "berichtsheft", titel: "Berichtsheft / Ausbildungsnachweis anfordern",
     betreff: "Vorlage des Ausbildungsnachweises (Berichtsheft)",
     text: `{{anrede}}\n\nim Rahmen der Ausbildungsberatung bitten wir um Vorlage des aktuellen Ausbildungsnachweises (Berichtsheft) der/des Auszubildenden.\n\nBitte legen Sie den Nachweis bis zum {{frist}} vor (vollständig geführt und von Ausbilder:in und Auszubildender/Auszubildendem abgezeichnet).\n\nMit freundlichen Grüßen\n{{bearbeiter}}\nAusbildungsberatung — Regierungspräsidium Freiburg` },
@@ -4257,6 +4283,20 @@ const VORLAGEN = [
     betreff: "Einladung zu einem Beratungsgespräch",
     text: `{{anrede}}\n\nzur Klärung offener Fragen im Ausbildungsverhältnis laden wir Sie zu einem Beratungsgespräch ein. Bitte schlagen Sie uns zwei mögliche Termine vor.\n\nZiel des Gesprächs ist eine einvernehmliche, im Sinne der Ausbildung tragfähige Lösung.\n\nMit freundlichen Grüßen\n{{bearbeiter}}\nAusbildungsberatung — Regierungspräsidium Freiburg` },
 ];
+
+/** Bytes einer gebündelten Anlage laden — Standalone (eingebettet) oder per fetch. */
+async function anlageBytes(datei) {
+  if (window.__ANLAGEN__ && window.__ANLAGEN__[datei]) {
+    const b64 = String(window.__ANLAGEN__[datei]).split(",").pop();
+    const bin = atob(b64);
+    const out = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out;
+  }
+  const res = await fetch(`assets/anlagen/${datei}`);
+  if (!res.ok) throw new Error(`Anlage nicht gefunden: ${datei}`);
+  return new Uint8Array(await res.arrayBuffer());
+}
 
 /** Robustes Kopieren in die Zwischenablage (offline/file://-tauglich). */
 async function inZwischenablage(text) {
@@ -4273,17 +4313,20 @@ function renderVorlagen() {
   const heute = new Date().toLocaleDateString("de-DE");
   appEl().innerHTML = `
     <h1>Vorlagen &amp; Vordrucke</h1>
-    <p class="bw-unterzeile">Häufige Schreiben der Ausbildungsberatung — Platzhalter werden ersetzt, Text bleibt editierbar. Kopieren, als E-Mail öffnen oder drucken.</p>
+    <p class="bw-unterzeile">Häufige Schreiben der Ausbildungsberatung — Platzhalter werden ersetzt, Text bleibt editierbar. Kopieren, als E-Mail-Entwurf (mit Anlagen) herunterladen oder drucken.</p>
     <div class="bw-flaechen">
       <section class="bw-card" aria-labelledby="vl-h" style="flex:1 1 18rem">
         <h2 id="vl-h" style="margin-top:0">Vordruck wählen</h2>
         <div class="bw-field"><label for="vl-auswahl">Vorlage</label>
           <select id="vl-auswahl">${VORLAGEN.map((v, i) => `<option value="${i}">${esc(v.titel)}</option>`).join("")}</select></div>
+        <div class="bw-field"><label for="vl-empf">Empfänger-E-Mail <span class="bw-leise">(für den Entwurf)</span></label>
+          <input id="vl-empf" type="email" autocomplete="off" placeholder="name@betrieb.de"></div>
         <div class="bw-field"><label for="vl-anrede">Anrede</label>
           <input id="vl-anrede" type="text" value="Sehr geehrte Damen und Herren,"></div>
         <div class="bw-field"><label for="vl-frist">Frist</label>
           <input id="vl-frist" type="text" placeholder="z. B. 30.07.2026"></div>
         <p class="bw-klein bw-leise">Datum (${esc(heute)}) und Bearbeiter:in (${esc(_benutzer ? _benutzer.benutzername : "")}) werden automatisch eingesetzt.</p>
+        <div id="vl-anlagen"></div>
       </section>
       <section class="bw-card" aria-labelledby="vl-text-h" style="flex:2 1 26rem">
         <h2 id="vl-text-h" style="margin-top:0">Text</h2>
@@ -4291,39 +4334,103 @@ function renderVorlagen() {
         <div class="bw-field"><label for="vl-text">Schreiben</label>
           <textarea id="vl-text" rows="16" style="font:inherit;width:100%"></textarea></div>
         <div class="bw-toolbar" style="margin:0">
-          <button class="bw-btn bw-btn--gelb" type="button" id="vl-kopieren">Text kopieren</button>
-          <button class="bw-btn bw-btn--sekundaer" type="button" id="vl-mail">Als E-Mail öffnen</button>
+          <button class="bw-btn bw-btn--gelb" type="button" id="vl-eml">E-Mail-Entwurf (.eml) herunterladen</button>
+          <button class="bw-btn bw-btn--sekundaer" type="button" id="vl-kopieren">Text kopieren</button>
+          <button class="bw-btn bw-btn--sekundaer" type="button" id="vl-mail">Als E-Mail öffnen (ohne Anlagen)</button>
           <button class="bw-btn bw-btn--sekundaer" type="button" id="vl-druck">Drucken</button>
         </div>
       </section>
     </div>`;
 
   const auswahl = document.getElementById("vl-auswahl");
+  const empf = document.getElementById("vl-empf");
   const anrede = document.getElementById("vl-anrede");
   const frist = document.getElementById("vl-frist");
   const betreff = document.getElementById("vl-betreff");
   const textEl = document.getElementById("vl-text");
+  const anlagenEl = document.getElementById("vl-anlagen");
+
+  const aktuelleVorlage = () => VORLAGEN[Number(auswahl.value)] || VORLAGEN[0];
 
   const fuellen = () => {
-    const v = VORLAGEN[Number(auswahl.value)] || VORLAGEN[0];
+    const v = aktuelleVorlage();
+    const checkliste = (v.checkliste || []).map((c) => `- ${c}`).join("\n");
     betreff.value = v.betreff;
     textEl.value = v.text
       .replace(/\{\{anrede\}\}/g, anrede.value || "Sehr geehrte Damen und Herren,")
       .replace(/\{\{datum\}\}/g, heute)
       .replace(/\{\{frist\}\}/g, frist.value || "…")
+      .replace(/\{\{checkliste\}\}/g, checkliste || "—")
       .replace(/\{\{bearbeiter\}\}/g, _benutzer ? _benutzer.benutzername : "");
+    anlagenZeichnen();
   };
+
+  const anlagenZeichnen = () => {
+    const v = aktuelleVorlage();
+    const ids = (v.anlagen || []).filter((id) => ANLAGEN[id]);
+    if (!ids.length) { anlagenEl.innerHTML = ""; return; }
+    anlagenEl.innerHTML = `
+      <fieldset class="bw-fieldset" style="margin-top:var(--bw-space-2)">
+        <legend>Anlagen mitschicken</legend>
+        ${ids.map((id) => {
+          const a = ANLAGEN[id];
+          return `<div class="bw-check" style="align-items:flex-start">
+            <input type="checkbox" id="vl-anl-${id}" data-anl="${id}" checked>
+            <label for="vl-anl-${id}"><strong>${esc(a.label)}</strong><br>
+              <span class="bw-klein bw-leise">${esc(a.stand)} · ${esc(a.quelle)}</span>
+              <button class="bw-btn bw-btn--sekundaer bw-btn--klein" type="button" data-anl-dl="${id}" style="margin-left:var(--bw-space-2)">Herunterladen</button>
+            </label>
+          </div>`;
+        }).join("")}
+        <p class="bw-klein bw-leise" style="margin:var(--bw-space-2) 0 0">Angehakte Anlagen werden in den E-Mail-Entwurf (.eml) eingebettet.</p>
+      </fieldset>`;
+  };
+
   fuellen();
   auswahl.addEventListener("change", fuellen);
   anrede.addEventListener("input", fuellen);
   frist.addEventListener("input", fuellen);
+
+  // Einzelne Anlage herunterladen (am frisch gerenderten Container gebunden).
+  anlagenEl.addEventListener("click", async (ev) => {
+    const id = ev.target.closest("[data-anl-dl]")?.getAttribute("data-anl-dl");
+    if (!id || !ANLAGEN[id]) return;
+    try {
+      const a = ANLAGEN[id];
+      const bytes = await anlageBytes(a.datei);
+      dateiDownload(a.datei, bytes, a.mime);
+      meldung(`Anlage „${a.label}" heruntergeladen.`);
+    } catch (e) {
+      meldung("Anlage konnte nicht geladen werden: " + (e && e.message), "fehler");
+    }
+  });
+
+  document.getElementById("vl-eml").addEventListener("click", async () => {
+    const v = aktuelleVorlage();
+    const gewaehlt = Array.from(anlagenEl.querySelectorAll("[data-anl]:checked")).map((c) => c.getAttribute("data-anl"));
+    try {
+      const attachments = [];
+      for (const id of gewaehlt) {
+        const a = ANLAGEN[id];
+        attachments.push({ filename: a.datei, mime: a.mime, base64: base64FromBytes(await anlageBytes(a.datei)) });
+      }
+      const eml = emlBauen({ to: empf.value.trim(), subject: betreff.value, body: textEl.value, attachments });
+      dateiDownload(`Entwurf-${v.id}.eml`, eml, "message/rfc822");
+      meldung(attachments.length
+        ? `E-Mail-Entwurf mit ${attachments.length} Anlage(n) heruntergeladen — per Doppelklick in Outlook öffnen.`
+        : "E-Mail-Entwurf heruntergeladen — per Doppelklick in Outlook öffnen.");
+    } catch (e) {
+      meldung("Entwurf konnte nicht erzeugt werden: " + (e && e.message), "fehler");
+    }
+  });
 
   document.getElementById("vl-kopieren").addEventListener("click", async () => {
     const ok = await inZwischenablage(textEl.value);
     meldung(ok ? "Text in die Zwischenablage kopiert." : "Kopieren nicht möglich — bitte Text manuell markieren und kopieren.", ok ? "erfolg" : "fehler");
   });
   document.getElementById("vl-mail").addEventListener("click", () => {
-    location.href = `mailto:?subject=${encodeURIComponent(betreff.value)}&body=${encodeURIComponent(textEl.value)}`;
+    const an = empf.value.trim();
+    location.href = `mailto:${encodeURIComponent(an)}?subject=${encodeURIComponent(betreff.value)}&body=${encodeURIComponent(textEl.value)}`;
   });
   document.getElementById("vl-druck").addEventListener("click", () => {
     druckbereich().innerHTML = `<h1>${esc(betreff.value)}</h1><pre style="font:inherit;white-space:pre-wrap">${esc(textEl.value)}</pre>`;

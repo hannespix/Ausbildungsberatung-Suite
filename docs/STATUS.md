@@ -15,6 +15,8 @@ den Fortschritt** steht in `ROADMAP.md`; hier nur der Einstieg + das Nächste.
 - Prüfung (Stammdaten, Tagesplanung/-cockpit, Stationen-Rotation, Noten,
   Zeugnisse, Auswertungen), Zugangsschutz/Benutzer, Recht (Impressum/Datenschutz/
   Barrierefreiheit), Vorlagen.
+- Vorlagen-Versand: **Anlagen-System + E-Mail-Entwurf (.eml mit Anhängen)**
+  (`eml.js`, `assets/anlagen/`); erste offizielle Anlage gebündelt (Muster-BAV).
 - Ausbildungsrechner (Engine + Oberfläche).
 - Berichtsheftkontrolle: Dashboard, Kontrolle erfassen, **KW-Wochenraster mit
   Tastatur-Schnellkontrolle**, Wiedervorlagen, Kontrolltermine, druckbare Listen,
@@ -25,6 +27,11 @@ den Fortschritt** steht in `ROADMAP.md`; hier nur der Einstieg + das Nächste.
   berichtsheft, beratung) in der CI; lokales Smoke-Harness (`tools/smoke/`).
 
 ## Nächste sinnvolle Iterationen (Vorschlag)
+- Vorlagen ausbauen: weitere offizielle Anlagen bündeln (Infoblatt Azubi,
+  Abmeldung/Auflösung BAV, Ausbilderbogen, Anträge Verkürzung/Verlängerung) und
+  neue Schreiben (Info-Mail für Ausbildungsinteressenten mit Vertragsvorlagen,
+  Aufhebungsvertrag). Vom RP/MLR auffindbar (siehe `assets/anlagen/QUELLEN.md`);
+  RP-interne/berufsspezifische Vordrucke liefert die Dienststelle.
 - Berichtsheft-Import (CSV) für Auszubildende/Kontrolldaten.
 - Mängel-Auswertung vertiefen (Betriebs-Sicht: Mängel je Betrieb, Trend über
   Ausbildungsjahre).

@@ -26,6 +26,22 @@ Ausbildungsberatung (Prüfung + Berichtsheftkontrolle + Beratung + Vordrucke).
   Platzhalter (Anrede, Datum, Frist, Bearbeiter:in) werden ersetzt, der Text
   bleibt editierbar; **kopieren** (offline-tauglich mit Fallback), **als E-Mail
   öffnen** (mailto) und **drucken**. Chromium-getestet.
+- ✅ **Vorlagen: Anlagen-System + E-Mail-Entwurf (.eml)**: da `mailto:` technisch
+  keine Dateianhänge transportiert, erzeugt die Vorlagen-Ansicht jetzt einen
+  **E-Mail-Entwurf als `.eml`-Datei** (RFC 5322/MIME, `assets/js/eml.js`) — öffnet
+  per Doppelklick in Outlook als editierbarer Entwurf **inkl. angehängter
+  Anlagen** (`X-Unsent`). Je Vorlage definierbare **Anlagen** (gebündelte
+  Formular-PDFs in `assets/anlagen/`, registriert in `ANLAGEN`, mit Stand/Quelle,
+  einzeln herunterladbar oder angehakt in den Entwurf eingebettet) und
+  **Checklisten** (`{{checkliste}}`, z. B. Lebenslauf/Zeugnisse/AEVO für die
+  Ausbildereignung). Erste offizielle Anlage gebündelt: Muster-Berufsausbildungs-
+  vertrag (grüne Berufe, RP BW, Stand 05/2020). Voll offline: der Standalone-Build
+  bettet die Anlagen-Mappe als `window.__ANLAGEN__` ein. Reine, getestete Logik
+  (`tools/test_eml.mjs`, 25 Prüfungen) + Chromium-Smoke (`tools/smoke/vorlagen.mjs`:
+  Checkliste eingesetzt, BAV als Anhang im .eml, Einzel-Download, ohne Anlage kein
+  Block, Mobile 390px). *Fachverantwortung:* Aktualität der Formulare prüft die
+  Dienststelle; weitere PDFs/Vorlagen (Aufhebung/Verlängerung, Info-Mail für
+  Interessenten) folgen je Iteration.
 - ✅ **UI-/Design-Politur + Korrekturen**: Impressum nennt jetzt den **aktuellen
   Namen** der Aufsichtsbehörde („Ministerium für Ländlichen Raum, Landwirtschaft
   und Heimat Baden-Württemberg", Umbenennung 2026). Login-Maske aufgeräumt:
