@@ -110,7 +110,14 @@ Ausbildungsberatung (Prüfung + Berichtsheftkontrolle + Beratung + Vordrucke).
   (`wvStatus`, `fallAmpel`) erkannte sie bisher nicht und meldete nie
   „überfällig"; jetzt robust gegen `Date`-Eingaben (auch im Berichtsheft-
   Dashboard). Chromium-getestet.
-- ⏳ **Weiterer Ausbau**: Berichtsheft (Import, Kontrolltermine).
+- ✅ **Berichtsheft-Kontrolltermine**: geplante Durchsichten (Datum, Betrieb,
+  Gruppe/Klasse, Art Schulkontrolle/Einsendung, Status geplant/durchgeführt/
+  abgesagt, Bemerkung) im Berichtsheft-Dashboard — planen/bearbeiten/„erledigt"/
+  löschen. Der **nächste geplante Termin** speist automatisch die Wiedervorlage-
+  Frist beim Erfassen einer Kontrolle. Neue PGlite-Tabelle `berichtsheft_termine`.
+  Chromium-getestet.
+- ⏳ **Weiterer Ausbau**: Berichtsheft-Import (CSV), bereichsübergreifende
+  Startseiten-Aufgaben.
 
 ---
 
