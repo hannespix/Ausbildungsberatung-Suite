@@ -127,6 +127,16 @@ Ausbildungsberatung (Prüfung + Berichtsheftkontrolle + Beratung + Vordrucke).
   Sicherung enthält alle fachlichen Tabellen (IDs/Beziehungen erhalten),
   Wiederherstellung und Reset decken sie ab (Benutzer/Einstellungen überleben
   bewusst). Round-Trip Chromium-getestet (sichern → löschen → wiederherstellen).
+- ✅ **Wissensbasis + Übergabe gegen Kontextverlust**: `docs/ARCHITEKTUR.md`
+  (Module, Datenmodell, Muster, Stolperfallen) und `docs/STATUS.md` (Übergabe/
+  Schnellstart) angelegt und in `CLAUDE.md`/`AGENTS.md` verankert.
+- ✅ **Smoke-Harness eingecheckt** (`tools/smoke/`): wiederverwendbares
+  Chromium-Harness + dauerhafte Regressions-Smokes (Wochenraster-Tastatur,
+  Datensicherungs-Round-Trip), Sammelstart `node tools/smoke/run.mjs` (lokal).
+- ✅ **Routing-Race behoben**: `route()` ist jetzt serialisiert — ein langsamer
+  früherer Renderer (z. B. die Übersicht beim Start) kann einen neueren nicht
+  mehr überschreiben; schnelle Navigation landet nicht mehr auf einer veralteten
+  Seite. Vom neuen Smoke-Harness aufgedeckt und abgesichert.
 - ⏳ **Weiterer Ausbau**: Berichtsheft-Import (CSV), weitere Auswertungen.
 
 ---

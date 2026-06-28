@@ -5444,7 +5444,23 @@ function renderRechner() {
   document.getElementById("inhalt")?.focus?.();
 }
 
+// Serialisiert das Rendern: Routen-Renderer sind async; ohne Serialisierung kann
+// ein langsamer früherer Aufruf (z. B. die Übersicht beim Start) einen neueren
+// überschreiben und eine veraltete Seite anzeigen. Läuft schon ein route(), wird
+// nur „pending" gemerkt und nach Abschluss für den AKTUELLEN Hash neu gerendert.
+let _routeBusy = false, _routePending = false;
 async function route() {
+  if (_routeBusy) { _routePending = true; return; }
+  _routeBusy = true;
+  try {
+    await routeImpl();
+  } finally {
+    _routeBusy = false;
+    if (_routePending) { _routePending = false; route(); }
+  }
+}
+
+async function routeImpl() {
   // Zugangsschutz: ohne Anmeldung ist nichts erreichbar.
   if (!_benutzer) { loginAnzeigen(); return; }
   const r = aktiveRoute();
