@@ -39,7 +39,12 @@ const TAG_MS = 86400000;
 export function isoDate(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
-function parse(isoStr) { const d = new Date(String(isoStr) + "T12:00:00"); return isNaN(d) ? null : d; }
+function parse(isoStr) {
+  if (isoStr instanceof Date) return isNaN(isoStr) ? null : isoStr;
+  if (isoStr == null || isoStr === "") return null;
+  const d = new Date(String(isoStr).slice(0, 10) + "T12:00:00");
+  return isNaN(d) ? null : d;
+}
 
 /**
  * ISO-8601-Kalenderwoche zu einem Datum.

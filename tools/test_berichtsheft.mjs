@@ -48,6 +48,9 @@ eq(wvStatus(null, false, "2026-06-27"), null, "ohne Frist kein Status");
 eq(wvStatus("2026-07-25", false, "2026-06-27"), "offen", "Frist in Zukunft -> offen");
 eq(wvStatus("2026-06-01", false, "2026-06-27"), "ueberfaellig", "Frist vergangen -> überfällig");
 eq(wvStatus("2026-06-01", true, "2026-06-27"), "erledigt", "erledigt schlägt alles");
+// Regression: DB liefert date-Spalten als Date-Objekte -> müssen erkannt werden.
+eq(wvStatus(new Date(2026, 5, 1), false, "2026-06-27"), "ueberfaellig", "Date-Objekt vergangen -> überfällig");
+eq(wvStatus(new Date(2026, 6, 25), false, "2026-06-27"), "offen", "Date-Objekt Zukunft -> offen");
 
 // --- Ampel ---
 eq(ampel(null, null).farbe, "grau", "keine Kontrolle -> grau");

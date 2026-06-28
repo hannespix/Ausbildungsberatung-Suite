@@ -1,7 +1,7 @@
 // Unit-Tests der Beratungs-Logik (assets/js/beratung.js).
 import {
   STATUS, statusLabel, KATEGORIEN, EINTRAG_ARTEN, artLabel,
-  standardWiedervorlage, fallAmpel, istOffen,
+  standardWiedervorlage, fallAmpel, istOffen, kategorieHaeufung, statusZaehlung,
 } from "../assets/js/beratung.js";
 
 let fehler = 0, geprueft = 0;
@@ -22,9 +22,25 @@ eq(fallAmpel({ status: "in_bearbeitung" }, "2026-06-27").farbe, "gelb", "in Bear
 eq(fallAmpel({ status: "offen", wiedervorlage: "2026-06-01" }, "2026-06-27").farbe, "rot", "WV vergangen -> rot");
 eq(fallAmpel({ status: "offen", wiedervorlage: "2026-07-30" }, "2026-06-27").farbe, "gelb", "WV in Zukunft -> gelb");
 eq(fallAmpel({ status: "geloest", wiedervorlage: "2026-06-01" }, "2026-06-27").farbe, "gruen", "gelöst schlägt WV");
+// Regression: Wiedervorlage als Date-Objekt (so liefert es die DB).
+eq(fallAmpel({ status: "offen", wiedervorlage: new Date(2026, 5, 1) }, "2026-06-27").farbe, "rot", "Date-Objekt vergangen -> rot");
 
 eq(istOffen({ status: "offen" }), true, "offen ist offen");
 eq(istOffen({ status: "geloest" }), false, "gelöst nicht offen");
+
+// Auswertung
+const faelle = [
+  { status: "offen", kategorie: "Berichtsheft" },
+  { status: "in_bearbeitung", kategorie: "Berichtsheft" },
+  { status: "geloest", kategorie: "Prüfung" },
+  { status: "offen", kategorie: null },
+];
+const haeuf = kategorieHaeufung(faelle);
+eq(haeuf[0].label, "Berichtsheft", "häufigste Kategorie zuerst");
+eq(haeuf[0].value, 2, "Berichtsheft 2×");
+ok(haeuf.some((h) => h.label === "Ohne Kategorie" && h.value === 1), "leere Kategorie als 'Ohne Kategorie'");
+const z = statusZaehlung(faelle);
+eq(z.offen, 2, "2 offen"); eq(z.in_bearbeitung, 1, "1 in Bearbeitung"); eq(z.geloest, 1, "1 gelöst");
 
 console.log(`${geprueft} Prüfungen, ${fehler} Fehler.`);
 if (fehler) { console.error("BERATUNG-TESTS FEHLGESCHLAGEN"); process.exit(1); }

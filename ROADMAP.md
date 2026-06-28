@@ -100,8 +100,17 @@ Ausbildungsberatung (Prüfung + Berichtsheftkontrolle + Beratung + Vordrucke).
   Fehltage-Summe, Mängel-Legende, Unterschriftszeile) für den Betriebsbesuch;
   im Dashboard „Liste drucken" (Übersicht aller/gefilterter Auszubildenden mit
   Status, letzter Kontrolle, Ergebnis, Wiedervorlage). Chromium-getestet.
-- ⏳ **Weiterer Ausbau**: Berichtsheft (Import, Kontrolltermine), Beratungs-
-  Auswertungen (Themen-Häufung, Wiedervorlage-Board).
+- ✅ **Beratungs-Auswertung + bereichsübergreifendes Wiedervorlage-Board**: das
+  Beratungs-Dashboard zeigt die **Themen-Häufung** je Kategorie als CI-konformes
+  SVG-Balkendiagramm (häufigste Kategorie hervorgehoben) sowie ein
+  **Wiedervorlage-Board über alle Bereiche** (Beratung + Berichtsheft), nach
+  Frist sortiert, überfällige markiert, mit Direktlink. Reine Aggregatlogik
+  (`kategorieHaeufung`, `statusZaehlung`) mit Unit-Tests. **Fehlerbehebung:**
+  PGlite liefert `date`-Spalten als `Date`-Objekte — die Status-/Ampel-Logik
+  (`wvStatus`, `fallAmpel`) erkannte sie bisher nicht und meldete nie
+  „überfällig"; jetzt robust gegen `Date`-Eingaben (auch im Berichtsheft-
+  Dashboard). Chromium-getestet.
+- ⏳ **Weiterer Ausbau**: Berichtsheft (Import, Kontrolltermine).
 
 ---
 
