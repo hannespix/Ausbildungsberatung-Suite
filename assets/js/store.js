@@ -195,6 +195,19 @@ export async function oeffnen() {
       UNIQUE (pruefling_id, ausbildungsjahr, kalenderwoche)
     );
   `);
+  // Berichtsheft: geplante Kontrolltermine (Durchsichten) je Betrieb/Gruppe.
+  await _pg.exec(`
+    CREATE TABLE IF NOT EXISTS berichtsheft_termine (
+      id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      datum date NOT NULL,
+      betrieb text,
+      gruppe text,
+      typ text DEFAULT 'schulkontrolle',
+      status text NOT NULL DEFAULT 'geplant',
+      bemerkung text,
+      erstellt_am timestamptz DEFAULT now()
+    );
+  `);
   // Ausbildungsberatung: Beratungsfälle (Problem/Lösung) + Verlauf.
   await _pg.exec(`
     CREATE TABLE IF NOT EXISTS beratungsfaelle (
@@ -219,6 +232,46 @@ export async function oeffnen() {
     );
   `);
   return { pg: _pg, modus: _modus };
+}
+
+/* --------------------------------------------- Berichtsheft-Kontrolltermine */
+
+/** Alle Kontrolltermine (neueste/anstehende zuerst). */
+export async function berichtsheftTermine() {
+  const res = await _pg.query(`SELECT * FROM berichtsheft_termine ORDER BY status, datum`);
+  return res.rows;
+}
+
+/** Nächster geplanter Kontrolltermin ab heute (ISO oder null). */
+export async function berichtsheftNaechsterTermin() {
+  const res = await _pg.query(
+    `SELECT datum FROM berichtsheft_termine WHERE status = 'geplant' AND datum >= current_date ORDER BY datum LIMIT 1`
+  );
+  return res.rows[0] ? res.rows[0].datum : null;
+}
+
+/** Kontrolltermin anlegen; gibt id zurück. */
+export async function berichtsheftTerminAnlegen(d) {
+  const r = await _pg.query(
+    `INSERT INTO berichtsheft_termine (datum, betrieb, gruppe, typ, status, bemerkung)
+     VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`,
+    [d.datum, d.betrieb || null, d.gruppe || null, d.typ || "schulkontrolle", d.status || "geplant", d.bemerkung || null]
+  );
+  return r.rows[0].id;
+}
+
+/** Kontrolltermin aktualisieren. */
+export async function berichtsheftTerminAktualisieren(id, d) {
+  await _pg.query(
+    `UPDATE berichtsheft_termine SET datum = COALESCE($2, datum), betrieb = $3, gruppe = $4,
+       typ = COALESCE($5, typ), status = COALESCE($6, status), bemerkung = $7 WHERE id = $1`,
+    [Number(id), d.datum ?? null, d.betrieb || null, d.gruppe || null, d.typ ?? null, d.status ?? null, d.bemerkung || null]
+  );
+}
+
+/** Kontrolltermin löschen. */
+export async function berichtsheftTerminLoeschen(id) {
+  await _pg.query(`DELETE FROM berichtsheft_termine WHERE id = $1`, [Number(id)]);
 }
 
 /* ----------------------------------------------------- Ausbildungsberatung */

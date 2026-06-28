@@ -4314,6 +4314,7 @@ async function renderBerichtsheft() {
   const rows = await store.berichtsheftUebersicht();
   const wv = await store.berichtsheftWiedervorlagen();
   const offeneMg = await store.berichtsheftOffeneMaengel();
+  const termine = await store.berichtsheftTermine();
   const wvOffen = wv
     .map((w) => ({ ...w, _stat: wvStatus(w.wiedervorlage_frist, w.wiedervorlage_erledigt, heute) }))
     .filter((w) => w._stat === "offen" || w._stat === "ueberfaellig");
@@ -4358,6 +4359,26 @@ async function renderBerichtsheft() {
         </table>
       </div>
     </section>` : ""}
+
+    <section class="bw-card" aria-labelledby="bh-term-h" style="margin-bottom:var(--bw-space-3)">
+      <div class="bw-toolbar" style="margin:0 0 var(--bw-space-2);align-items:center">
+        <h2 id="bh-term-h" style="margin:0;flex:1 1 auto">Kontrolltermine</h2>
+        <button class="bw-btn bw-btn--gelb" type="button" id="bh-term-neu">Termin planen</button>
+      </div>
+      ${termine.length ? `<div class="bw-tablewrap"><table class="bw-table">
+        <thead><tr><th>Datum</th><th>Betrieb / Gruppe</th><th>Art</th><th>Status</th><th></th></tr></thead>
+        <tbody id="bh-term-tbody">${termine.map((t) => `<tr>
+          <td>${esc(new Date(t.datum).toLocaleDateString("de-DE"))}</td>
+          <td>${esc(t.betrieb || t.gruppe || "—")}${t.betrieb && t.gruppe ? " · " + esc(t.gruppe) : ""}</td>
+          <td>${t.typ === "einsendung" ? "Einsendung" : "Schulkontrolle"}</td>
+          <td>${t.status === "durchgefuehrt" ? '<span class="bw-tag bw-tag--ok">durchgeführt</span>' : (t.status === "abgesagt" ? '<span class="bw-tag">abgesagt</span>' : '<span class="bw-tag bw-tag--aktiv">geplant</span>')}</td>
+          <td class="bw-actions" style="white-space:nowrap">
+            ${t.status === "geplant" ? `<button class="bw-btn bw-btn--sekundaer" type="button" data-term-fertig="${t.id}">erledigt</button>` : ""}
+            <button class="bw-iconbtn" type="button" data-term-edit="${t.id}" title="Bearbeiten" aria-label="Termin bearbeiten">${icon("stift")}</button>
+            <button class="bw-iconbtn" type="button" data-term-del="${t.id}" title="Löschen" aria-label="Termin löschen">${icon("muell")}</button>
+          </td></tr>`).join("")}</tbody></table></div>`
+        : '<p class="bw-leise bw-klein">Keine Kontrolltermine geplant.</p>'}
+    </section>
 
     <section class="bw-card" aria-labelledby="bh-liste-h">
       <h2 id="bh-liste-h" style="margin-top:0">Auszubildende</h2>
@@ -4459,7 +4480,70 @@ async function renderBerichtsheft() {
     window.print();
   });
 
+  // Kontrolltermine: planen / bearbeiten / erledigt / löschen.
+  document.getElementById("bh-term-neu").addEventListener("click", () => berichtsheftTerminDialog(null, () => route()));
+  document.getElementById("bh-term-tbody")?.addEventListener("click", async (ev) => {
+    const fertig = ev.target.closest("[data-term-fertig]")?.getAttribute("data-term-fertig");
+    const edit = ev.target.closest("[data-term-edit]")?.getAttribute("data-term-edit");
+    const del = ev.target.closest("[data-term-del]")?.getAttribute("data-term-del");
+    if (fertig) { await store.berichtsheftTerminAktualisieren(Number(fertig), { status: "durchgefuehrt" }); meldung("Termin als durchgeführt markiert."); route(); return; }
+    if (edit) { const t = termine.find((x) => String(x.id) === edit); berichtsheftTerminDialog(t, () => route()); return; }
+    if (del) { if (confirm("Kontrolltermin löschen?")) { await store.berichtsheftTerminLoeschen(Number(del)); meldung("Termin gelöscht."); route(); } }
+  });
+
   document.getElementById("inhalt")?.focus?.();
+}
+
+/* ----------------------------------- Berichtsheft: Kontrolltermin-Dialog */
+async function berichtsheftTerminDialog(termin, nachher) {
+  const alt = document.getElementById("dialog"); if (alt) alt.remove();
+  const t = termin || {};
+  const dlg = document.createElement("dialog");
+  dlg.className = "bw-dialog"; dlg.id = "dialog";
+  dlg.innerHTML = `
+    <form method="dialog" novalidate>
+      <h2 style="margin-top:0">${termin ? "Kontrolltermin bearbeiten" : "Kontrolltermin planen"}</h2>
+      <div class="bw-dialog__felder">
+        <div class="bw-field"><label for="bt-datum">Datum</label>
+          <input id="bt-datum" type="date" required value="${esc(t.datum ? bhIso(new Date(t.datum)) : heuteISO())}"></div>
+        <div class="bw-field"><label for="bt-typ">Art</label>
+          <select id="bt-typ"><option value="schulkontrolle"${t.typ !== "einsendung" ? " selected" : ""}>Schulkontrolle</option><option value="einsendung"${t.typ === "einsendung" ? " selected" : ""}>Einsendung</option></select></div>
+        <div class="bw-field"><label for="bt-betrieb">Betrieb</label>
+          <input id="bt-betrieb" type="text" value="${esc(t.betrieb || "")}"></div>
+        <div class="bw-field"><label for="bt-gruppe">Gruppe / Klasse</label>
+          <input id="bt-gruppe" type="text" value="${esc(t.gruppe || "")}"></div>
+        <div class="bw-field"><label for="bt-status">Status</label>
+          <select id="bt-status">
+            <option value="geplant"${(t.status || "geplant") === "geplant" ? " selected" : ""}>geplant</option>
+            <option value="durchgefuehrt"${t.status === "durchgefuehrt" ? " selected" : ""}>durchgeführt</option>
+            <option value="abgesagt"${t.status === "abgesagt" ? " selected" : ""}>abgesagt</option>
+          </select></div>
+      </div>
+      <div class="bw-field"><label for="bt-bem">Bemerkung</label>
+        <textarea id="bt-bem" rows="2" style="font:inherit;width:100%">${esc(t.bemerkung || "")}</textarea></div>
+      <div class="bw-dialog__aktionen">
+        <button type="button" class="bw-btn bw-btn--sekundaer" id="bt-abbr">Abbrechen</button>
+        <button type="button" class="bw-btn bw-btn--gelb" id="bt-speichern">Speichern</button>
+      </div>
+    </form>`;
+  document.body.appendChild(dlg);
+  dlg.querySelector("#bt-abbr").addEventListener("click", () => dlg.close());
+  dlg.querySelector("#bt-speichern").addEventListener("click", async () => {
+    const datum = dlg.querySelector("#bt-datum").value;
+    if (!datum) { meldung("Bitte ein Datum angeben.", "fehler"); return; }
+    const daten = {
+      datum, typ: dlg.querySelector("#bt-typ").value, betrieb: dlg.querySelector("#bt-betrieb").value.trim() || null,
+      gruppe: dlg.querySelector("#bt-gruppe").value.trim() || null, status: dlg.querySelector("#bt-status").value,
+      bemerkung: dlg.querySelector("#bt-bem").value.trim() || null,
+    };
+    try {
+      if (termin) await store.berichtsheftTerminAktualisieren(termin.id, daten);
+      else await store.berichtsheftTerminAnlegen(daten);
+      meldung("Kontrolltermin gespeichert."); dlg.close();
+    } catch (e) { console.error(e); meldung("Konnte nicht speichern: " + e.message, "fehler"); }
+  });
+  dlg.addEventListener("close", () => { dlg.remove(); if (nachher) nachher(); });
+  dlg.showModal();
 }
 
 /* ------------------------------------------- Berichtsheft: Kontrolle erfassen */
@@ -4468,12 +4552,11 @@ async function kontrolleDialog(prueflingId, name, nachher) {
   if (alt) alt.remove();
   const heute = heuteISO();
   const bisher = await store.berichtsheftFuerPruefling(prueflingId);
-  // Nächsten geplanten Prüfungstermin für die WV-Frist-Vorgabe holen.
+  // Nächsten geplanten Kontrolltermin für die WV-Frist-Vorgabe holen.
   let naechsterTermin = null;
   try {
-    const ts = await store.liste("pruefungen");
-    const kuenftig = ts.map((t) => t.datum).filter((dd) => dd && dd > heute).sort();
-    naechsterTermin = kuenftig[0] || null;
+    const t = await store.berichtsheftNaechsterTermin();
+    naechsterTermin = t ? bhIso(new Date(t)) : null;
   } catch { /* ignore */ }
 
   const dlg = document.createElement("dialog");
