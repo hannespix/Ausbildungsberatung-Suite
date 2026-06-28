@@ -1,9 +1,11 @@
 # AGENTS.md — Agentisches Arbeiten im Loop
 
 Diese Datei beschreibt **wie** in diesem Repository gearbeitet wird (Prozess).
-Das **was** (Design, Technik, CI-Regeln) steht in `CLAUDE.md`, die Aufgaben in
-`ROADMAP.md` und den GitHub Issues. `@claude` und alle Beteiligten lesen vor
-jeder Aufgabe `CLAUDE.md` **und** `AGENTS.md`.
+Das **was** (Design, Technik, CI-Regeln) steht in `CLAUDE.md`, die **Wissensbasis**
+(Architektur, Module, Datenmodell, Muster, Stolperfallen) in
+`docs/ARCHITEKTUR.md`, die Aufgaben in `ROADMAP.md` und den GitHub Issues.
+`@claude` und alle Beteiligten lesen vor jeder Aufgabe `CLAUDE.md`,
+`AGENTS.md` **und** `docs/ARCHITEKTUR.md`.
 
 > Sprache durchgehend Deutsch. Sicherheit und CI-Treue gehen vor Tempo.
 
