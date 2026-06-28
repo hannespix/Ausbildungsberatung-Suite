@@ -195,7 +195,107 @@ export async function oeffnen() {
       UNIQUE (pruefling_id, ausbildungsjahr, kalenderwoche)
     );
   `);
+  // Ausbildungsberatung: Beratungsfälle (Problem/Lösung) + Verlauf.
+  await _pg.exec(`
+    CREATE TABLE IF NOT EXISTS beratungsfaelle (
+      id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      pruefling_id bigint,
+      betrieb text,
+      titel text NOT NULL,
+      kategorie text,
+      status text NOT NULL DEFAULT 'offen',
+      beschreibung text,
+      wiedervorlage date,
+      angelegt date DEFAULT current_date,
+      geschlossen date
+    );
+    CREATE TABLE IF NOT EXISTS beratung_eintraege (
+      id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      fall_id bigint NOT NULL,
+      datum date DEFAULT current_date,
+      art text,
+      text text,
+      erstellt_am timestamptz DEFAULT now()
+    );
+  `);
   return { pg: _pg, modus: _modus };
+}
+
+/* ----------------------------------------------------- Ausbildungsberatung */
+
+/** Alle Beratungsfälle (mit Name des/der Auszubildenden, falls verknüpft). */
+export async function beratungFaelle() {
+  const res = await _pg.query(`
+    SELECT f.*, p.nachname, p.vorname,
+           (SELECT count(*)::int FROM beratung_eintraege e WHERE e.fall_id = f.id) AS eintraege
+      FROM beratungsfaelle f
+      LEFT JOIN prueflinge p ON p.id = f.pruefling_id
+     ORDER BY (f.status = 'geloest'), f.wiedervorlage NULLS LAST, f.angelegt DESC, f.id DESC
+  `);
+  return res.rows;
+}
+
+/** Einen Fall holen (inkl. Name des/der Auszubildenden). */
+export async function beratungFall(id) {
+  const res = await _pg.query(
+    `SELECT f.*, p.nachname, p.vorname FROM beratungsfaelle f
+       LEFT JOIN prueflinge p ON p.id = f.pruefling_id WHERE f.id = $1`,
+    [Number(id)]
+  );
+  return res.rows[0] || null;
+}
+
+/** Fall anlegen; gibt die neue id zurück. */
+export async function beratungAnlegen(d) {
+  const r = await _pg.query(
+    `INSERT INTO beratungsfaelle (pruefling_id, betrieb, titel, kategorie, status, beschreibung, wiedervorlage)
+     VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
+    [d.prueflingId ? Number(d.prueflingId) : null, d.betrieb || null, d.titel, d.kategorie || null,
+     d.status || "offen", d.beschreibung || null, d.wiedervorlage || null]
+  );
+  return r.rows[0].id;
+}
+
+/** Fall aktualisieren (Status/Felder); setzt „geschlossen" beim Lösen. */
+export async function beratungAktualisieren(id, d) {
+  await _pg.query(
+    `UPDATE beratungsfaelle SET
+       titel = COALESCE($2, titel), kategorie = $3, status = COALESCE($4, status),
+       beschreibung = $5, wiedervorlage = $6, betrieb = $7, pruefling_id = $8,
+       geschlossen = CASE WHEN $4 = 'geloest' THEN COALESCE(geschlossen, current_date)
+                          WHEN $4 IS NOT NULL THEN NULL ELSE geschlossen END
+     WHERE id = $1`,
+    [Number(id), d.titel ?? null, d.kategorie || null, d.status ?? null, d.beschreibung || null,
+     d.wiedervorlage || null, d.betrieb || null, d.prueflingId ? Number(d.prueflingId) : null]
+  );
+}
+
+/** Fall löschen (mit Verlauf). */
+export async function beratungLoeschen(id) {
+  await _pg.query(`DELETE FROM beratung_eintraege WHERE fall_id = $1`, [Number(id)]);
+  await _pg.query(`DELETE FROM beratungsfaelle WHERE id = $1`, [Number(id)]);
+}
+
+/** Verlaufseinträge eines Falls (neueste zuerst). */
+export async function beratungEintraege(fallId) {
+  const res = await _pg.query(
+    `SELECT * FROM beratung_eintraege WHERE fall_id = $1 ORDER BY datum DESC, id DESC`,
+    [Number(fallId)]
+  );
+  return res.rows;
+}
+
+/** Verlaufseintrag anlegen. */
+export async function beratungEintragAnlegen(fallId, d) {
+  await _pg.query(
+    `INSERT INTO beratung_eintraege (fall_id, datum, art, text) VALUES ($1,$2,$3,$4)`,
+    [Number(fallId), d.datum || null, d.art || "notiz", d.text || null]
+  );
+}
+
+/** Verlaufseintrag löschen. */
+export async function beratungEintragLoeschen(id) {
+  await _pg.query(`DELETE FROM beratung_eintraege WHERE id = $1`, [Number(id)]);
 }
 
 /* ------------------------------------------ Berichtsheft: KW-Raster (Zellen) */

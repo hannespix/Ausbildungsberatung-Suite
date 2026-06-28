@@ -16,6 +16,10 @@ import {
   wvStatus, ampel as bhAmpel, isoDate as bhIso, zulassungsEmpfehlung,
   KW_ORDER, RASTER_SPALTEN, MAENGEL_CODES, codeUmschalten, codesAlsListe, zellenStatus,
 } from "./berichtsheft.js";
+import {
+  STATUS as BERATUNG_STATUS, statusLabel as beratungStatusLabel, KATEGORIEN as BERATUNG_KATEGORIEN,
+  EINTRAG_ARTEN, artLabel, standardWiedervorlage, fallAmpel,
+} from "./beratung.js";
 
 // Vorlage für den Rotations-Ablaufplan (Single Source: model.js) — von Cockpit
 // und automatischer Planung gemeinsam genutzt, je Termin anpassbar.
@@ -4749,20 +4753,247 @@ async function renderBerichtsheftRaster(prueflingIdRaw) {
 }
 
 /* ---------------------------------------------------------------- Beratung */
-function renderBeratung() {
+const BERATUNG_AMPEL = {
+  gruen: '<span class="bw-status-do" aria-hidden="true">●</span>',
+  gelb:  '<span aria-hidden="true" style="color:var(--bw-schwarz)">◐</span>',
+  rot:   '<span class="bw-status-dont" aria-hidden="true">●</span>',
+  grau:  '<span class="bw-leise" aria-hidden="true">○</span>',
+};
+
+async function renderBeratung() {
+  const heute = heuteISO();
+  const faelle = (await store.beratungFaelle()).map((f) => ({ ...f, _ampel: fallAmpel(f, heute) }));
+  const offen = faelle.filter((f) => f.status !== "geloest").length;
+  const ueberfaellig = faelle.filter((f) => f._ampel.farbe === "rot").length;
+
   appEl().innerHTML = `
     <h1>Ausbildungsberatung</h1>
-    <p class="bw-unterzeile">Dokumentation von Problemen und Lösungen in Ausbildungsverhältnissen — Beratungsfälle koordiniert begleiten.</p>
-    <div class="bw-hinweis">Dieser Bereich wird gerade aufgebaut. Geplante Funktionen:</div>
-    <ul>
-      <li>Beratungsfälle anlegen (Betrieb/Auszubildende:r, Anliegen, Status offen/in Bearbeitung/gelöst).</li>
-      <li>Verlauf dokumentieren: Problem, Maßnahmen, Lösung, Wiedervorlage-Datum.</li>
-      <li>Einladung zum Beratungsgespräch erzeugen (<a href="#/vorlagen">Vorlagen</a>).</li>
-      <li>Auswertung: offene Fälle, Wiedervorlagen, Themen-Häufung.</li>
-    </ul>
-    <p class="bw-klein bw-leise">Bereits nutzbar: der <a href="#/rechner">Ausbildungsrechner</a> (Fristen, Vergütung, Urlaub)
-      und die Einladung zum Beratungsgespräch unter <a href="#/vorlagen">Vorlagen</a>.</p>`;
+    <p class="bw-unterzeile">Beratungsfälle koordiniert begleiten — Problem und Lösung dokumentieren, Verlauf und Wiedervorlage im Blick.</p>
+
+    <div class="bw-flaechen" style="margin-bottom:var(--bw-space-3)">
+      <div class="bw-card" style="flex:1 1 8rem"><div class="bw-klein bw-leise">Fälle gesamt</div><div style="font-size:1.5rem;font-weight:700">${zahl(faelle.length)}</div></div>
+      <div class="bw-card" style="flex:1 1 8rem"><div class="bw-klein bw-leise">Offen</div><div style="font-size:1.5rem;font-weight:700">${zahl(offen)}</div></div>
+      <div class="bw-card" style="flex:1 1 8rem"><div class="bw-klein bw-leise">Wiedervorlage überfällig</div><div style="font-size:1.5rem;font-weight:700">${zahl(ueberfaellig)}</div></div>
+    </div>
+
+    <section class="bw-card" aria-labelledby="bf-h">
+      <div class="bw-toolbar" style="margin:0 0 var(--bw-space-2);align-items:center">
+        <h2 id="bf-h" style="margin:0;flex:1 1 auto">Fälle</h2>
+        <button class="bw-btn bw-btn--gelb" type="button" id="bf-neu">Neuer Fall</button>
+        <button class="bw-btn bw-btn--sekundaer" type="button" id="bf-csv">CSV</button>
+      </div>
+      <div class="bw-search" style="margin-bottom:var(--bw-space-2)">
+        <label for="bf-suche" class="bw-skip-link">Fälle durchsuchen</label>
+        <input id="bf-suche" type="search" placeholder="Suchen (Titel, Name, Betrieb, Kategorie) …" autocomplete="off">
+      </div>
+      <div class="bw-tablewrap">
+        <table class="bw-table">
+          <thead><tr><th>Status</th><th>Titel</th><th>Auszubildende:r / Betrieb</th><th>Kategorie</th><th>Wiedervorlage</th><th></th></tr></thead>
+          <tbody id="bf-tbody"></tbody>
+        </table>
+      </div>
+      <p id="bf-leer" class="bw-leise bw-klein" hidden>Keine Beratungsfälle. Mit „Neuer Fall" beginnen.</p>
+    </section>`;
+
+  const tbody = document.getElementById("bf-tbody");
+  const sucheEl = document.getElementById("bf-suche");
+  let gefiltert = faelle;
+
+  function zeichne() {
+    tbody.innerHTML = gefiltert.map((f) => {
+      const wer = (f.nachname ? `${esc(f.nachname)}, ${esc(f.vorname)}` : "") + (f.betrieb ? `${f.nachname ? " · " : ""}${esc(f.betrieb)}` : "");
+      return `<tr>
+        <td title="${esc(f._ampel.text)}">${BERATUNG_AMPEL[f._ampel.farbe]} <span class="bw-klein">${esc(beratungStatusLabel(f.status))}</span></td>
+        <td><a href="#/beratung/${f.id}">${esc(f.titel)}</a></td>
+        <td>${wer || "<span class='bw-leise'>—</span>"}</td>
+        <td>${esc(f.kategorie || "—")}</td>
+        <td>${f.wiedervorlage ? esc(new Date(f.wiedervorlage).toLocaleDateString("de-DE")) : "—"}</td>
+        <td class="bw-actions"><a class="bw-btn bw-btn--sekundaer" href="#/beratung/${f.id}">Öffnen</a></td>
+      </tr>`;
+    }).join("");
+    document.getElementById("bf-leer").hidden = gefiltert.length > 0;
+  }
+  function filtern() {
+    const q = sucheEl.value.trim();
+    if (!q) { gefiltert = faelle; zeichne(); return; }
+    if (window.bwSearch) gefiltert = window.bwSearch.search(faelle, q, { fields: ["titel", "nachname", "vorname", "betrieb", "kategorie", "beschreibung"] });
+    else { const n = q.toLowerCase(); gefiltert = faelle.filter((f) => `${f.titel} ${f.nachname || ""} ${f.betrieb || ""} ${f.kategorie || ""}`.toLowerCase().includes(n)); }
+    zeichne();
+  }
+  zeichne();
+  sucheEl.addEventListener("input", debounce(filtern, 150));
+
+  document.getElementById("bf-neu").addEventListener("click", () => beratungFallDialog(null, () => route()));
+  document.getElementById("bf-csv").addEventListener("click", () => {
+    const kopf = ["Titel", "Status", "Auszubildende:r", "Betrieb", "Kategorie", "Wiedervorlage", "Angelegt"];
+    const zeilen = faelle.map((f) => [f.titel, beratungStatusLabel(f.status), f.nachname ? `${f.nachname}, ${f.vorname}` : "",
+      f.betrieb || "", f.kategorie || "", f.wiedervorlage ? new Date(f.wiedervorlage).toLocaleDateString("de-DE") : "",
+      f.angelegt ? new Date(f.angelegt).toLocaleDateString("de-DE") : ""]);
+    dateiDownload("beratungsfaelle.csv", csvText(kopf, zeilen), "text/csv;charset=utf-8");
+    meldung(`CSV exportiert: ${zahl(faelle.length)} Fälle.`);
+  });
+
   document.getElementById("inhalt")?.focus?.();
+}
+
+/* --------------------------------------------------- Beratung: Fall-Akte */
+async function renderBeratungFall(idRaw) {
+  const id = Number(idRaw);
+  const f = await store.beratungFall(id);
+  if (!f) { appEl().innerHTML = `<div class="bw-hinweis bw-hinweis--fehler">Beratungsfall nicht gefunden.</div>`; return; }
+  const heute = heuteISO();
+  const a = fallAmpel(f, heute);
+  const eintraege = await store.beratungEintraege(id);
+  const wer = (f.nachname ? `${esc(f.nachname)}, ${esc(f.vorname)}` : "") + (f.betrieb ? `${f.nachname ? " · " : ""}${esc(f.betrieb)}` : "");
+
+  appEl().innerHTML = `
+    <p class="bw-klein"><a href="#/beratung">← Ausbildungsberatung</a></p>
+    <div class="bw-toolbar" style="align-items:center">
+      <h1 style="flex:1 1 auto;margin:0">${esc(f.titel)}</h1>
+      <button class="bw-btn bw-btn--sekundaer" type="button" id="bf-bearbeiten">Bearbeiten</button>
+      <button class="bw-btn bw-btn--sekundaer" type="button" id="bf-druck">Drucken</button>
+    </div>
+    <p class="bw-unterzeile">${BERATUNG_AMPEL[a.farbe]} ${esc(a.text)} · ${esc(beratungStatusLabel(f.status))}${f.kategorie ? " · " + esc(f.kategorie) : ""}</p>
+
+    <div class="bw-flaechen" style="align-items:flex-start">
+      <section class="bw-card" style="flex:1 1 16rem">
+        <h2 style="margin-top:0">Eckdaten</h2>
+        <table class="bw-table bw-table--paare"><tbody>
+          <tr><th scope="row">Auszubildende:r / Betrieb</th><td>${wer || "—"}${f.pruefling_id ? ` · <a href="#/pruefling/${f.pruefling_id}">Akte</a>` : ""}</td></tr>
+          <tr><th scope="row">Status</th><td>${esc(beratungStatusLabel(f.status))}</td></tr>
+          <tr><th scope="row">Kategorie</th><td>${esc(f.kategorie || "—")}</td></tr>
+          <tr><th scope="row">Wiedervorlage</th><td>${f.wiedervorlage ? esc(new Date(f.wiedervorlage).toLocaleDateString("de-DE")) : "—"}</td></tr>
+          <tr><th scope="row">Angelegt</th><td>${f.angelegt ? esc(new Date(f.angelegt).toLocaleDateString("de-DE")) : "—"}</td></tr>
+          ${f.geschlossen ? `<tr><th scope="row">Gelöst am</th><td>${esc(new Date(f.geschlossen).toLocaleDateString("de-DE"))}</td></tr>` : ""}
+        </tbody></table>
+        ${f.beschreibung ? `<h3>Anliegen</h3><p style="white-space:pre-wrap">${esc(f.beschreibung)}</p>` : ""}
+        <div class="bw-toolbar" style="margin-top:var(--bw-space-2)">
+          <a class="bw-btn bw-btn--sekundaer" href="#/vorlagen">Einladung erzeugen</a>
+          <button class="bw-btn bw-btn--sekundaer" type="button" id="bf-loeschen">Fall löschen</button>
+        </div>
+      </section>
+
+      <section class="bw-card" style="flex:1.3 1 20rem">
+        <h2 style="margin-top:0">Verlauf</h2>
+        <form id="bf-eform" class="bw-dialog__felder" style="margin-bottom:var(--bw-space-2)">
+          <div class="bw-field"><label for="be-datum">Datum</label><input id="be-datum" type="date" value="${esc(heute)}"></div>
+          <div class="bw-field"><label for="be-art">Art</label>
+            <select id="be-art">${EINTRAG_ARTEN.map((x) => `<option value="${x.id}">${esc(x.label)}</option>`).join("")}</select></div>
+        </form>
+        <div class="bw-field"><label for="be-text">Eintrag</label>
+          <textarea id="be-text" rows="3" style="font:inherit;width:100%" placeholder="Was wurde besprochen / veranlasst?"></textarea></div>
+        <div class="bw-toolbar" style="margin:0 0 var(--bw-space-3)"><button class="bw-btn bw-btn--gelb" type="button" id="be-add">Eintrag hinzufügen</button></div>
+        <ol class="bw-verlauf" id="bf-eintraege"></ol>
+        <p id="bf-eleer" class="bw-leise bw-klein"${eintraege.length ? " hidden" : ""}>Noch kein Verlauf.</p>
+      </section>
+    </div>`;
+
+  const eintraegeEl = document.getElementById("bf-eintraege");
+  function zeichneEintraege(liste) {
+    eintraegeEl.innerHTML = liste.map((e) => `
+      <li>
+        <div class="bw-verlauf__kopf">
+          <strong>${esc(artLabel(e.art))}</strong>
+          <span class="bw-klein bw-leise">${e.datum ? esc(new Date(e.datum).toLocaleDateString("de-DE")) : ""}</span>
+          <button class="bw-iconbtn" type="button" data-del-eintrag="${e.id}" title="Eintrag löschen" aria-label="Eintrag löschen" style="margin-left:auto">${icon("muell")}</button>
+        </div>
+        ${e.text ? `<div style="white-space:pre-wrap">${esc(e.text)}</div>` : ""}
+      </li>`).join("");
+    document.getElementById("bf-eleer").hidden = liste.length > 0;
+  }
+  zeichneEintraege(eintraege);
+
+  document.getElementById("be-add").addEventListener("click", async () => {
+    const text = document.getElementById("be-text").value.trim();
+    if (!text) { meldung("Bitte einen Text eingeben.", "fehler"); return; }
+    await store.beratungEintragAnlegen(id, { datum: document.getElementById("be-datum").value, art: document.getElementById("be-art").value, text });
+    document.getElementById("be-text").value = "";
+    zeichneEintraege(await store.beratungEintraege(id));
+    meldung("Verlaufseintrag gespeichert.");
+  });
+  eintraegeEl.addEventListener("click", async (ev) => {
+    const del = ev.target.closest("[data-del-eintrag]")?.getAttribute("data-del-eintrag");
+    if (!del) return;
+    await store.beratungEintragLoeschen(Number(del));
+    zeichneEintraege(await store.beratungEintraege(id));
+  });
+
+  document.getElementById("bf-bearbeiten").addEventListener("click", () => beratungFallDialog(f, () => route()));
+  document.getElementById("bf-loeschen").addEventListener("click", async () => {
+    if (!confirm("Diesen Beratungsfall mit gesamtem Verlauf löschen?")) return;
+    await store.beratungLoeschen(id);
+    meldung("Beratungsfall gelöscht.");
+    location.hash = "#/beratung";
+  });
+  document.getElementById("bf-druck").addEventListener("click", () => {
+    druckbereich().innerHTML = `
+      <h1>${esc(f.titel)}</h1>
+      <p>${esc(beratungStatusLabel(f.status))}${f.kategorie ? " · " + esc(f.kategorie) : ""} · ${wer || ""}</p>
+      ${f.beschreibung ? `<h2>Anliegen</h2><p style="white-space:pre-wrap">${esc(f.beschreibung)}</p>` : ""}
+      <h2>Verlauf</h2>
+      <ul>${eintraege.slice().reverse().map((e) => `<li><strong>${e.datum ? esc(new Date(e.datum).toLocaleDateString("de-DE")) : ""} — ${esc(artLabel(e.art))}:</strong> ${esc(e.text || "")}</li>`).join("")}</ul>`;
+    window.print();
+  });
+
+  document.getElementById("inhalt")?.focus?.();
+}
+
+/* ----------------------------------------- Beratung: Fall anlegen/bearbeiten */
+async function beratungFallDialog(fall, nachher) {
+  const alt = document.getElementById("dialog"); if (alt) alt.remove();
+  const heute = heuteISO();
+  const prueflinge = await store.liste("prueflinge");
+  const dlg = document.createElement("dialog");
+  dlg.className = "bw-dialog bw-dialog--breit"; dlg.id = "dialog";
+  const opt = (sel) => prueflinge.map((p) => `<option value="${p.id}"${String(p.id) === String(sel) ? " selected" : ""}>${esc(p.nachname)}, ${esc(p.vorname)}</option>`).join("");
+  const f = fall || {};
+  dlg.innerHTML = `
+    <form method="dialog" novalidate>
+      <h2 style="margin-top:0">${fall ? "Fall bearbeiten" : "Neuer Beratungsfall"}</h2>
+      <div class="bw-field"><label for="bd-titel">Titel / Anliegen</label>
+        <input id="bd-titel" type="text" required value="${esc(f.titel || "")}"></div>
+      <div class="bw-dialog__felder">
+        <div class="bw-field"><label for="bd-pruefling">Auszubildende:r</label>
+          <select id="bd-pruefling"><option value="">— keine:r —</option>${opt(f.pruefling_id)}</select></div>
+        <div class="bw-field"><label for="bd-betrieb">Betrieb (frei)</label>
+          <input id="bd-betrieb" type="text" value="${esc(f.betrieb || "")}"></div>
+        <div class="bw-field"><label for="bd-kategorie">Kategorie</label>
+          <select id="bd-kategorie"><option value="">—</option>${BERATUNG_KATEGORIEN.map((k) => `<option${f.kategorie === k ? " selected" : ""}>${esc(k)}</option>`).join("")}</select></div>
+        <div class="bw-field"><label for="bd-status">Status</label>
+          <select id="bd-status">${BERATUNG_STATUS.map((s) => `<option value="${s.id}"${(f.status || "offen") === s.id ? " selected" : ""}>${esc(s.label)}</option>`).join("")}</select></div>
+        <div class="bw-field"><label for="bd-wv">Wiedervorlage</label>
+          <input id="bd-wv" type="date" value="${esc(f.wiedervorlage ? bhIso(new Date(f.wiedervorlage)) : (fall ? "" : standardWiedervorlage(heute)))}"></div>
+      </div>
+      <div class="bw-field"><label for="bd-beschreibung">Beschreibung</label>
+        <textarea id="bd-beschreibung" rows="4" style="font:inherit;width:100%">${esc(f.beschreibung || "")}</textarea></div>
+      <div class="bw-dialog__aktionen">
+        <button type="button" class="bw-btn bw-btn--sekundaer" id="bd-abbr">Abbrechen</button>
+        <button type="button" class="bw-btn bw-btn--gelb" id="bd-speichern">Speichern</button>
+      </div>
+    </form>`;
+  document.body.appendChild(dlg);
+  dlg.querySelector("#bd-abbr").addEventListener("click", () => dlg.close());
+  dlg.querySelector("#bd-speichern").addEventListener("click", async () => {
+    const titel = dlg.querySelector("#bd-titel").value.trim();
+    if (!titel) { meldung("Bitte einen Titel angeben.", "fehler"); return; }
+    const daten = {
+      titel,
+      prueflingId: dlg.querySelector("#bd-pruefling").value || null,
+      betrieb: dlg.querySelector("#bd-betrieb").value.trim() || null,
+      kategorie: dlg.querySelector("#bd-kategorie").value || null,
+      status: dlg.querySelector("#bd-status").value,
+      wiedervorlage: dlg.querySelector("#bd-wv").value || null,
+      beschreibung: dlg.querySelector("#bd-beschreibung").value.trim() || null,
+    };
+    try {
+      if (fall) await store.beratungAktualisieren(fall.id, daten);
+      else await store.beratungAnlegen(daten);
+      meldung("Beratungsfall gespeichert.");
+      dlg.close();
+    } catch (e) { console.error(e); meldung("Konnte nicht speichern: " + e.message, "fehler"); }
+  });
+  dlg.addEventListener("close", () => { dlg.remove(); if (nachher) nachher(); });
+  dlg.showModal();
 }
 
 /* ------------------------------------------------- Ausbildungsrechner (grüne Berufe) */
@@ -5016,7 +5247,8 @@ async function route() {
     else if (r === "vorlagen") { renderVorlagen(); }
     else if (r.startsWith("berichtsheft/")) { await renderBerichtsheftRaster(r.slice("berichtsheft/".length)); }
     else if (r === "berichtsheft") { await renderBerichtsheft(); }
-    else if (r === "beratung") { renderBeratung(); }
+    else if (r.startsWith("beratung/")) { await renderBeratungFall(r.slice("beratung/".length)); }
+    else if (r === "beratung") { await renderBeratung(); }
     else if (r === "rechner") { renderRechner(); }
     else if (r === "uebersicht") await renderUebersicht();
     else if (r === "pruefungstag") await renderPruefungstag();

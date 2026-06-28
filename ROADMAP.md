@@ -85,10 +85,18 @@ Ausbildungsberatung (Prüfung + Berichtsheftkontrolle + Beratung + Vordrucke).
   Offene Raster-Mängel heben die Dashboard-Ampel auf „rot". Reine Logik
   (`KW_ORDER`, `codeUmschalten`, `zellenStatus`) mit 47 Unit-Tests; Chromium-
   getestet (Tasten A/Ziffer/O/Pfeile/Entf, Persistenz nach Reload, Mobile 390px).
-- ⏳ **Ausbildungsberatung (Problem/Lösungs-Doku)**: als Startseite angelegt und
-  mit Funktionsplan „vorgelegt"; nächster Ausbau (Beratungsfälle mit
-  Verlauf/Wiedervorlage). Weiterer Berichtsheft-Ausbau: Import, Kontrolltermine,
-  Mängel je Kalenderwoche, druckbare Kontroll-Liste.
+- ✅ **Ausbildungsberatung (Beratungsfälle)** (`#/beratung`, `#/beratung/<id>`):
+  Beratungsfälle mit Status (offen / in Bearbeitung / gelöst), Kategorie,
+  Verknüpfung zu Auszubildenden, Betrieb, Beschreibung und Wiedervorlage.
+  **Dashboard** mit Ampel, Kennzahlen, globaler Fuzzy-Suche und CSV-Export;
+  **Fall-Akte** mit Eckdaten, dokumentiertem **Verlauf** (Notiz/Telefonat/
+  Gespräch/Maßnahme/Kontakt — hinzufügen/löschen), Bearbeiten/Löschen, Drucken
+  und Verweis auf die Vorlage „Einladung zum Beratungsgespräch". Neue PGlite-
+  Tabellen `beratungsfaelle` + `beratung_eintraege`. Reine Logik
+  (`assets/js/beratung.js`, 14 Unit-Tests in der CI), neue Theme-Komponente
+  `.bw-verlauf`. Chromium-getestet (Fall anlegen, Status, Verlauf, Lösen, 390px).
+- ⏳ **Weiterer Ausbau**: Berichtsheft (Import, Kontrolltermine, druckbare
+  Kontroll-Liste), Beratungs-Auswertungen (Themen-Häufung, Wiedervorlage-Board).
 
 ---
 

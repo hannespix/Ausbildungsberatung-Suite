@@ -32,6 +32,8 @@ jobs:
         run: node tools/test_rechner.mjs
       - name: Berichtsheft-Logik testen
         run: node tools/test_berichtsheft.mjs
+      - name: Beratungs-Logik testen
+        run: node tools/test_beratung.mjs
       - name: Bundle packen
         run: |
           mkdir -p dist
