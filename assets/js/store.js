@@ -399,6 +399,16 @@ export async function berichtsheftRasterAlle() {
   return res.rows;
 }
 
+/** Rasterzellen mit Mängeln/Fehltagen inkl. Betrieb (Betriebs-Sicht der Auswertung). */
+export async function berichtsheftRasterMitBetrieb() {
+  const res = await _pg.query(
+    `SELECT k.maengel, k.fehltage, p.betrieb
+       FROM berichtsheft_kw k JOIN prueflinge p ON p.id = k.pruefling_id
+      WHERE k.maengel <> '' OR k.fehltage > 0`
+  );
+  return res.rows;
+}
+
 /* ----------------------------------------------------- Berichtsheftkontrolle */
 
 /** Kontrolle anlegen/aktualisieren (Upsert je Prüfling/Ausbildungsjahr/Durchsicht). */

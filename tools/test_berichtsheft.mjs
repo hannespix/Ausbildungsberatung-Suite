@@ -3,7 +3,7 @@ import {
   ERGEBNISSE, ergebnisLabel, brauchtWiedervorlage, hatEchteMaengel,
   isoKW, isoWochenJahr, kwBereich, naechsteFrist, wvStatus, ampel,
   zulassungsEmpfehlung, KW_ORDER, codeUmschalten, codesAlsListe, zellenStatus,
-  maengelHaeufung,
+  maengelHaeufung, maengelJeBetrieb,
 } from "../assets/js/berichtsheft.js";
 
 let fehler = 0, geprueft = 0;
@@ -105,6 +105,30 @@ eq(zellenStatus({}), "leer", "unbearbeitet -> leer");
   // Robust gegen leere Eingabe
   eq(maengelHaeufung([]).maengelGesamt, 0, "leere Liste -> 0 Mängel");
   eq(maengelHaeufung().fehltageSumme, 0, "undefined -> 0 Fehltage");
+}
+
+// --- Mängel je Betrieb (Betriebs-Sicht) ---
+{
+  const zellen = [
+    { betrieb: "Gärtnerei Müller", maengel: "A,D", fehltage: 0 },
+    { betrieb: "Gärtnerei Müller", maengel: "A", fehltage: 2 },
+    { betrieb: "Baumschule Klein", maengel: "C", fehltage: 0 },
+    { betrieb: "Baumschule Klein", maengel: "H", fehltage: 1 },  // nur Fehltage
+    { betrieb: "", maengel: "B", fehltage: 0 },                   // ohne Betrieb
+    { betrieb: "Hof Sauber", maengel: "", fehltage: 0 },         // nichts -> ignoriert
+  ];
+  const r = maengelJeBetrieb(zellen);
+  eq(r.length, 3, "3 Betriebe mit Mängeln/Fehltagen (Hof Sauber raus)");
+  eq(r[0].betrieb, "Gärtnerei Müller", "meiste Mängel zuerst");
+  eq(r[0].maengel, 3, "Müller 3 Mängel (A,D,A)");
+  eq(r[0].fehltage, 2, "Müller 2 Fehltage");
+  eq(r[0].wochen, 2, "Müller 2 betroffene Wochen");
+  const klein = r.find((x) => x.betrieb === "Baumschule Klein");
+  eq(klein.maengel, 1, "Klein 1 echter Mangel (H zählt nicht)");
+  eq(klein.fehltage, 1, "Klein 1 Fehltag");
+  eq(klein.wochen, 2, "Klein 2 Wochen (Mangel + Fehltag)");
+  ok(r.some((x) => x.betrieb === "Ohne Betrieb"), "leerer Betrieb -> 'Ohne Betrieb'");
+  eq(maengelJeBetrieb([]).length, 0, "leere Liste -> []");
 }
 
 console.log(`${geprueft} Prüfungen, ${fehler} Fehler.`);

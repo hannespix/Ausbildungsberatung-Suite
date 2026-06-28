@@ -45,6 +45,15 @@ const run = () => smoke("maengel", async ({ page, ok }) => {
   });
   ok(fehltage === "5", `Fehltage gesamt = 5 (war ${fehltage})`);
 
+  // Betriebs-Sicht: „Mängel je Betrieb" erscheint mit mindestens einer Zeile.
+  const betriebZeilen = await page.evaluate(() => {
+    const h = Array.from(document.querySelectorAll("#bh-ausw-h ~ * h3, h3")).find((e) => e.textContent.includes("Mängel je Betrieb"));
+    if (!h) return 0;
+    const wrap = h.nextElementSibling;
+    return wrap ? wrap.querySelectorAll("tbody tr").length : 0;
+  });
+  ok(betriebZeilen >= 1, `Mängel je Betrieb zeigt Zeilen (war ${betriebZeilen})`);
+
   // Mobile 390px: kein horizontaler Überlauf der Seite.
   await page.setViewportSize({ width: 390, height: 800 });
   await page.waitForTimeout(150);

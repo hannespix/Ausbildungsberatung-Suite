@@ -16,7 +16,7 @@ import {
   ERGEBNISSE, ergebnisLabel, brauchtWiedervorlage, naechsteFrist,
   wvStatus, ampel as bhAmpel, isoDate as bhIso, zulassungsEmpfehlung,
   KW_ORDER, RASTER_SPALTEN, MAENGEL_CODES, codeUmschalten, codesAlsListe, zellenStatus,
-  maengelHaeufung,
+  maengelHaeufung, maengelJeBetrieb,
 } from "./berichtsheft.js";
 import {
   STATUS as BERATUNG_STATUS, statusLabel as beratungStatusLabel, KATEGORIEN as BERATUNG_KATEGORIEN,
@@ -4492,6 +4492,7 @@ async function renderBerichtsheft() {
   const offeneMg = await store.berichtsheftOffeneMaengel();
   const termine = await store.berichtsheftTermine();
   const statistik = maengelHaeufung(await store.berichtsheftRasterAlle());
+  const betriebe = maengelJeBetrieb(await store.berichtsheftRasterMitBetrieb());
   const wvOffen = wv
     .map((w) => ({ ...w, _stat: wvStatus(w.wiedervorlage_frist, w.wiedervorlage_erledigt, heute) }))
     .filter((w) => w._stat === "offen" || w._stat === "ueberfaellig");
@@ -4576,6 +4577,16 @@ async function renderBerichtsheft() {
         </table>
       </div>`
         : '<p class="bw-leise bw-klein">Noch keine Mängel im Wochenraster erfasst.</p>'}
+      ${betriebe.length ? `
+      <h3 style="margin:var(--bw-space-3) 0 var(--bw-space-2)">Mängel je Betrieb</h3>
+      <div class="bw-tablewrap">
+        <table class="bw-table">
+          <thead><tr><th>Betrieb</th><th>Mängel</th><th>Fehltage</th><th>Wochen</th></tr></thead>
+          <tbody>${betriebe.slice(0, 10).map((b) => `
+            <tr><td>${esc(b.betrieb)}</td><td>${zahl(b.maengel)}</td><td>${zahl(b.fehltage)}</td><td>${zahl(b.wochen)}</td></tr>`).join("")}</tbody>
+        </table>
+      </div>
+      ${betriebe.length > 10 ? `<p class="bw-klein bw-leise">Top 10 von ${zahl(betriebe.length)} Betrieben mit Mängeln/Fehltagen.</p>` : ""}` : ""}
     </section>
 
     <section class="bw-card" aria-labelledby="bh-liste-h">

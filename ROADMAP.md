@@ -173,6 +173,12 @@ Ausbildungsberatung (Prüfung + Berichtsheftkontrolle + Beratung + Vordrucke).
   Unit-Tests), DB-Lesung `store.berichtsheftRasterAlle`. Chromium-Smoke
   (`tools/smoke/maengel.mjs`): 3 Codes, A häufigster (=2), H nicht als Mangel,
   Fehltage 5, Mobile 390px ohne Overflow.
+- ✅ **Berichtsheft — Mängel-Auswertung: Betriebs-Sicht**: die Mängel-Auswertung
+  zeigt zusätzlich eine Tabelle **Mängel je Betrieb** (Mängel, Fehltage, betroffene
+  Wochen; Top 10, absteigend) — so erkennt die Beratung, welche Betriebe gehäuft
+  auffallen. Reine Logik `berichtsheft.js → maengelJeBetrieb` (+10 Unit-Tests),
+  DB-Lesung `store.berichtsheftRasterMitBetrieb` (Join auf `prueflinge.betrieb`).
+  Chromium-Smoke erweitert.
 - ⏳ **Weiterer Ausbau**: Berichtsheft-Import (CSV), weitere Auswertungen.
 
 ---

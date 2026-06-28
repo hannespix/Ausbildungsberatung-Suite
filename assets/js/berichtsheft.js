@@ -211,3 +211,27 @@ export function maengelHaeufung(zellen) {
     .sort((a, b) => b.value - a.value || a.code.localeCompare(b.code));
   return { maengel, fehltageSumme, wochenMitMaengeln, wochenMitFehltagen, maengelGesamt };
 }
+
+/**
+ * Mängel/Fehltage je Betrieb über alle Rasterzellen (Betriebs-Sicht der
+ * Mängel-Auswertung). Zellen ohne Betrieb laufen unter „Ohne Betrieb".
+ * @param {Array<{betrieb?:string, maengel?:string, fehltage?:number}>} zellen
+ * @returns {Array<{betrieb:string, maengel:number, fehltage:number, wochen:number}>}
+ *   absteigend nach Mängeln, dann Fehltagen, dann Name.
+ */
+export function maengelJeBetrieb(zellen) {
+  const m = new Map();
+  (zellen || []).forEach((z) => {
+    const betrieb = (z && z.betrieb && String(z.betrieb).trim()) ? String(z.betrieb).trim() : "Ohne Betrieb";
+    const codes = codesAlsListe(z && z.maengel).filter((c) => c !== "H");
+    const fehl = Number((z && z.fehltage) || 0);
+    if (!codes.length && !(fehl > 0)) return;
+    const e = m.get(betrieb) || { betrieb, maengel: 0, fehltage: 0, wochen: 0 };
+    e.maengel += codes.length;
+    e.fehltage += fehl > 0 ? fehl : 0;
+    e.wochen += 1;
+    m.set(betrieb, e);
+  });
+  return Array.from(m.values())
+    .sort((a, b) => b.maengel - a.maengel || b.fehltage - a.fehltage || a.betrieb.localeCompare(b.betrieb));
+}
