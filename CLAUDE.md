@@ -1,7 +1,10 @@
 # CLAUDE.md — Grundanweisung für Browsertools (RP Freiburg)
 
 Steuert, **wie** dieses Tool gebaut wird (Design + Technik). Den **Prozess**
-(Loop, PRs, Milestones) regelt `AGENTS.md`. Vor jeder Aufgabe beide lesen.
+(Loop, PRs, Milestones) regelt `AGENTS.md`; die **Wissensbasis** (Architektur,
+Module, Datenmodell, Muster, Stolperfallen) steht in `docs/ARCHITEKTUR.md`.
+Vor jeder Aufgabe alle drei lesen — und `docs/ARCHITEKTUR.md` bei neuen
+Mustern/Erkenntnissen ergänzen (Wissen ins Repo, nicht in den Chat).
 Ziel: jedes Tool sieht **wie aus einem Guss** aus — aktuelles Landes-CD
 Baden-Württemberg (https://design.landbw.de).
 
