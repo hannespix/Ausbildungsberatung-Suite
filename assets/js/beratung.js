@@ -25,7 +25,12 @@ export const EINTRAG_ARTEN = [
 export function artLabel(id) { const a = EINTRAG_ARTEN.find((x) => x.id === id); return a ? a.label : (id || ""); }
 
 const TAG_MS = 86400000;
-function parse(s) { const d = new Date(String(s) + "T12:00:00"); return isNaN(d) ? null : d; }
+function parse(s) {
+  if (s instanceof Date) return isNaN(s) ? null : s;
+  if (s == null || s === "") return null;
+  const d = new Date(String(s).slice(0, 10) + "T12:00:00");
+  return isNaN(d) ? null : d;
+}
 
 /** Standard-Wiedervorlage für einen neuen/aktualisierten Fall (heute + Tage). */
 export function standardWiedervorlage(heuteISO, tage = 14) {
@@ -49,3 +54,22 @@ export function fallAmpel(fall, heuteISO) {
 
 /** Offen = nicht gelöst. */
 export function istOffen(fall) { return !!fall && fall.status !== "geloest"; }
+
+/** Häufigkeit je Kategorie, absteigend (für die Themen-Auswertung). */
+export function kategorieHaeufung(faelle) {
+  const m = new Map();
+  (faelle || []).forEach((f) => {
+    const k = (f && f.kategorie) ? f.kategorie : "Ohne Kategorie";
+    m.set(k, (m.get(k) || 0) + 1);
+  });
+  return Array.from(m.entries())
+    .map(([label, value]) => ({ label, value }))
+    .sort((a, b) => b.value - a.value || a.label.localeCompare(b.label));
+}
+
+/** Zählung je Status ({offen, in_bearbeitung, geloest}). */
+export function statusZaehlung(faelle) {
+  const z = { offen: 0, in_bearbeitung: 0, geloest: 0 };
+  (faelle || []).forEach((f) => { if (f && z[f.status] != null) z[f.status]++; });
+  return z;
+}

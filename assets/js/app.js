@@ -18,7 +18,7 @@ import {
 } from "./berichtsheft.js";
 import {
   STATUS as BERATUNG_STATUS, statusLabel as beratungStatusLabel, KATEGORIEN as BERATUNG_KATEGORIEN,
-  EINTRAG_ARTEN, artLabel, standardWiedervorlage, fallAmpel,
+  EINTRAG_ARTEN, artLabel, standardWiedervorlage, fallAmpel, kategorieHaeufung,
 } from "./beratung.js";
 
 // Vorlage für den Rotations-Ablaufplan (Single Source: model.js) — von Cockpit
@@ -4816,6 +4816,22 @@ async function renderBeratung() {
   const offen = faelle.filter((f) => f.status !== "geloest").length;
   const ueberfaellig = faelle.filter((f) => f._ampel.farbe === "rot").length;
 
+  // Bereichsübergreifendes Wiedervorlage-Board (Beratung + Berichtsheft).
+  const bhWv = await store.berichtsheftWiedervorlagen();
+  const wvBoard = [
+    ...faelle.filter((f) => f.wiedervorlage && f.status !== "geloest").map((f) => ({
+      quelle: "Beratung", wer: f.nachname ? `${f.nachname}, ${f.vorname}` : (f.betrieb || "—"),
+      anlass: f.titel, frist: f.wiedervorlage, link: `#/beratung/${f.id}`,
+      stat: wvStatus(f.wiedervorlage, false, heute),
+    })),
+    ...bhWv.filter((w) => !w.wiedervorlage_erledigt).map((w) => ({
+      quelle: "Berichtsheft", wer: `${w.nachname}, ${w.vorname}`,
+      anlass: ergebnisLabel(w.ergebnis), frist: w.wiedervorlage_frist, link: "#/berichtsheft",
+      stat: wvStatus(w.wiedervorlage_frist, false, heute),
+    })),
+  ].filter((x) => x.stat === "offen" || x.stat === "ueberfaellig")
+   .sort((a, b) => String(a.frist).localeCompare(String(b.frist)));
+
   appEl().innerHTML = `
     <h1>Ausbildungsberatung</h1>
     <p class="bw-unterzeile">Beratungsfälle koordiniert begleiten — Problem und Lösung dokumentieren, Verlauf und Wiedervorlage im Blick.</p>
@@ -4824,6 +4840,25 @@ async function renderBeratung() {
       <div class="bw-card" style="flex:1 1 8rem"><div class="bw-klein bw-leise">Fälle gesamt</div><div style="font-size:1.5rem;font-weight:700">${zahl(faelle.length)}</div></div>
       <div class="bw-card" style="flex:1 1 8rem"><div class="bw-klein bw-leise">Offen</div><div style="font-size:1.5rem;font-weight:700">${zahl(offen)}</div></div>
       <div class="bw-card" style="flex:1 1 8rem"><div class="bw-klein bw-leise">Wiedervorlage überfällig</div><div style="font-size:1.5rem;font-weight:700">${zahl(ueberfaellig)}</div></div>
+    </div>
+
+    <div class="bw-flaechen" style="margin-bottom:var(--bw-space-3);align-items:flex-start">
+      <section class="bw-card" aria-labelledby="bf-wv-h" style="flex:1 1 20rem">
+        <h2 id="bf-wv-h" style="margin-top:0">Wiedervorlagen (alle Bereiche)</h2>
+        ${wvBoard.length ? `<div class="bw-tablewrap"><table class="bw-table">
+          <thead><tr><th>Frist</th><th>Bereich</th><th>Auszubildende:r</th><th>Anlass</th><th></th></tr></thead>
+          <tbody>${wvBoard.map((w) => `<tr>
+            <td>${esc(new Date(w.frist).toLocaleDateString("de-DE"))} ${w.stat === "ueberfaellig" ? '<span class="bw-tag bw-tag--fehler">überfällig</span>' : '<span class="bw-tag bw-tag--aktiv">offen</span>'}</td>
+            <td>${esc(w.quelle)}</td>
+            <td>${esc(w.wer)}</td>
+            <td>${esc(w.anlass)}</td>
+            <td class="bw-actions"><a class="bw-btn bw-btn--sekundaer" href="${w.link}">Öffnen</a></td>
+          </tr>`).join("")}</tbody></table></div>` : '<p class="bw-leise bw-klein">Keine offenen Wiedervorlagen.</p>'}
+      </section>
+      <section class="bw-card" aria-labelledby="bf-aus-h" style="flex:1 1 16rem">
+        <h2 id="bf-aus-h" style="margin-top:0">Themen-Häufung</h2>
+        <div id="bf-diagramm"></div>
+      </section>
     </div>
 
     <section class="bw-card" aria-labelledby="bf-h">
@@ -4882,6 +4917,17 @@ async function renderBeratung() {
     dateiDownload("beratungsfaelle.csv", csvText(kopf, zeilen), "text/csv;charset=utf-8");
     meldung(`CSV exportiert: ${zahl(faelle.length)} Fälle.`);
   });
+
+  // Themen-Häufung (CI-konformes SVG-Balkendiagramm).
+  const dia = document.getElementById("bf-diagramm");
+  const haeuf = kategorieHaeufung(faelle);
+  if (window.bwChart && haeuf.length) {
+    const maxH = Math.max.apply(null, haeuf.map((h) => h.value));
+    window.bwChart.bars(dia, haeuf.map((h) => ({ label: h.label, value: h.value, highlight: h.value === maxH })),
+      { titel: "Beratungsfälle je Kategorie", einheit: "" });
+  } else {
+    dia.innerHTML = '<p class="bw-leise bw-klein">Noch keine Fälle — die Auswertung erscheint, sobald Fälle angelegt sind.</p>';
+  }
 
   document.getElementById("inhalt")?.focus?.();
 }
