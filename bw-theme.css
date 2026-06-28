@@ -201,7 +201,9 @@ input, select, textarea { font: inherit; width: 100%; padding: 0.5em 0.65em; bac
 .bw-kw-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .bw-kw-jahr { margin: var(--bw-space-3) 0 var(--bw-space-1); display: flex; align-items: baseline; gap: var(--bw-space-2); }
 .bw-kw-jahr h3 { margin: 0; }
-.bw-kw-grid { display: grid; grid-template-columns: repeat(13, minmax(2.6rem, 1fr)); gap: 2px; min-width: 36rem; }
+/* Innenabstand, damit der Fokus-Rahmen der Randzellen nicht vom Scroll-Container
+   (overflow) abgeschnitten wird. */
+.bw-kw-grid { display: grid; grid-template-columns: repeat(13, minmax(2.6rem, 1fr)); gap: 2px; min-width: 36rem; padding: 5px; }
 .bw-kw { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center;
   min-height: 2.75rem; padding: 0.2rem; border: 1px solid var(--bw-linie); border-radius: var(--bw-radius);
   background: var(--bw-weiss); cursor: pointer; font-size: var(--bw-fs-klein); line-height: 1.1; user-select: none; }
