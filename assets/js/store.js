@@ -1534,6 +1534,13 @@ const SICHERUNG_TABELLEN = {
   bewertungen: ["pruefling_id", "p1", "p2", "p3", "p4", "p5", "k1", "k2", "k3", "k4",
                 "praxis", "kenntnis", "gesamt", "bestanden", "bemerkung", "pk_schriftlich", "pk_bestimmung",
                 "ergaenzung_bereich", "ergaenzung_note"],
+  stationen: ["pruefung_id", "name", "dauer_min", "bewertung_min", "pruefer_bedarf", "eigenregie", "reihenfolge", "pruefer_ids"],
+  berichtsheft_kontrollen: ["pruefling_id", "datum", "ausbildungsjahr", "durchsicht_nr", "ergebnis", "maengel",
+                "fehltage", "bemerkung", "wiedervorlage_frist", "wiedervorlage_erledigt", "wiedervorlage_erledigt_am", "erstellt_am"],
+  berichtsheft_kw: ["pruefling_id", "ausbildungsjahr", "kalenderwoche", "maengel", "behobene", "fehltage", "geprueft", "bemerkung", "geaendert_am"],
+  berichtsheft_termine: ["datum", "betrieb", "gruppe", "typ", "status", "bemerkung", "erstellt_am"],
+  beratungsfaelle: ["pruefling_id", "betrieb", "titel", "kategorie", "status", "beschreibung", "wiedervorlage", "angelegt", "geschlossen"],
+  beratung_eintraege: ["fall_id", "datum", "art", "text", "erstellt_am"],
 };
 function sicherungSpalten(tab) {
   return SICHERUNG_TABELLEN[tab] || ENTITAETEN[tab].felder.map((f) => f.name);
@@ -2125,8 +2132,12 @@ async function bulkInsert(table, cols, rows) {
 
 /** Löscht alle fachlichen Daten (Reset). */
 export async function alleLoeschen() {
+  // Alle fachlichen Daten. Benutzer und Einstellungen überleben bewusst (Zugang
+  // bzw. Konfiguration sind keine fachlichen Daten).
   await _pg.exec(`
-    TRUNCATE bewertungen, zuteilungen, pruefer_zuteilungen RESTART IDENTITY;
+    TRUNCATE bewertungen, zuteilungen, pruefer_zuteilungen, pruefer_abwesenheit, stationen RESTART IDENTITY;
+    TRUNCATE berichtsheft_kontrollen, berichtsheft_kw, berichtsheft_termine RESTART IDENTITY;
+    TRUNCATE beratungsfaelle, beratung_eintraege RESTART IDENTITY;
     TRUNCATE prueflinge RESTART IDENTITY;
     TRUNCATE betriebe RESTART IDENTITY;
     TRUNCATE pruefer RESTART IDENTITY;
