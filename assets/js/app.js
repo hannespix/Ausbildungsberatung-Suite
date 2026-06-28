@@ -15,6 +15,7 @@ import {
   ERGEBNISSE, ergebnisLabel, brauchtWiedervorlage, naechsteFrist,
   wvStatus, ampel as bhAmpel, isoDate as bhIso, zulassungsEmpfehlung,
   KW_ORDER, RASTER_SPALTEN, MAENGEL_CODES, codeUmschalten, codesAlsListe, zellenStatus,
+  maengelHaeufung,
 } from "./berichtsheft.js";
 import {
   STATUS as BERATUNG_STATUS, statusLabel as beratungStatusLabel, KATEGORIEN as BERATUNG_KATEGORIEN,
@@ -4347,6 +4348,7 @@ async function renderBerichtsheft() {
   const wv = await store.berichtsheftWiedervorlagen();
   const offeneMg = await store.berichtsheftOffeneMaengel();
   const termine = await store.berichtsheftTermine();
+  const statistik = maengelHaeufung(await store.berichtsheftRasterAlle());
   const wvOffen = wv
     .map((w) => ({ ...w, _stat: wvStatus(w.wiedervorlage_frist, w.wiedervorlage_erledigt, heute) }))
     .filter((w) => w._stat === "offen" || w._stat === "ueberfaellig");
@@ -4412,6 +4414,27 @@ async function renderBerichtsheft() {
         : '<p class="bw-leise bw-klein">Keine Kontrolltermine geplant.</p>'}
     </section>
 
+    <section class="bw-card" aria-labelledby="bh-ausw-h" style="margin-bottom:var(--bw-space-3)">
+      <h2 id="bh-ausw-h" style="margin-top:0">Mängel-Auswertung</h2>
+      <p class="bw-klein bw-leise" style="margin-top:0">Häufung der Mängel und Fehltage über alle Wochenraster — wo systematisch nachgehakt werden muss.</p>
+      <div class="bw-flaechen" style="margin-bottom:var(--bw-space-3)">
+        <div class="bw-card" style="flex:1 1 8rem"><div class="bw-klein bw-leise">Mängel gesamt</div><div style="font-size:1.5rem;font-weight:700">${zahl(statistik.maengelGesamt)}</div></div>
+        <div class="bw-card" style="flex:1 1 8rem"><div class="bw-klein bw-leise">Wochen mit Mängeln</div><div style="font-size:1.5rem;font-weight:700">${zahl(statistik.wochenMitMaengeln)}</div></div>
+        <div class="bw-card" style="flex:1 1 8rem"><div class="bw-klein bw-leise">Fehltage gesamt</div><div style="font-size:1.5rem;font-weight:700">${zahl(statistik.fehltageSumme)}</div></div>
+        <div class="bw-card" style="flex:1 1 8rem"><div class="bw-klein bw-leise">Wochen mit Fehltagen</div><div style="font-size:1.5rem;font-weight:700">${zahl(statistik.wochenMitFehltagen)}</div></div>
+      </div>
+      ${statistik.maengel.length ? `
+      <div id="bh-maengel-diagramm"></div>
+      <div class="bw-tablewrap" style="margin-top:var(--bw-space-3)">
+        <table class="bw-table">
+          <thead><tr><th>Code</th><th>Mangel</th><th>Anzahl</th></tr></thead>
+          <tbody>${statistik.maengel.map((m) => `
+            <tr><td>${esc(m.code)}</td><td>${esc(m.label)}</td><td>${zahl(m.value)}</td></tr>`).join("")}</tbody>
+        </table>
+      </div>`
+        : '<p class="bw-leise bw-klein">Noch keine Mängel im Wochenraster erfasst.</p>'}
+    </section>
+
     <section class="bw-card" aria-labelledby="bh-liste-h">
       <h2 id="bh-liste-h" style="margin-top:0">Auszubildende</h2>
       <div class="bw-search" style="margin-bottom:var(--bw-space-2)">
@@ -4430,6 +4453,17 @@ async function renderBerichtsheft() {
       </div>
       <p id="bh-leer" class="bw-leise bw-klein" hidden>Keine Auszubildenden gefunden.</p>
     </section>`;
+
+  // Mängel-Häufung als CI-konformes Balkendiagramm (häufigster Mangel hervorgehoben).
+  const diagrammEl = document.getElementById("bh-maengel-diagramm");
+  if (diagrammEl && window.bwChart && statistik.maengel.length) {
+    const maxWert = Math.max.apply(null, statistik.maengel.map((m) => m.value));
+    window.bwChart.bars(
+      diagrammEl,
+      statistik.maengel.map((m) => ({ label: m.code, value: m.value, highlight: m.value === maxWert })),
+      { titel: "Mängel je Code", max: Math.max(1, maxWert) }
+    );
+  }
 
   const tbody = document.getElementById("bh-tbody");
   const sucheEl = document.getElementById("bh-suche");

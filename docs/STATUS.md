@@ -17,7 +17,8 @@ den Fortschritt** steht in `ROADMAP.md`; hier nur der Einstieg + das Nächste.
   Barrierefreiheit), Vorlagen.
 - Ausbildungsrechner (Engine + Oberfläche).
 - Berichtsheftkontrolle: Dashboard, Kontrolle erfassen, **KW-Wochenraster mit
-  Tastatur-Schnellkontrolle**, Wiedervorlagen, Kontrolltermine, druckbare Listen.
+  Tastatur-Schnellkontrolle**, Wiedervorlagen, Kontrolltermine, druckbare Listen,
+  **Mängel-Auswertung** (Code-Häufung + Fehltage-Kennzahlen).
 - Ausbildungsberatung: Fälle + Verlauf, Themen-Häufung, bereichsübergreifendes
   Wiedervorlage-Board (auch auf der Startseite).
 - Datensicherung erfasst alle Tabellen; Tests (galabau, ablauf, auth, rechner,
@@ -25,7 +26,8 @@ den Fortschritt** steht in `ROADMAP.md`; hier nur der Einstieg + das Nächste.
 
 ## Nächste sinnvolle Iterationen (Vorschlag)
 - Berichtsheft-Import (CSV) für Auszubildende/Kontrolldaten.
-- Weitere Auswertungen (z. B. Fehltage-/Mängel-Trends, Betriebs-Sicht).
+- Mängel-Auswertung vertiefen (Betriebs-Sicht: Mängel je Betrieb, Trend über
+  Ausbildungsjahre).
 - Beratungs-/Berichtsheft-Verknüpfung vertiefen (aus Mangel → Beratungsfall).
 
 ## Offene Hinweise

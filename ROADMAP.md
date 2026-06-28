@@ -137,6 +137,16 @@ Ausbildungsberatung (Prüfung + Berichtsheftkontrolle + Beratung + Vordrucke).
   früherer Renderer (z. B. die Übersicht beim Start) kann einen neueren nicht
   mehr überschreiben; schnelle Navigation landet nicht mehr auf einer veralteten
   Seite. Vom neuen Smoke-Harness aufgedeckt und abgesichert.
+- ✅ **Berichtsheft — Mängel-Auswertung**: das Dashboard zeigt die **Häufung der
+  Mängelcodes** über alle Wochenraster als CI-konformes SVG-Balkendiagramm
+  (häufigster Mangel hervorgehoben) plus Tabelle (Code · Klartext · Anzahl) und
+  Kennzahlen (Mängel gesamt, Wochen mit Mängeln, Fehltage gesamt, Wochen mit
+  Fehltagen). „H" (reine Fehltage) zählt nicht als Mangel, sondern in die
+  Fehltage-Summe — so sieht die Ausbildungsberatung, wo systematisch nachgehakt
+  werden muss. Reine Aggregatlogik `berichtsheft.js → maengelHaeufung` (+10
+  Unit-Tests), DB-Lesung `store.berichtsheftRasterAlle`. Chromium-Smoke
+  (`tools/smoke/maengel.mjs`): 3 Codes, A häufigster (=2), H nicht als Mangel,
+  Fehltage 5, Mobile 390px ohne Overflow.
 - ⏳ **Weiterer Ausbau**: Berichtsheft-Import (CSV), weitere Auswertungen.
 
 ---

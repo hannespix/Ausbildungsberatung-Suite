@@ -391,6 +391,14 @@ export async function berichtsheftOffeneMaengel() {
   return m;
 }
 
+/** Alle Rasterzellen mit Mängeln oder Fehltagen — für die Mängel-Auswertung. */
+export async function berichtsheftRasterAlle() {
+  const res = await _pg.query(
+    `SELECT maengel, fehltage FROM berichtsheft_kw WHERE maengel <> '' OR fehltage > 0`
+  );
+  return res.rows;
+}
+
 /* ----------------------------------------------------- Berichtsheftkontrolle */
 
 /** Kontrolle anlegen/aktualisieren (Upsert je Prüfling/Ausbildungsjahr/Durchsicht). */

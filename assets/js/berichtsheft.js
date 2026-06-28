@@ -180,3 +180,34 @@ export function zulassungsEmpfehlung({ ergebnis, maengel, fehltageProzent, wvOff
     && !(fehltageProzent > 10)
     && !wvOffen;
 }
+
+/* ------------------------------------------------------------- Auswertung */
+/**
+ * Häufung der Mängelcodes über alle Rasterzellen (für die Mängel-Auswertung).
+ * „H" (reine Fehltage) zählt nicht als Mangel, wird aber separat als Fehltage-
+ * Summe erfasst. Liefert nur tatsächlich vorkommende Codes, absteigend sortiert,
+ * mit Klartext-Label aus MAENGEL_CODES.
+ * @param {Array<{maengel?:string, fehltage?:number}>} zellen Rasterzellen
+ * @returns {{maengel: Array<{code:string,label:string,value:number}>,
+ *            fehltageSumme:number, wochenMitMaengeln:number,
+ *            wochenMitFehltagen:number, maengelGesamt:number}}
+ */
+export function maengelHaeufung(zellen) {
+  const zaehler = new Map();
+  let fehltageSumme = 0, wochenMitMaengeln = 0, wochenMitFehltagen = 0, maengelGesamt = 0;
+  (zellen || []).forEach((z) => {
+    const codes = codesAlsListe(z && z.maengel).filter((c) => c !== "H");
+    if (codes.length) wochenMitMaengeln++;
+    codes.forEach((c) => { zaehler.set(c, (zaehler.get(c) || 0) + 1); maengelGesamt++; });
+    const fehl = Number((z && z.fehltage) || 0);
+    if (fehl > 0) { fehltageSumme += fehl; wochenMitFehltagen++; }
+  });
+  const labelVon = (code) => {
+    const m = MAENGEL_CODES.find((x) => x.code === code);
+    return m ? m.label : "Sonstiges";
+  };
+  const maengel = Array.from(zaehler.entries())
+    .map(([code, value]) => ({ code, label: labelVon(code), value }))
+    .sort((a, b) => b.value - a.value || a.code.localeCompare(b.code));
+  return { maengel, fehltageSumme, wochenMitMaengeln, wochenMitFehltagen, maengelGesamt };
+}

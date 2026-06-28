@@ -3,6 +3,7 @@ import {
   ERGEBNISSE, ergebnisLabel, brauchtWiedervorlage, hatEchteMaengel,
   isoKW, isoWochenJahr, kwBereich, naechsteFrist, wvStatus, ampel,
   zulassungsEmpfehlung, KW_ORDER, codeUmschalten, codesAlsListe, zellenStatus,
+  maengelHaeufung,
 } from "../assets/js/berichtsheft.js";
 
 let fehler = 0, geprueft = 0;
@@ -79,6 +80,32 @@ eq(zellenStatus({ maengel: "H", fehltage: 2 }), "fehltage", "nur H+Fehltage -> f
 eq(zellenStatus({ maengel: "", behobene: "A", geprueft: 1 }), "behoben", "behoben ohne aktuellen Mangel");
 eq(zellenStatus({ maengel: "", geprueft: 1 }), "ok", "geprüft ohne Mangel -> ok");
 eq(zellenStatus({}), "leer", "unbearbeitet -> leer");
+
+// --- Mängel-Auswertung (Häufung über Rasterzellen) ---
+{
+  const zellen = [
+    { maengel: "A,D", fehltage: 0 },
+    { maengel: "A", fehltage: 2 },
+    { maengel: "H", fehltage: 3 },   // reine Fehltage -> kein Mangel
+    { maengel: "", fehltage: 0 },    // leer -> ignoriert
+    { maengel: "C,A,H", fehltage: 1 }, // A zählt, H nicht, +1 Fehltag
+  ];
+  const st = maengelHaeufung(zellen);
+  eq(st.maengelGesamt, 5, "Mängel gesamt = 3×A + 1×C + 1×D");
+  eq(st.maengel[0].code, "A", "häufigster Code = A");
+  eq(st.maengel[0].value, 3, "A kommt 3× vor");
+  eq(st.maengel[0].label, "Unterschrift Auszubildende:r fehlt", "Label aus MAENGEL_CODES");
+  eq(st.maengel.find((m) => m.code === "H"), undefined, "H taucht nicht als Mangel auf");
+  eq(st.wochenMitMaengeln, 3, "3 Wochen mit echten Mängeln");
+  eq(st.fehltageSumme, 6, "Fehltage-Summe 2+3+1");
+  eq(st.wochenMitFehltagen, 3, "3 Wochen mit Fehltagen");
+  // Sortierung: gleiche Häufigkeit -> alphabetisch (C vor D)
+  const gleich = maengelHaeufung([{ maengel: "D" }, { maengel: "C" }]);
+  eq(gleich.maengel.map((m) => m.code).join(""), "CD", "gleiche Häufigkeit alphabetisch sortiert");
+  // Robust gegen leere Eingabe
+  eq(maengelHaeufung([]).maengelGesamt, 0, "leere Liste -> 0 Mängel");
+  eq(maengelHaeufung().fehltageSumme, 0, "undefined -> 0 Fehltage");
+}
 
 console.log(`${geprueft} Prüfungen, ${fehler} Fehler.`);
 if (fehler) { console.error("BERICHTSHEFT-TESTS FEHLGESCHLAGEN"); process.exit(1); }
