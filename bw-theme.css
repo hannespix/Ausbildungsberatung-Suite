@@ -224,6 +224,11 @@ input, select, textarea { font: inherit; width: 100%; padding: 0.5em 0.65em; bac
   border-radius: 3px; padding: 0 0.35em; }
 .bw-kw-legend .leg { display: inline-flex; align-items: center; gap: 0.3em; }
 
+/* ===================== Verlauf / Zeitleiste ====================== */
+.bw-verlauf { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--bw-space-2); }
+.bw-verlauf > li { border: 1px solid var(--bw-linie); border-left: 3px solid var(--bw-gelb); border-radius: var(--bw-radius); padding: var(--bw-space-2); background: var(--bw-grau-50); }
+.bw-verlauf__kopf { display: flex; align-items: center; gap: var(--bw-space-2); margin-bottom: 0.25em; }
+
 /* ===================== Störer (rund) ============================== */
 .bw-stoerer { display: inline-flex; align-items: center; justify-content: center; text-align: center; width: 7rem; height: 7rem; border-radius: var(--bw-radius-rund); background: var(--bw-gelb); color: var(--bw-schwarz); font-family: var(--bw-font-serif); font-weight: 700; line-height: 1.05; padding: 0.5rem; }
 
