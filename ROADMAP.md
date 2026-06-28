@@ -95,8 +95,13 @@ Ausbildungsberatung (Prüfung + Berichtsheftkontrolle + Beratung + Vordrucke).
   Tabellen `beratungsfaelle` + `beratung_eintraege`. Reine Logik
   (`assets/js/beratung.js`, 14 Unit-Tests in der CI), neue Theme-Komponente
   `.bw-verlauf`. Chromium-getestet (Fall anlegen, Status, Verlauf, Lösen, 390px).
-- ⏳ **Weiterer Ausbau**: Berichtsheft (Import, Kontrolltermine, druckbare
-  Kontroll-Liste), Beratungs-Auswertungen (Themen-Häufung, Wiedervorlage-Board).
+- ✅ **Berichtsheft — druckbare Kontroll-Listen**: in der Rasteransicht „Kontroll-
+  Liste drucken" (je Ausbildungsjahr die beanstandeten Wochen mit Mängeln +
+  Fehltage-Summe, Mängel-Legende, Unterschriftszeile) für den Betriebsbesuch;
+  im Dashboard „Liste drucken" (Übersicht aller/gefilterter Auszubildenden mit
+  Status, letzter Kontrolle, Ergebnis, Wiedervorlage). Chromium-getestet.
+- ⏳ **Weiterer Ausbau**: Berichtsheft (Import, Kontrolltermine), Beratungs-
+  Auswertungen (Themen-Häufung, Wiedervorlage-Board).
 
 ---
 

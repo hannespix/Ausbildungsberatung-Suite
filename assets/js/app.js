@@ -4367,6 +4367,7 @@ async function renderBerichtsheft() {
       </div>
       <div class="bw-toolbar" style="margin:0 0 var(--bw-space-2)">
         <button class="bw-btn bw-btn--sekundaer" type="button" id="bh-csv">CSV exportieren</button>
+        <button class="bw-btn bw-btn--sekundaer" type="button" id="bh-druck">Liste drucken</button>
       </div>
       <div class="bw-tablewrap">
         <table class="bw-table">
@@ -4437,6 +4438,25 @@ async function renderBerichtsheft() {
     ]);
     dateiDownload("berichtsheftkontrolle.csv", csvText(kopf, zeilen), "text/csv;charset=utf-8");
     meldung(`CSV exportiert: ${zahl(eintraege.length)} Auszubildende.`);
+  });
+
+  document.getElementById("bh-druck").addEventListener("click", () => {
+    const heuteTxt = new Date().toLocaleDateString("de-DE");
+    const zeilen = (gefiltert.length ? gefiltert : eintraege).map((e) => `
+      <tr>
+        <td>${esc(e.nachname)}, ${esc(e.vorname)}</td>
+        <td>${esc(e.betrieb || "—")}</td>
+        <td>${esc(e._ampel.text)}</td>
+        <td>${e.datum ? esc(new Date(e.datum).toLocaleDateString("de-DE")) : "—"}</td>
+        <td>${e.kontroll_id ? esc(ergebnisLabel(e.ergebnis)) : "—"}</td>
+        <td>${e.wiedervorlage_frist && !e.wiedervorlage_erledigt ? esc(new Date(e.wiedervorlage_frist).toLocaleDateString("de-DE")) : ""}</td>
+      </tr>`).join("");
+    druckbereich().innerHTML = `
+      <h1>Berichtsheftkontrolle — Übersicht</h1>
+      <p>Stand: ${esc(heuteTxt)} · ${zahl((gefiltert.length ? gefiltert : eintraege).length)} Auszubildende</p>
+      <table><thead><tr><th>Name</th><th>Betrieb</th><th>Status</th><th>Letzte Kontrolle</th><th>Ergebnis</th><th>Wiedervorlage</th></tr></thead>
+      <tbody>${zeilen}</tbody></table>`;
+    window.print();
   });
 
   document.getElementById("inhalt")?.focus?.();
@@ -4592,7 +4612,10 @@ async function renderBerichtsheftRaster(prueflingIdRaw) {
 
   appEl().innerHTML = `
     <p class="bw-klein"><a href="#/berichtsheft">← Berichtsheftkontrolle</a></p>
-    <h1>Wochenraster — ${esc(p.nachname)}, ${esc(p.vorname)}</h1>
+    <div class="bw-toolbar" style="align-items:center">
+      <h1 style="flex:1 1 auto;margin:0">Wochenraster — ${esc(p.nachname)}, ${esc(p.vorname)}</h1>
+      <button class="bw-btn bw-btn--sekundaer" type="button" id="bh-raster-druck">Kontroll-Liste drucken</button>
+    </div>
     <p class="bw-unterzeile">${esc(p.beruf || "")}${p.betrieb ? " · " + esc(p.betrieb) : ""} — schnelle Kontrolle per Tastatur: Zelle wählen, Buchstabe tippt den Mängelcode.</p>
 
     <div class="bw-hinweis">
@@ -4748,6 +4771,33 @@ async function renderBerichtsheftRaster(prueflingIdRaw) {
     dlg.addEventListener("close", () => { dlg.remove(); fokus(Number(el.dataset.idx)); });
     dlg.showModal();
   }
+
+  // Druckbare Kontroll-Liste (für den Betriebsbesuch): je Ausbildungsjahr die
+  // beanstandeten Wochen + Fehltage, dazu die Mängel-Legende.
+  document.getElementById("bh-raster-druck").addEventListener("click", () => {
+    const heuteTxt = new Date().toLocaleDateString("de-DE");
+    let html = `<h1>Berichtsheft-Kontrolle — ${esc(p.nachname)}, ${esc(p.vorname)}</h1>
+      <p>${esc(p.beruf || "")}${p.betrieb ? " · " + esc(p.betrieb) : ""} · Stand: ${esc(heuteTxt)}</p>`;
+    for (let aj = 1; aj <= RASTER_AJ; aj++) {
+      const fehlSum = KW_ORDER.reduce((s, kw) => s + Number(zelle(aj, kw).fehltage || 0), 0);
+      const zeilen = KW_ORDER.map((kw) => {
+        const z = zelle(aj, kw);
+        const codes = codesAlsListe(z.maengel).filter((c) => c !== "H");
+        const fehl = Number(z.fehltage || 0);
+        if (!codes.length && !fehl) return null;
+        const codeText = codes.map((c) => `${c} (${(MAENGEL_CODES.find((m) => m.code === c) || {}).label || ""})`).join(", ");
+        return `<tr><td>KW ${kw}</td><td>${esc(codeText) || "—"}</td><td>${fehl || ""}</td></tr>`;
+      }).filter(Boolean);
+      html += `<h2>${aj}. Ausbildungsjahr <span style="font-weight:400;font-size:.8em">— Fehltage gesamt: ${zahl(fehlSum)}</span></h2>`;
+      html += zeilen.length
+        ? `<table><thead><tr><th>Woche</th><th>Mängel</th><th>Fehltage</th></tr></thead><tbody>${zeilen.join("")}</tbody></table>`
+        : `<p>Keine Beanstandungen.</p>`;
+    }
+    html += `<h2>Mängelcodes</h2><p>${MAENGEL_CODES.map((m) => `${m.code} = ${esc(m.label)}`).join(" · ")}</p>`;
+    html += `<p style="margin-top:2em">Unterschrift Ausbildungsberatung: ____________________________</p>`;
+    druckbereich().innerHTML = html;
+    window.print();
+  });
 
   document.getElementById("inhalt")?.focus?.();
 }
