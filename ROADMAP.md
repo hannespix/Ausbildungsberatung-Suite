@@ -116,8 +116,11 @@ Ausbildungsberatung (Prüfung + Berichtsheftkontrolle + Beratung + Vordrucke).
   löschen. Der **nächste geplante Termin** speist automatisch die Wiedervorlage-
   Frist beim Erfassen einer Kontrolle. Neue PGlite-Tabelle `berichtsheft_termine`.
   Chromium-getestet.
-- ⏳ **Weiterer Ausbau**: Berichtsheft-Import (CSV), bereichsübergreifende
-  Startseiten-Aufgaben.
+- ✅ **Startseite: Wiedervorlagen aller Bereiche**: die Übersicht zeigt offene
+  und überfällige Wiedervorlagen aus **Berichtsheft und Beratung** gebündelt
+  (nach Frist sortiert, überfällige markiert, Direktlink) — nichts rutscht durch.
+  Chromium-getestet.
+- ⏳ **Weiterer Ausbau**: Berichtsheft-Import (CSV), weitere Auswertungen.
 
 ---
 

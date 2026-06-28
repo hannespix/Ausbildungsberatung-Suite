@@ -339,6 +339,25 @@ async function renderUebersicht() {
     naechste = (await store.prueftagBereitschaft()).slice(0, 5);
   } catch (e) { console.warn("Termine nicht verfügbar:", e); }
 
+  // Bereichsübergreifende Wiedervorlagen (Berichtsheft + Beratung) — offen/überfällig.
+  let wvAlle = [];
+  try {
+    const h = heuteISO();
+    const faelle = await store.beratungFaelle();
+    const bhWv = await store.berichtsheftWiedervorlagen();
+    wvAlle = [
+      ...faelle.filter((f) => f.wiedervorlage && f.status !== "geloest").map((f) => ({
+        bereich: "Beratung", wer: f.nachname ? `${f.nachname}, ${f.vorname}` : (f.betrieb || "—"),
+        anlass: f.titel, frist: f.wiedervorlage, route: `#/beratung/${f.id}`, stat: wvStatus(f.wiedervorlage, false, h),
+      })),
+      ...bhWv.filter((w) => !w.wiedervorlage_erledigt).map((w) => ({
+        bereich: "Berichtsheft", wer: `${w.nachname}, ${w.vorname}`,
+        anlass: ergebnisLabel(w.ergebnis), frist: w.wiedervorlage_frist, route: "#/berichtsheft", stat: wvStatus(w.wiedervorlage_frist, false, h),
+      })),
+    ].filter((x) => x.stat === "offen" || x.stat === "ueberfaellig")
+     .sort((a, b) => String(a.frist).localeCompare(String(b.frist))).slice(0, 8);
+  } catch (e) { console.warn("Wiedervorlagen nicht verfügbar:", e); }
+
   appEl().innerHTML = `
     <h1>Übersicht</h1>
     <p class="bw-unterzeile">Abschlussprüfung Gärtner/in — Planung, Verwaltung, Notenberechnung und Zeugnis</p>
@@ -375,6 +394,19 @@ async function renderUebersicht() {
         </ul>`
         : '<p class="bw-hinweis bw-hinweis--erfolg">Alles erledigt — keine offenen Aufgaben.</p>'}
     </section>
+
+    ${wvAlle.length ? `
+    <section aria-labelledby="wv-h" style="margin-top:var(--bw-space-4)">
+      <h2 id="wv-h">Wiedervorlagen</h2>
+      <p class="bw-klein bw-leise">Offene und überfällige Wiedervorlagen aus Berichtsheft und Beratung.</p>
+      <ul class="bw-trefferliste">
+        ${wvAlle.map((w) => `
+          <li>
+            <span>${w.stat === "ueberfaellig" ? '<span class="bw-status-dont">●</span> ' : ""}<strong>${esc(new Date(w.frist).toLocaleDateString("de-DE"))}</strong> · ${esc(w.bereich)} · ${esc(w.wer)} <span class="bw-leise">— ${esc(w.anlass)}</span></span>
+            <a class="bw-btn bw-btn--sekundaer" href="${w.route}" style="margin-left:auto">Öffnen</a>
+          </li>`).join("")}
+      </ul>
+    </section>` : ""}
 
     <section aria-labelledby="diagramm-h" style="margin-top:var(--bw-space-4)">
       <h2 id="diagramm-h">Prüfungsfortschritt</h2>
