@@ -42,6 +42,16 @@ Ausbildungsberatung (Prüfung + Berichtsheftkontrolle + Beratung + Vordrucke).
   Block, Mobile 390px). *Fachverantwortung:* Aktualität der Formulare prüft die
   Dienststelle; weitere PDFs/Vorlagen (Aufhebung/Verlängerung, Info-Mail für
   Interessenten) folgen je Iteration.
+- ✅ **Vorlagen ausgebaut (Schreiben + offizielle Anlagen)**: neue Vordrucke
+  **„Ausbildung — Information für Interessenten"** (Outreach mit Vertragsvordruck,
+  Ausfüllhilfe und Infoblatt als Anlagen) und **„Berufsausbildungsvertrag —
+  Auflösung/Abmeldung"** (mit Abmelde-Vordruck). Vier weitere offizielle Anlagen
+  gebündelt und registriert: Hilfestellung zur BAV-Vorlage, Infoblatt für
+  Auszubildende (02/2026), Praktikantenvertrag, Abmeldung/Auflösung BAV
+  (MLR/LEL Baden-Württemberg). Der „Vordruck zusenden"-Brief schickt jetzt BAV +
+  Ausfüllhilfe. Standalone bettet alle fünf Anlagen ein; Smoke prüft die
+  Mehrfach-Anlage. Quellen/Stand in `assets/anlagen/QUELLEN.md` (Aktualität =
+  Fachverantwortung der Dienststelle).
 - ✅ **UI-/Design-Politur + Korrekturen**: Impressum nennt jetzt den **aktuellen
   Namen** der Aufsichtsbehörde („Ministerium für Ländlichen Raum, Landwirtschaft
   und Heimat Baden-Württemberg", Umbenennung 2026). Login-Maske aufgeräumt:

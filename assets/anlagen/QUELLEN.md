@@ -15,15 +15,16 @@ heruntergeladen.
 | Datei | Inhalt | Stand | Quelle |
 |---|---|---|---|
 | `Berufsausbildungsvertrag-gruene-Berufe.pdf` | Muster-Berufsausbildungsvertrag (grüne Berufe) | Mai 2020 | RP Baden-Württemberg / RP Freiburg (FAZ Mattenhof), `rp.baden-wuerttemberg.de` |
+| `Hilfestellung-BAV.pdf` | Hilfestellung zum Öffnen/Ausfüllen der BAV-Vorlage | siehe Dokument | MLR/LEL Baden-Württemberg, `landwirtschaft-bw.de` |
+| `Infoblatt-Azubi.pdf` | Infoblatt für Auszubildende | 02/2026 | MLR/LEL Baden-Württemberg, `landwirtschaft-bw.de` |
+| `Praktikantenvertrag.pdf` | Praktikantenvertrag (Muster) | siehe Dokument | MLR/LEL Baden-Württemberg, `landwirtschaft-bw.de` |
+| `Abmeldung-Aufloesung-BAV.pdf` | Abmeldung/Auflösung Berufsausbildungsvertrag (ausfüllbar) | siehe Dokument | MLR/LEL Baden-Württemberg, `landwirtschaft-bw.de` |
 
 ## Weitere Formulare (offiziell verfügbar, noch nachzulegen)
 
 Vom RP/MLR öffentlich abrufbar — bei Bedarf in dieser Mappe ergänzen und in
 `ANLAGEN` registrieren:
 
-- Infoblatt Azubi, Hilfestellung zur ausfüllbaren BAV-Vorlage
-- Abmeldung/Auflösung Berufsausbildungsvertrag (ausfüllbar)
-- Praktikantenvertrag
 - Antrag Verkürzung / Verlängerung der Ausbildungszeit, vorzeitige Zulassung
 - Ausbilder-Eignungsverordnung, Ausbilderbogen, Richtlinien zur Eignungsfeststellung
 - Ausbildungsnachweis: Formblatt + Deckblatt + Richtlinien

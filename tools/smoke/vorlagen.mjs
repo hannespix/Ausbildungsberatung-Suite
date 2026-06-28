@@ -43,6 +43,12 @@ const run = () => smoke("vorlagen", async ({ page, ok }) => {
   ]);
   ok(dl2.suggestedFilename() === "Berufsausbildungsvertrag-gruene-Berufe.pdf", `Anlage einzeln geladen (war ${dl2.suggestedFilename()})`);
 
+  // Info-Vorlage mit mehreren Anlagen (BAV + Hilfestellung + Infoblatt).
+  await page.selectOption("#vl-auswahl", { label: "Ausbildung — Information für Interessenten" });
+  await page.waitForSelector("#vl-anlagen fieldset", { timeout: 5000 });
+  const anzahl = await page.evaluate(() => document.querySelectorAll('#vl-anlagen [data-anl]').length);
+  ok(anzahl === 3, `Info-Vorlage bietet 3 Anlagen (war ${anzahl})`);
+
   // Vorlage ohne Anlage: kein Anlagen-Block.
   await page.selectOption("#vl-auswahl", { label: "Einladung zum Beratungsgespräch" });
   const leer = await page.evaluate(() => document.getElementById("vl-anlagen").innerHTML.trim());
