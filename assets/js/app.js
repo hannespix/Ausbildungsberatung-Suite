@@ -2943,6 +2943,7 @@ async function renderBetriebAkte(id) {
 
     <div class="bw-toolbar" style="margin-bottom:var(--bw-space-3)">
       <button class="bw-btn bw-btn--sekundaer" type="button" id="betrieb-bearbeiten">Stammdaten bearbeiten</button>
+      <a class="bw-btn bw-btn--sekundaer" href="#/vorlagen?betrieb=${b.id}">Schreiben erstellen</a>
     </div>
 
     <div class="bw-flaechen">
@@ -4534,6 +4535,16 @@ async function renderVorlagen() {
     fuellen();
     if (!b.email) meldung("Für diesen Betrieb ist keine E-Mail hinterlegt — bitte Empfänger ergänzen.", "fehler");
   });
+
+  // Deep-Link aus einer Akte: Betrieb vorwählen (#/vorlagen?betrieb=<id>) oder
+  // Empfänger direkt setzen (?an=<email>).
+  const vorwahl = routeParams();
+  if (betriebSel && vorwahl.betrieb) {
+    const idx = betriebe.findIndex((x) => String(x.id) === String(vorwahl.betrieb));
+    if (idx >= 0) { betriebSel.value = String(idx); betriebSel.dispatchEvent(new Event("change")); }
+  } else if (vorwahl.an) {
+    empf.value = vorwahl.an;
+  }
 
   // Einzelne Anlage herunterladen (am frisch gerenderten Container gebunden).
   anlagenEl.addEventListener("click", async (ev) => {

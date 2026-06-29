@@ -28,6 +28,14 @@ const run = () => smoke("betrieb-bezuege", async ({ page, ok }) => {
   ok(text.includes("Smoke-Betriebsfall"), "Beratungsfall des Betriebs verlinkt");
   const linkFall = await page.evaluate(() => !!document.querySelector('#betrieb-bezuege ~ * a[href^="#/beratung/"], section a.bw-btn[href^="#/beratung/"]'));
   ok(linkFall, "Öffnen-Link zum Beratungsfall vorhanden");
+
+  // „Schreiben erstellen" öffnet die Vorlagen mit vorgewähltem Betrieb.
+  const hatSchreiben = await page.evaluate((i) => !!document.querySelector(`a[href="#/vorlagen?betrieb=${i}"]`), betriebId);
+  ok(hatSchreiben, "Schreiben-erstellen-Knopf verlinkt Vorlagen mit Betrieb");
+  await page.evaluate((i) => { location.hash = `#/vorlagen?betrieb=${i}`; }, betriebId);
+  await page.waitForSelector("#vl-betrieb", { timeout: 10000 });
+  const sel = await page.inputValue("#vl-betrieb");
+  ok(sel !== "", `Betrieb in den Vorlagen vorgewählt (war "${sel}")`);
 });
 
 export default run;
