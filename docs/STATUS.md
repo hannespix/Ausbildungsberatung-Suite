@@ -8,36 +8,50 @@ den Fortschritt** steht in `ROADMAP.md`; hier nur der Einstieg + das Nächste.
 2. Selbstcheck: `node tools/test_*.mjs` · `python3 tools/check_offline.py` ·
    `node tools/build_standalone.mjs` · `node tools/smoke/run.mjs` (lokaler
    Chromium nötig; siehe `tools/smoke/harness.mjs`).
-3. Loop: Branch `claude/general-session-935kvh` von aktuellem `main`, genau eine
+3. Loop: auf dem aktuellen Arbeitsbranch von aktuellem `main`, genau eine
    Iteration, PR → CI grün → squash-merge → `main` syncen (Details: `AGENTS.md`).
+   Standalone-Build braucht `npm install esbuild @electric-sql/pglite --no-save`
+   (PGlite-Version = `assets/vendor/pglite`, `pglite.wasm`-Größe abgleichen);
+   Smokes brauchen zusätzlich `playwright-core`.
 
 ## Funktionsumfang (fertig)
 - Prüfung (Stammdaten, Tagesplanung/-cockpit, Stationen-Rotation, Noten,
   Zeugnisse, Auswertungen), Zugangsschutz/Benutzer, Recht (Impressum/Datenschutz/
-  Barrierefreiheit), Vorlagen.
+  Barrierefreiheit).
+- **Übersicht-Dashboard** mit Bereiche-Kacheln (alle Werkzeuge), Login springt
+  direkt aufs Dashboard.
 - Vorlagen-Versand: **Anlagen-System + E-Mail-Entwurf (.eml mit Anhängen)**
-  (`eml.js`, `assets/anlagen/`); erste offizielle Anlage gebündelt (Muster-BAV).
+  (`eml.js`, `assets/anlagen/`); 5 offizielle Anlagen gebündelt (BAV, Hilfestellung,
+  Infoblatt Azubi, Praktikantenvertrag, Abmeldung/Auflösung BAV); Empfänger aus
+  Stammdaten/Betrieb; Schreiben aus Prüflings-/Betriebs-Akte (Deep-Links
+  `#/vorlagen?betrieb=<id>` / `?an=<email>`).
 - Ausbildungsrechner (Engine + Oberfläche).
-- Berichtsheftkontrolle: Dashboard, Kontrolle erfassen, **KW-Wochenraster mit
-  Tastatur-Schnellkontrolle**, Wiedervorlagen, Kontrolltermine, druckbare Listen,
-  **Mängel-Auswertung** (Code-Häufung + Fehltage-Kennzahlen).
-- Ausbildungsberatung: Fälle + Verlauf, Themen-Häufung, bereichsübergreifendes
-  Wiedervorlage-Board (auch auf der Startseite).
-- Datensicherung erfasst alle Tabellen; Tests (galabau, ablauf, auth, rechner,
-  berichtsheft, beratung) in der CI; lokales Smoke-Harness (`tools/smoke/`).
+- Berichtsheftkontrolle: Dashboard, Kontrolle erfassen, **KW-Wochenraster**,
+  Wiedervorlagen, Kontrolltermine, druckbare Listen, **Mängel-Auswertung**
+  (Code-Häufung + Betriebs-Sicht + CSV), **CSV-Import von Kontrollen**.
+- Ausbildungsberatung: Fälle + Verlauf, Themen-Häufung, WV-Board; **Beratungsfall
+  aus Berichtsheft anlegen**.
+- **Modulübergreifend verlinkt:** Prüflings-Akte und Betriebs-Akte zeigen
+  Berichtsheft & Beratung; Fall-Akte verlinkt Prüfling-Akte + Raster;
+  Auswertungen mit bereichsübergreifendem Überblick.
+- Datensicherung erfasst alle Tabellen; Unit-Tests (galabau, ablauf, auth,
+  rechner, berichtsheft, beratung, **eml**) in der CI; Smoke-Harness mit 10 Smokes
+  (`tools/smoke/run.mjs`, lokal).
 
 ## Nächste sinnvolle Iterationen (Vorschlag)
-- Vorlagen ausbauen: weitere offizielle Anlagen bündeln (Infoblatt Azubi,
-  Abmeldung/Auflösung BAV, Ausbilderbogen, Anträge Verkürzung/Verlängerung) und
-  neue Schreiben (Info-Mail für Ausbildungsinteressenten mit Vertragsvorlagen,
-  Aufhebungsvertrag). Vom RP/MLR auffindbar (siehe `assets/anlagen/QUELLEN.md`);
-  RP-interne/berufsspezifische Vordrucke liefert die Dienststelle.
-- Berichtsheft-Import (CSV) für Auszubildende/Kontrolldaten.
-- Mängel-Auswertung vertiefen (Betriebs-Sicht: Mängel je Betrieb, Trend über
-  Ausbildungsjahre).
-- Beratungs-/Berichtsheft-Verknüpfung vertiefen (aus Mangel → Beratungsfall).
+- **Braucht Input der Dienststelle:** weitere offizielle/RP-interne Vordrucke
+  (Ausbilderbogen, Anträge Verkürzung/Verlängerung, Ausbildungsnachweis,
+  berufsspezifische Gärtner-Anlagen) als PDF + je Standard-Mail den Text und die
+  beizufügenden Anlagen/Checkliste; dann als Vorlagen einbauen. Info-Mail für
+  Interessenten und Auflösung/Abmeldung sind bereits angelegt.
+- Auswertungen: Stichtagsauswertung; Mängel-/Fehltage-Trend über Ausbildungsjahre.
+- Prüfer-Akte ggf. analog verlinken; Adressliste um Bereichsbezüge ergänzen.
 
 ## Offene Hinweise
-- Watchdog-Cron ist session-gebunden → nach Container-Neustart neu anlegen.
+- Merge erfolgt im Loop automatisch (auf ausdrückliche Anweisung des Nutzers):
+  Draft → CI grün → ready → squash-merge → `main` syncen. „stop"/„merge stoppen"
+  hält das an.
+- Squash-Merge-Commits auf `main` zeigt GitHub als „Unverified" (Committer
+  `noreply@github.com`) — systembedingt beim API-Merge, kein Code-Thema.
 - Smokes laufen lokal, nicht in der CI (kein Browser dort). Bei neuem Feature
   einen Smoke unter `tools/smoke/` ergänzen und in `run.mjs` eintragen.
