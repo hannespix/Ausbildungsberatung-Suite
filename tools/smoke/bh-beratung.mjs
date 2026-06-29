@@ -32,6 +32,21 @@ const run = () => smoke("bh-beratung", async ({ page, ok }) => {
   });
   ok(nachher.n === vorher + 1, `genau ein neuer Fall (vorher ${vorher}, nachher ${nachher.n})`);
   ok(nachher.hatTitel, "Fall trägt den Berichtsheft-Titel");
+
+  // Fall-Akte öffnen und die Rückverlinkung (Prüfling-Akte + Berichtsheft) prüfen.
+  const fid = await page.evaluate(async () => {
+    const store = await import("/assets/js/store.js");
+    const f = (await store.beratungFaelle()).find((x) => String(x.titel || "").startsWith("Berichtsheft:"));
+    return f ? f.id : null;
+  });
+  if (fid != null) {
+    await page.evaluate((i) => { location.hash = `#/beratung/${i}`; }, fid);
+    await page.waitForSelector("#bf-bearbeiten", { timeout: 10000 });
+    const hatBhLink = await page.evaluate(() => !!document.querySelector('a[href^="#/berichtsheft/"]'));
+    const hatAkteLink = await page.evaluate(() => !!document.querySelector('a[href^="#/pruefling/"]'));
+    ok(hatBhLink, "Fall-Akte verlinkt zum Berichtsheft-Raster");
+    ok(hatAkteLink, "Fall-Akte verlinkt zur Prüfling-Akte");
+  }
 });
 
 export default run;

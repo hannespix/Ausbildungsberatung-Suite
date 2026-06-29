@@ -5385,7 +5385,7 @@ async function renderBeratungFall(idRaw) {
       <section class="bw-card" style="flex:1 1 16rem">
         <h2 style="margin-top:0">Eckdaten</h2>
         <table class="bw-table bw-table--paare"><tbody>
-          <tr><th scope="row">Auszubildende:r / Betrieb</th><td>${wer || "—"}${f.pruefling_id ? ` · <a href="#/pruefling/${f.pruefling_id}">Akte</a>` : ""}</td></tr>
+          <tr><th scope="row">Auszubildende:r / Betrieb</th><td>${wer || "—"}${f.pruefling_id ? ` · <a href="#/pruefling/${f.pruefling_id}">Akte</a> · <a href="#/berichtsheft/${f.pruefling_id}">Berichtsheft</a>` : ""}</td></tr>
           <tr><th scope="row">Status</th><td>${esc(beratungStatusLabel(f.status))}</td></tr>
           <tr><th scope="row">Kategorie</th><td>${esc(f.kategorie || "—")}</td></tr>
           <tr><th scope="row">Wiedervorlage</th><td>${f.wiedervorlage ? esc(new Date(f.wiedervorlage).toLocaleDateString("de-DE")) : "—"}</td></tr>
