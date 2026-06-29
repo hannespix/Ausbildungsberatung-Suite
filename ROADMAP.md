@@ -208,6 +208,13 @@ Ausbildungsberatung (Prüfung + Berichtsheftkontrolle + Beratung + Vordrucke).
   Lücke „aus Mangel → Beratungsfall". Der Beratungs-Dialog unterscheidet jetzt
   echtes Bearbeiten (mit `id`) von einem Vorbelegungs-Objekt (neuer Fall).
   Chromium-Smoke (`tools/smoke/bh-beratung.mjs`).
+- ✅ **Prüflings-Akte modulübergreifend verknüpft**: die Akte zeigt jetzt einen
+  Abschnitt **„Berichtsheft & Beratung"** — Anzahl Kontrollen + letzte Kontrolle,
+  offene Raster-Mängel (hervorgehoben), Direktlinks zum Wochenraster und zur
+  Kontrolle, sowie die **Beratungsfälle dieser Person** (Titel · Kategorie ·
+  Status, je mit „Öffnen"). Bringt Prüfung, Berichtsheft und Beratung je
+  Auszubildende:m an einen Ort (`store.prueflingBezuege`). Chromium-Smoke
+  (`tools/smoke/akte-bezuege.mjs`).
 - ⏳ **Weiterer Ausbau**: Berichtsheft-Import (CSV), weitere Auswertungen.
 
 ---

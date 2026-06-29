@@ -2718,6 +2718,9 @@ async function renderPrueflingAkte(id) {
   catch (e) { console.error(e); appEl().innerHTML = `<div class="bw-hinweis bw-hinweis--fehler">Akte konnte nicht geladen werden: ${esc(e.message)}</div>`; return; }
   if (!a) { appEl().innerHTML = `<div class="bw-hinweis">Prüfling nicht gefunden. <a href="#/prueflinge">Zur Liste</a></div>`; return; }
 
+  let bez = { beratung: [], kontrollen: 0, letzteKontrolle: null, rasterMaengel: 0 };
+  try { bez = await store.prueflingBezuege(Number(id)); } catch (e) { console.warn("Bezüge nicht verfügbar:", e); }
+
   const p = a.pruefling;
   const name = `${p.vorname || ""} ${p.nachname || ""}`.trim() || "Prüfling";
   const b = a.bewertung;
@@ -2835,6 +2838,21 @@ async function renderPrueflingAkte(id) {
         </div>
       </section>
     </div>
+
+    <section class="bw-card" aria-labelledby="akte-bezuege" style="margin-top:var(--bw-space-3)">
+      <h2 id="akte-bezuege" style="margin-top:0">Berichtsheft &amp; Beratung</h2>
+      <p class="bw-klein" style="margin-top:0">
+        Berichtsheft: ${zahl(bez.kontrollen)} Kontrolle${bez.kontrollen === 1 ? "" : "n"}${bez.letzteKontrolle ? ", zuletzt " + esc(new Date(bez.letzteKontrolle).toLocaleDateString("de-DE")) : ""}${bez.rasterMaengel ? ` · <strong>${zahl(bez.rasterMaengel)} offene Raster-Mängel</strong>` : ""}.
+        <a href="#/berichtsheft/${p.id}">Wochenraster öffnen</a> · <a href="#/berichtsheft">Kontrolle erfassen</a>
+      </p>
+      <h3 style="margin:var(--bw-space-2) 0 var(--bw-space-1)">Beratungsfälle</h3>
+      ${bez.beratung.length ? `<ul class="bw-trefferliste">
+        ${bez.beratung.map((f) => `<li>
+          <span><strong>${esc(f.titel || "Fall")}</strong>${f.kategorie ? ` <span class="bw-leise">· ${esc(f.kategorie)}</span>` : ""} <span class="bw-leise">— ${esc(beratungStatusLabel(f.status))}</span></span>
+          <a class="bw-btn bw-btn--sekundaer" href="#/beratung/${f.id}" style="margin-left:auto">Öffnen</a>
+        </li>`).join("")}
+      </ul>` : '<p class="bw-leise bw-klein">Keine Beratungsfälle zu dieser Person. Ein Fall lässt sich aus der <a href="#/berichtsheft">Berichtsheft-Übersicht</a> anlegen.</p>'}
+    </section>
   `;
 
   document.getElementById("akte-bewerten").addEventListener("click", () => {

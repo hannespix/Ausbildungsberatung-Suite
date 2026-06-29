@@ -399,6 +399,27 @@ export async function berichtsheftRasterAlle() {
   return res.rows;
 }
 
+/** Modulübergreifende Bezüge eines Prüflings (für die Prüflings-Akte). */
+export async function prueflingBezuege(prueflingId) {
+  const id = Number(prueflingId);
+  const beratung = (await _pg.query(
+    `SELECT id, titel, status, kategorie, wiedervorlage FROM beratungsfaelle
+      WHERE pruefling_id = $1 ORDER BY (status = 'geloest'), id DESC`,
+    [id]
+  )).rows;
+  const bh = (await _pg.query(
+    `SELECT count(*)::int AS kontrollen, max(datum) AS letzte
+       FROM berichtsheft_kontrollen WHERE pruefling_id = $1`,
+    [id]
+  )).rows[0];
+  const rasterMaengel = (await _pg.query(
+    `SELECT count(*)::int AS n FROM berichtsheft_kw
+      WHERE pruefling_id = $1 AND maengel <> '' AND regexp_replace(maengel, '[H, ]', '', 'g') <> ''`,
+    [id]
+  )).rows[0].n;
+  return { beratung, kontrollen: bh.kontrollen, letzteKontrolle: bh.letzte, rasterMaengel };
+}
+
 /** Rasterzellen mit Mängeln/Fehltagen inkl. Betrieb (Betriebs-Sicht der Auswertung). */
 export async function berichtsheftRasterMitBetrieb() {
   const res = await _pg.query(
