@@ -5,8 +5,9 @@ import backup from "./backup.mjs";
 import maengel from "./maengel.mjs";
 import vorlagen from "./vorlagen.mjs";
 import uebersicht from "./uebersicht.mjs";
+import bhBeratung from "./bh-beratung.mjs";
 
-const smokes = [["raster", raster], ["backup", backup], ["maengel", maengel], ["vorlagen", vorlagen], ["uebersicht", uebersicht]];
+const smokes = [["raster", raster], ["backup", backup], ["maengel", maengel], ["vorlagen", vorlagen], ["uebersicht", uebersicht], ["bh-beratung", bhBeratung]];
 let fehler = 0;
 for (const [name, fn] of smokes) {
   console.log(`\n=== Smoke: ${name} ===`);
