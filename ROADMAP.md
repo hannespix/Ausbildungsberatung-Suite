@@ -201,6 +201,13 @@ Ausbildungsberatung (Prüfung + Berichtsheftkontrolle + Beratung + Vordrucke).
   die Mängelcode-Häufung (Code · Bezeichnung · Anzahl) und die Mängel je Betrieb
   (Betrieb · Mängel · Fehltage · Wochen) in einer Datei (Semikolon + BOM für
   Excel) — für Berichte/Weiterverarbeitung. Chromium-Smoke erweitert.
+- ✅ **Beratungsfall aus dem Berichtsheft anlegen**: in der Berichtsheft-Übersicht
+  legt „Beratungsfall" je Auszubildende:m direkt einen **vorausgefüllten**
+  Beratungsfall an (Person, Betrieb, Kategorie „Berichtsheft", Beschreibung mit
+  Anlass: offene Raster-Mängel bzw. letztes Kontrollergebnis) — schließt die
+  Lücke „aus Mangel → Beratungsfall". Der Beratungs-Dialog unterscheidet jetzt
+  echtes Bearbeiten (mit `id`) von einem Vorbelegungs-Objekt (neuer Fall).
+  Chromium-Smoke (`tools/smoke/bh-beratung.mjs`).
 - ⏳ **Weiterer Ausbau**: Berichtsheft-Import (CSV), weitere Auswertungen.
 
 ---

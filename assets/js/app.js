@@ -4707,6 +4707,7 @@ async function renderBerichtsheft() {
         <td class="bw-actions" style="white-space:nowrap">
           <a class="bw-btn bw-btn--gelb" href="#/berichtsheft/${e.pruefling_id}">Raster</a>
           <button class="bw-btn bw-btn--sekundaer" type="button" data-kontrolle="${e.pruefling_id}">Kontrolle</button>
+          <button class="bw-btn bw-btn--sekundaer bw-btn--klein" type="button" data-beratung="${e.pruefling_id}" title="Beratungsfall aus diesem Berichtsheft anlegen">Beratungsfall</button>
         </td>
       </tr>`).join("");
     document.getElementById("bh-leer").hidden = gefiltert.length > 0;
@@ -4731,6 +4732,24 @@ async function renderBerichtsheft() {
     if (id) {
       const e = eintraege.find((x) => String(x.pruefling_id) === String(id));
       kontrolleDialog(Number(id), e ? `${e.nachname}, ${e.vorname}` : "", () => route());
+      return;
+    }
+    // Beratungsfall aus dem Berichtsheft anlegen (vorbefüllt: Person, Betrieb,
+    // Kategorie „Berichtsheft", Beschreibung mit Mängel-/Ergebnis-Anlass).
+    const bid = ev.target.closest("[data-beratung]")?.getAttribute("data-beratung");
+    if (bid) {
+      const e = eintraege.find((x) => String(x.pruefling_id) === String(bid));
+      if (!e) return;
+      const anlass = e._mg > 0
+        ? `Offene Mängel im Wochenraster (${e._mg}).`
+        : (e.kontroll_id ? `Letzte Kontrolle: ${ergebnisLabel(e.ergebnis)}.` : "Noch keine Kontrolle erfasst.");
+      beratungFallDialog({
+        pruefling_id: e.pruefling_id,
+        betrieb: e.betrieb || "",
+        titel: `Berichtsheft: ${e.nachname}, ${e.vorname}`,
+        kategorie: "Berichtsheft",
+        beschreibung: `Anlass aus der Berichtsheftkontrolle. ${anlass}`,
+      }, () => route());
     }
   });
   // WV-„erledigt" am frisch gerenderten Tabellenkörper (nicht am bleibenden #app).
@@ -5419,9 +5438,12 @@ async function beratungFallDialog(fall, nachher) {
   dlg.className = "bw-dialog bw-dialog--breit"; dlg.id = "dialog";
   const opt = (sel) => prueflinge.map((p) => `<option value="${p.id}"${String(p.id) === String(sel) ? " selected" : ""}>${esc(p.nachname)}, ${esc(p.vorname)}</option>`).join("");
   const f = fall || {};
+  // „Bearbeiten" nur bei echtem Fall (mit id); ein Vorbelegungs-Objekt ohne id
+  // (z. B. aus dem Berichtsheft) öffnet einen neuen, vorausgefüllten Fall.
+  const istEdit = !!(fall && fall.id);
   dlg.innerHTML = `
     <form method="dialog" novalidate>
-      <h2 style="margin-top:0">${fall ? "Fall bearbeiten" : "Neuer Beratungsfall"}</h2>
+      <h2 style="margin-top:0">${istEdit ? "Fall bearbeiten" : "Neuer Beratungsfall"}</h2>
       <div class="bw-field"><label for="bd-titel">Titel / Anliegen</label>
         <input id="bd-titel" type="text" required value="${esc(f.titel || "")}"></div>
       <div class="bw-dialog__felder">
@@ -5434,7 +5456,7 @@ async function beratungFallDialog(fall, nachher) {
         <div class="bw-field"><label for="bd-status">Status</label>
           <select id="bd-status">${BERATUNG_STATUS.map((s) => `<option value="${s.id}"${(f.status || "offen") === s.id ? " selected" : ""}>${esc(s.label)}</option>`).join("")}</select></div>
         <div class="bw-field"><label for="bd-wv">Wiedervorlage</label>
-          <input id="bd-wv" type="date" value="${esc(f.wiedervorlage ? bhIso(new Date(f.wiedervorlage)) : (fall ? "" : standardWiedervorlage(heute)))}"></div>
+          <input id="bd-wv" type="date" value="${esc(f.wiedervorlage ? bhIso(new Date(f.wiedervorlage)) : (istEdit ? "" : standardWiedervorlage(heute)))}"></div>
       </div>
       <div class="bw-field"><label for="bd-beschreibung">Beschreibung</label>
         <textarea id="bd-beschreibung" rows="4" style="font:inherit;width:100%">${esc(f.beschreibung || "")}</textarea></div>
@@ -5458,7 +5480,7 @@ async function beratungFallDialog(fall, nachher) {
       beschreibung: dlg.querySelector("#bd-beschreibung").value.trim() || null,
     };
     try {
-      if (fall) await store.beratungAktualisieren(fall.id, daten);
+      if (istEdit) await store.beratungAktualisieren(fall.id, daten);
       else await store.beratungAnlegen(daten);
       meldung("Beratungsfall gespeichert.");
       dlg.close();
