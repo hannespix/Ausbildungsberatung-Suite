@@ -500,6 +500,40 @@ export async function berichtsheftSpeichern(d) {
   return r.rows[0].id;
 }
 
+/**
+ * Berichtsheft-Kontrollen aus CSV importieren (Zuordnung über Name).
+ * @param {Array<{nachname,vorname,datum,ausbildungsjahr,durchsichtNr,ergebnis,maengel,fehltage,bemerkung}>} saetze
+ *   datum bereits als ISO (YYYY-MM-DD) erwartet.
+ * @returns {{gespeichert:number, nichtGefunden:number, uebersprungen:number}}
+ */
+export async function berichtsheftImportieren(saetze) {
+  let gespeichert = 0, nichtGefunden = 0, uebersprungen = 0;
+  for (const s of saetze || []) {
+    const nm = String(s.nachname || "").trim();
+    const datum = String(s.datum || "").trim();
+    if (!nm || !datum) { uebersprungen++; continue; }
+    const r = (await _pg.query(
+      `SELECT id FROM prueflinge
+        WHERE lower(btrim(nachname)) = lower(btrim($1))
+          AND ($2 = '' OR lower(btrim(coalesce(vorname,''))) = lower(btrim($2)))
+        ORDER BY id LIMIT 1`,
+      [nm, String(s.vorname || "").trim()]
+    )).rows[0];
+    if (!r) { nichtGefunden++; continue; }
+    await berichtsheftSpeichern({
+      prueflingId: r.id, datum,
+      ausbildungsjahr: s.ausbildungsjahr ? Number(s.ausbildungsjahr) : null,
+      durchsichtNr: s.durchsichtNr ? Number(s.durchsichtNr) : 1,
+      ergebnis: s.ergebnis || "in_ordnung",
+      maengel: s.maengel || null,
+      fehltage: s.fehltage ? Number(s.fehltage) : 0,
+      bemerkung: s.bemerkung || null,
+    });
+    gespeichert++;
+  }
+  return { gespeichert, nichtGefunden, uebersprungen };
+}
+
 /** Übersicht je Auszubildende:m mit letzter Kontrolle (für Dashboard/Ampel). */
 export async function berichtsheftUebersicht() {
   const res = await _pg.query(`

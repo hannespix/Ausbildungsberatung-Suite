@@ -4071,6 +4071,125 @@ function notenImportDialog(pruefungId, nachher) {
   dlg.showModal();
 }
 
+/* ------------------------------------------------- Berichtsheft-Import (CSV) */
+
+// CSV-Datum (dd.mm.yyyy oder yyyy-mm-dd) auf ISO normalisieren; sonst "".
+function normDatumISO(s) {
+  s = String(s || "").trim();
+  let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (m) return `${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}`;
+  m = s.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+  if (m) return `${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}`;
+  return "";
+}
+
+const BH_IMPORT_FELDER = [
+  { name: "nachname", label: "Nachname", syn: ["nachname", "name", "familienname"] },
+  { name: "vorname", label: "Vorname", syn: ["vorname", "rufname"] },
+  { name: "datum", label: "Datum", syn: ["datum", "kontrolldatum", "date"] },
+  { name: "ausbildungsjahr", label: "Ausbildungsjahr", syn: ["ausbildungsjahr", "aj", "lehrjahr", "jahr"] },
+  { name: "durchsicht_nr", label: "Durchsicht-Nr.", syn: ["durchsichtnr", "durchsicht", "nr", "durchsichtnummer"] },
+  { name: "ergebnis", label: "Ergebnis (id)", syn: ["ergebnis", "result", "status"] },
+  { name: "maengel", label: "Mängelcodes", syn: ["maengel", "mängel", "maengelcodes", "codes"] },
+  { name: "fehltage", label: "Fehltage", syn: ["fehltage", "fehlzeiten", "fehl"] },
+];
+const BH_IMPORT_PFLICHT = ["nachname", "datum"];
+
+function berichtsheftImportDialog(nachher) {
+  const FELDER = BH_IMPORT_FELDER;
+  const alt = document.getElementById("dialog"); if (alt) alt.remove();
+  const dlg = document.createElement("dialog");
+  dlg.className = "bw-dialog bw-dialog--breit"; dlg.id = "dialog";
+  dlg.innerHTML = `
+    <form method="dialog" id="bi-form" novalidate>
+      <h2 style="margin-top:0">Berichtsheft-Kontrollen aus CSV importieren</h2>
+      <p class="bw-klein bw-leise">CSV mit Spalten <code>Nachname</code>, <code>Datum</code> (Pflicht) sowie optional
+        <code>Vorname</code>, <code>Ausbildungsjahr</code>, <code>Durchsicht-Nr.</code>, <code>Ergebnis</code>
+        (id, z. B. <code>in_ordnung</code>), <code>Mängelcodes</code> (z. B. <code>A,D</code>) und <code>Fehltage</code>.
+        Zuordnung über den Namen; bestehende Kontrolle (Person/Jahr/Durchsicht) wird aktualisiert. Erste Zeile = Überschriften.</p>
+      <div class="bw-field"><label for="bi-datei">CSV-Datei</label>
+        <input id="bi-datei" type="file" accept=".csv,text/csv"></div>
+      <div id="bi-zuordnung" hidden>
+        <h3>Spaltenzuordnung</h3>
+        <div class="bw-dialog__felder" id="bi-mapping"></div>
+        <p id="bi-info" class="bw-hinweis" aria-live="polite"></p>
+        <div class="bw-tablewrap"><table class="bw-table"><thead id="bi-kopf"></thead><tbody id="bi-vorschau"></tbody></table></div>
+      </div>
+      <div class="bw-dialog__aktionen">
+        <button type="button" class="bw-btn bw-btn--sekundaer" id="bi-abbrechen">Abbrechen</button>
+        <button type="submit" class="bw-btn" id="bi-import" disabled>Importieren</button>
+      </div>
+    </form>`;
+  document.body.appendChild(dlg);
+
+  let header = [], daten = [];
+  const form = dlg.querySelector("#bi-form");
+  const mappingEl = dlg.querySelector("#bi-mapping");
+  const infoEl = dlg.querySelector("#bi-info");
+
+  function aktualisiere() {
+    const map = {};
+    FELDER.forEach((f) => { map[f.name] = Number(form.elements["map_" + f.name].value); });
+    const vollstaendig = BH_IMPORT_PFLICHT.every((n) => map[n] >= 0);
+    form.elements["bi-import"].disabled = !(vollstaendig && daten.length);
+    infoEl.textContent = vollstaendig
+      ? `${daten.length} Zeile(n) erkannt — Zuordnung vollständig.`
+      : "Bitte mindestens Nachname und Datum zuordnen.";
+    dlg.querySelector("#bi-kopf").innerHTML = "<tr>" + FELDER.map((f) => `<th>${esc(f.label)}</th>`).join("") + "</tr>";
+    dlg.querySelector("#bi-vorschau").innerHTML = daten.slice(0, 5).map((z) =>
+      "<tr>" + FELDER.map((f) => `<td>${esc(map[f.name] >= 0 ? (z[map[f.name]] || "") : "")}</td>`).join("") + "</tr>").join("");
+    return map;
+  }
+
+  dlg.querySelector("#bi-datei").addEventListener("change", async (ev) => {
+    const datei = ev.target.files && ev.target.files[0];
+    if (!datei) return;
+    try {
+      const zeilen = csvParse(await datei.text());
+      if (zeilen.length < 2) { meldung("CSV enthält keine Datenzeilen.", "fehler"); return; }
+      header = zeilen[0]; daten = zeilen.slice(1);
+      const map = csvAutoMap(header, FELDER);
+      mappingEl.innerHTML = FELDER.map((f) => `
+        <div class="bw-field">
+          <label for="map_${f.name}">${esc(f.label)}</label>
+          <select id="map_${f.name}" name="map_${f.name}">
+            <option value="-1">— nicht importieren —</option>
+            ${header.map((h, i) => `<option value="${i}"${map[f.name] === i ? " selected" : ""}>${esc(h || ("Spalte " + (i + 1)))}</option>`).join("")}
+          </select>
+        </div>`).join("");
+      mappingEl.querySelectorAll("select").forEach((s) => s.addEventListener("change", aktualisiere));
+      dlg.querySelector("#bi-zuordnung").hidden = false;
+      aktualisiere();
+    } catch (e) { console.error(e); meldung("CSV konnte nicht gelesen werden: " + e.message, "fehler"); }
+  });
+
+  dlg.querySelector("#bi-abbrechen").addEventListener("click", () => dlg.close());
+  dlg.addEventListener("close", () => dlg.remove());
+  form.addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const map = aktualisiere();
+    const wert = (z, n) => map[n] >= 0 ? (z[map[n]] || "").trim() : "";
+    const saetze = daten.map((z) => ({
+      nachname: wert(z, "nachname"), vorname: wert(z, "vorname"),
+      datum: normDatumISO(wert(z, "datum")),
+      ausbildungsjahr: wert(z, "ausbildungsjahr"),
+      durchsichtNr: wert(z, "durchsicht_nr"),
+      ergebnis: wert(z, "ergebnis"),
+      maengel: wert(z, "maengel").toUpperCase().replace(/\s/g, "") || null,
+      fehltage: wert(z, "fehltage"),
+    }));
+    try {
+      const r = await store.berichtsheftImportieren(saetze);
+      meldung(`Import: ${zahl(r.gespeichert)} gespeichert, ${zahl(r.nichtGefunden)} ohne Namens-Treffer, ${zahl(r.uebersprungen)} ohne Datum übersprungen.`,
+        r.nichtGefunden || r.uebersprungen ? "fehler" : "erfolg");
+      dlg.close();
+      if (nachher) nachher();
+    } catch (e) { console.error(e); meldung("Import fehlgeschlagen: " + e.message, "fehler"); }
+  });
+
+  dlg.showModal();
+}
+
 /* ------------------------------------------------------------- CRUD-Dialog */
 
 function feldHtml(f, value, refOptionen) {
@@ -4720,6 +4839,7 @@ async function renderBerichtsheft() {
       </div>
       <div class="bw-toolbar" style="margin:0 0 var(--bw-space-2)">
         <button class="bw-btn bw-btn--sekundaer" type="button" id="bh-csv">CSV exportieren</button>
+        <button class="bw-btn bw-btn--sekundaer" type="button" id="bh-import">Kontrollen importieren (CSV)</button>
         <button class="bw-btn bw-btn--sekundaer" type="button" id="bh-druck">Liste drucken</button>
       </div>
       <div class="bw-tablewrap">
@@ -4824,6 +4944,7 @@ async function renderBerichtsheft() {
     route();
   });
 
+  document.getElementById("bh-import").addEventListener("click", () => berichtsheftImportDialog(() => route()));
   document.getElementById("bh-csv").addEventListener("click", () => {
     const kopf = ["Nachname", "Vorname", "Betrieb", "Fachrichtung", "Status", "Letzte Kontrolle", "Ergebnis", "Wiedervorlage"];
     const zeilen = eintraege.map((e) => [
