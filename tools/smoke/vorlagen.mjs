@@ -20,6 +20,21 @@ const run = () => smoke("vorlagen", async ({ page, ok }) => {
   const checked = await page.isChecked('#vl-anl-bav');
   ok(checked, "Anlage standardmäßig angehakt");
 
+  // Betrieb-Picker: Empfänger/Anrede aus Stammdaten übernehmen (falls Betriebe da).
+  const hatPicker = await page.evaluate(() => !!document.getElementById("vl-betrieb"));
+  if (hatPicker) {
+    // Ersten Betrieb mit E-Mail wählen.
+    const idx = await page.evaluate(() => {
+      const opts = Array.from(document.querySelectorAll('#vl-betrieb option')).filter((o) => o.value !== "" && !o.textContent.includes("(ohne E-Mail)"));
+      return opts.length ? opts[0].value : null;
+    });
+    if (idx != null) {
+      await page.selectOption("#vl-betrieb", idx);
+      const mail = await page.inputValue("#vl-empf");
+      ok(/@/.test(mail), `Empfänger aus Betrieb übernommen (war ${mail})`);
+    }
+  }
+
   await page.fill("#vl-empf", "betrieb@example.de");
 
   // E-Mail-Entwurf herunterladen und Inhalt prüfen.

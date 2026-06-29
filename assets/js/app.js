@@ -4345,8 +4345,10 @@ async function inZwischenablage(text) {
   } catch { return false; }
 }
 
-function renderVorlagen() {
+async function renderVorlagen() {
   const heute = new Date().toLocaleDateString("de-DE");
+  let betriebe = [];
+  try { betriebe = await store.liste("betriebe"); } catch { betriebe = []; }
   appEl().innerHTML = `
     <h1>Vorlagen &amp; Vordrucke</h1>
     <p class="bw-unterzeile">Häufige Schreiben der Ausbildungsberatung — Platzhalter werden ersetzt, Text bleibt editierbar. Kopieren, als E-Mail-Entwurf (mit Anlagen) herunterladen oder drucken.</p>
@@ -4355,6 +4357,11 @@ function renderVorlagen() {
         <h2 id="vl-h" style="margin-top:0">Vordruck wählen</h2>
         <div class="bw-field"><label for="vl-auswahl">Vorlage</label>
           <select id="vl-auswahl">${VORLAGEN.map((v, i) => `<option value="${i}">${esc(v.titel)}</option>`).join("")}</select></div>
+        ${betriebe.length ? `<div class="bw-field"><label for="vl-betrieb">Betrieb übernehmen <span class="bw-leise">(optional)</span></label>
+          <select id="vl-betrieb">
+            <option value="">— Betrieb wählen —</option>
+            ${betriebe.map((b, i) => `<option value="${i}">${esc(b.name)}${b.ort ? " · " + esc(b.ort) : ""}${b.email ? "" : " (ohne E-Mail)"}</option>`).join("")}
+          </select></div>` : ""}
         <div class="bw-field"><label for="vl-empf">Empfänger-E-Mail <span class="bw-leise">(für den Entwurf)</span></label>
           <input id="vl-empf" type="email" autocomplete="off" placeholder="name@betrieb.de"></div>
         <div class="bw-field"><label for="vl-anrede">Anrede</label>
@@ -4426,6 +4433,17 @@ function renderVorlagen() {
   auswahl.addEventListener("change", fuellen);
   anrede.addEventListener("input", fuellen);
   frist.addEventListener("input", fuellen);
+
+  // Betrieb übernehmen: Empfänger-E-Mail und Anrede aus den Stammdaten vorbefüllen.
+  const betriebSel = document.getElementById("vl-betrieb");
+  betriebSel?.addEventListener("change", () => {
+    const b = betriebe[Number(betriebSel.value)];
+    if (!b) return;
+    if (b.email) empf.value = b.email;
+    anrede.value = b.ansprechpartner ? `Sehr geehrte/r ${b.ansprechpartner},` : "Sehr geehrte Damen und Herren,";
+    fuellen();
+    if (!b.email) meldung("Für diesen Betrieb ist keine E-Mail hinterlegt — bitte Empfänger ergänzen.", "fehler");
+  });
 
   // Einzelne Anlage herunterladen (am frisch gerenderten Container gebunden).
   anlagenEl.addEventListener("click", async (ev) => {
@@ -5659,7 +5677,7 @@ async function routeImpl() {
     else if (r === "datenschutz") { renderDatenschutz(); }
     else if (r === "barrierefreiheit") { renderBarrierefreiheit(); }
     else if (r === "benutzer") { await renderBenutzer(); }
-    else if (r === "vorlagen") { renderVorlagen(); }
+    else if (r === "vorlagen") { await renderVorlagen(); }
     else if (r.startsWith("berichtsheft/")) { await renderBerichtsheftRaster(r.slice("berichtsheft/".length)); }
     else if (r === "berichtsheft") { await renderBerichtsheft(); }
     else if (r.startsWith("beratung/")) { await renderBeratungFall(r.slice("beratung/".length)); }

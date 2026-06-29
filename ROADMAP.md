@@ -42,6 +42,11 @@ Ausbildungsberatung (Prüfung + Berichtsheftkontrolle + Beratung + Vordrucke).
   Block, Mobile 390px). *Fachverantwortung:* Aktualität der Formulare prüft die
   Dienststelle; weitere PDFs/Vorlagen (Aufhebung/Verlängerung, Info-Mail für
   Interessenten) folgen je Iteration.
+- ✅ **Vorlagen: Empfänger aus Stammdaten übernehmen**: optionaler Betriebs-Auswahl
+  in der Vorlagen-Ansicht — füllt **Empfänger-E-Mail** und **Anrede**
+  („Sehr geehrte/r {Ansprechpartner}") automatisch aus dem gewählten
+  Ausbildungsbetrieb (ohne hinterlegte E-Mail: Hinweis). Spart das Abtippen.
+  Chromium-getestet (Übernahme der E-Mail aus dem Betrieb).
 - ✅ **Vorlagen ausgebaut (Schreiben + offizielle Anlagen)**: neue Vordrucke
   **„Ausbildung — Information für Interessenten"** (Outreach mit Vertragsvordruck,
   Ausfüllhilfe und Infoblatt als Anlagen) und **„Berufsausbildungsvertrag —
