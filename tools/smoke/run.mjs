@@ -9,8 +9,9 @@ import bhBeratung from "./bh-beratung.mjs";
 import akteBezuege from "./akte-bezuege.mjs";
 import betriebBezuege from "./betrieb-bezuege.mjs";
 import auswUeber from "./auswertungen-ueber.mjs";
+import bhImport from "./bh-import.mjs";
 
-const smokes = [["raster", raster], ["backup", backup], ["maengel", maengel], ["vorlagen", vorlagen], ["uebersicht", uebersicht], ["bh-beratung", bhBeratung], ["akte-bezuege", akteBezuege], ["betrieb-bezuege", betriebBezuege], ["auswertungen-ueber", auswUeber]];
+const smokes = [["raster", raster], ["backup", backup], ["maengel", maengel], ["vorlagen", vorlagen], ["uebersicht", uebersicht], ["bh-beratung", bhBeratung], ["akte-bezuege", akteBezuege], ["betrieb-bezuege", betriebBezuege], ["auswertungen-ueber", auswUeber], ["bh-import", bhImport]];
 let fehler = 0;
 for (const [name, fn] of smokes) {
   console.log(`\n=== Smoke: ${name} ===`);

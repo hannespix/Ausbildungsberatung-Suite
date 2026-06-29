@@ -235,7 +235,15 @@ Ausbildungsberatung (Prüfung + Berichtsheftkontrolle + Beratung + Vordrucke).
   **Prüflings-E-Mail** als Empfänger. Neue Deep-Links `#/vorlagen?betrieb=<id>`
   und `#/vorlagen?an=<email>` — verbinden die Akten mit dem E-Mail-Workflow.
   Chromium-Smokes erweitert.
-- ⏳ **Weiterer Ausbau**: Berichtsheft-Import (CSV), weitere Auswertungen.
+- ✅ **Berichtsheft-Kontrollen aus CSV importieren**: „Kontrollen importieren (CSV)"
+  im Berichtsheft-Dashboard — Datei wählen, Spalten automatisch zuordnen
+  (überschreibbar), Vorschau, importieren. Pflichtspalten Nachname + Datum
+  (dd.mm.yyyy oder ISO), optional Vorname, Ausbildungsjahr, Durchsicht-Nr.,
+  Ergebnis-id, Mängelcodes, Fehltage. Zuordnung über den Namen; bestehende
+  Kontrolle (Person/Jahr/Durchsicht) wird per Upsert aktualisiert; Sätze ohne
+  Treffer/Datum werden gemeldet. `store.berichtsheftImportieren`. Chromium-Smoke
+  (`tools/smoke/bh-import.mjs`).
+- ⏳ **Weiterer Ausbau**: weitere Auswertungen, Stichtagsauswertung.
 
 ---
 
