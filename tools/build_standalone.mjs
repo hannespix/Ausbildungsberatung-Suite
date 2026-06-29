@@ -8,7 +8,7 @@
 //   @electric-sql/pglite (gleiche Version wie assets/vendor/pglite) und esbuild.
 // Aufruf (Repo-Wurzel):  node tools/build_standalone.mjs
 import { build } from "esbuild";
-import { readFile, writeFile, mkdir, copyFile } from "node:fs/promises";
+import { readFile, writeFile, mkdir, copyFile, readdir } from "node:fs/promises";
 import path from "node:path";
 
 const REPO = process.cwd();
@@ -78,6 +78,20 @@ async function main() {
   const logo = await dataUri(path.join(REPO, "assets", "logo", "rpf-logo.png"), "image/png");
   const logoNeg = await dataUri(path.join(REPO, "assets", "logo", "rpf-logo-negativ.png"), "image/png");
 
+  // 4b) Anlagen-PDFs einbetten (unter file:// gibt es keine separaten Dateien;
+  //     window.__ANLAGEN__ liefert die Bytes als data:-URI an die App).
+  const ANLAGEN_DIR = path.join(REPO, "assets", "anlagen");
+  const MIME_ANLAGE = { ".pdf": "application/pdf", ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document", ".doc": "application/msword" };
+  let anlagenScript = "";
+  try {
+    const dateien = (await readdir(ANLAGEN_DIR)).filter((f) => MIME_ANLAGE[path.extname(f).toLowerCase()]);
+    const eintraege = {};
+    for (const f of dateien) {
+      eintraege[f] = await dataUri(path.join(ANLAGEN_DIR, f), MIME_ANLAGE[path.extname(f).toLowerCase()]);
+    }
+    if (dateien.length) anlagenScript = `<script>window.__ANLAGEN__=${JSON.stringify(eintraege)};</script>\n`;
+  } catch { /* keine Anlagen-Mappe -> ohne Einbettung */ }
+
   // 5) Grundgerüst aus index.html übernehmen, externe Verweise entfernen
   let html = await readFile(path.join(REPO, "index.html"), "utf8");
   html = html
@@ -90,7 +104,7 @@ async function main() {
     // Funktions-Replacer: verhindert, dass $-Sequenzen in CSS/JS als
     // Ersetzungsmuster interpretiert werden.
     .replace(/<\/head>/i, () => `<style>\n${css}\n</style>\n</head>`)
-    .replace(/<\/body>/i, () => `<script type="module">\n${js}\n</script>\n</body>`);
+    .replace(/<\/body>/i, () => `${anlagenScript}<script type="module">\n${js}\n</script>\n</body>`);
 
   await mkdir(path.dirname(OUT), { recursive: true });
   await writeFile(OUT, html, "utf8");

@@ -2,8 +2,11 @@
 // (Benötigt einen lokalen Chromium; siehe harness.mjs. Nicht Teil der CI.)
 import raster from "./raster.mjs";
 import backup from "./backup.mjs";
+import maengel from "./maengel.mjs";
+import vorlagen from "./vorlagen.mjs";
+import uebersicht from "./uebersicht.mjs";
 
-const smokes = [["raster", raster], ["backup", backup]];
+const smokes = [["raster", raster], ["backup", backup], ["maengel", maengel], ["vorlagen", vorlagen], ["uebersicht", uebersicht]];
 let fehler = 0;
 for (const [name, fn] of smokes) {
   console.log(`\n=== Smoke: ${name} ===`);

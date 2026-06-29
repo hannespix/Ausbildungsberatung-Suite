@@ -158,6 +158,7 @@ a:hover { text-decoration: none; }
 .bw-btn--gelb { background: var(--bw-gelb); color: var(--bw-schwarz); border-color: var(--bw-schwarz); }
 .bw-btn--gelb:hover { background: var(--bw-schwarz); color: var(--bw-weiss); }
 .bw-btn:disabled { background: var(--bw-grau-200); border-color: var(--bw-grau-300); color: var(--bw-grau-500); cursor: not-allowed; }
+.bw-btn--klein { font-size: 0.85em; padding: 0.3em 0.7em; }
 
 /* Aufklappbare Knopf-Gruppe (native <details>) — bündelt seltener genutzte
    Aktionen, hält Werkzeugleisten aufgeräumt. Nur --bw-*-Tokens, keine Deko. */
@@ -423,6 +424,17 @@ mark.bw-treffer { background: var(--bw-gelb); color: var(--bw-schwarz); padding:
 .bw-stat:hover { background: var(--bw-grau-50); }
 .bw-stat__zahl { font-family: var(--bw-font-serif); font-weight: 700; font-size: var(--bw-fs-titel); line-height: 1.05; }
 .bw-stat__label { font-weight: 700; font-size: var(--bw-fs-klein); }
+
+/* ===================== Bereich-Kacheln (Schnellzugriff) ========== */
+.bw-kachel-grid { grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); }
+.bw-kachel {
+  display: flex; flex-direction: column; gap: var(--bw-space-1);
+  text-decoration: none; color: var(--bw-text);
+}
+.bw-kachel:hover { background: var(--bw-grau-50); }
+.bw-kachel__titel { font-weight: 700; display: flex; align-items: baseline; justify-content: space-between; gap: var(--bw-space-2); }
+.bw-kachel__zahl { font-family: var(--bw-font-serif); font-weight: 700; }
+.bw-kachel__text { font-size: var(--bw-fs-klein); color: var(--bw-grau-700); }
 
 /* ===================== Tabellen-Aktionen ========================= */
 .bw-actions { white-space: nowrap; text-align: right; }

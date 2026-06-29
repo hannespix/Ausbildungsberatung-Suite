@@ -26,6 +26,50 @@ Ausbildungsberatung (Prüfung + Berichtsheftkontrolle + Beratung + Vordrucke).
   Platzhalter (Anrede, Datum, Frist, Bearbeiter:in) werden ersetzt, der Text
   bleibt editierbar; **kopieren** (offline-tauglich mit Fallback), **als E-Mail
   öffnen** (mailto) und **drucken**. Chromium-getestet.
+- ✅ **Vorlagen: Anlagen-System + E-Mail-Entwurf (.eml)**: da `mailto:` technisch
+  keine Dateianhänge transportiert, erzeugt die Vorlagen-Ansicht jetzt einen
+  **E-Mail-Entwurf als `.eml`-Datei** (RFC 5322/MIME, `assets/js/eml.js`) — öffnet
+  per Doppelklick in Outlook als editierbarer Entwurf **inkl. angehängter
+  Anlagen** (`X-Unsent`). Je Vorlage definierbare **Anlagen** (gebündelte
+  Formular-PDFs in `assets/anlagen/`, registriert in `ANLAGEN`, mit Stand/Quelle,
+  einzeln herunterladbar oder angehakt in den Entwurf eingebettet) und
+  **Checklisten** (`{{checkliste}}`, z. B. Lebenslauf/Zeugnisse/AEVO für die
+  Ausbildereignung). Erste offizielle Anlage gebündelt: Muster-Berufsausbildungs-
+  vertrag (grüne Berufe, RP BW, Stand 05/2020). Voll offline: der Standalone-Build
+  bettet die Anlagen-Mappe als `window.__ANLAGEN__` ein. Reine, getestete Logik
+  (`tools/test_eml.mjs`, 25 Prüfungen) + Chromium-Smoke (`tools/smoke/vorlagen.mjs`:
+  Checkliste eingesetzt, BAV als Anhang im .eml, Einzel-Download, ohne Anlage kein
+  Block, Mobile 390px). *Fachverantwortung:* Aktualität der Formulare prüft die
+  Dienststelle; weitere PDFs/Vorlagen (Aufhebung/Verlängerung, Info-Mail für
+  Interessenten) folgen je Iteration.
+- ✅ **Übersicht-Dashboard deckt den ganzen Funktionsumfang ab**: die Startseite
+  zeigt jetzt eine **Bereiche**-Sektion mit Schnellzugriff-Kacheln auf alle
+  Werkzeuge (Stammdaten, Adressliste, Tagescockpit, Tagesplanung, Prüfer-Plan,
+  Noten, Zeugnisse, Auswertungen, Berichtsheft, Beratung, Ausbildungsrechner,
+  Vorlagen, globale Suche) — Berichtsheft und Beratung mit Badge „N offen"
+  (offene Wiedervorlagen/Fälle). Untertitel als Plattform formuliert. Die
+  bisherigen Widgets (Kennzahlen, nächste Prüfungstage, „Was ist zu tun?",
+  Wiedervorlagen, Fortschritt, Werkzeuge) bleiben darunter erhalten. Neue
+  Theme-Komponente `.bw-kachel`. **Fehlerbehebung:** nach dem Login sprang die
+  App nicht zuverlässig aufs Dashboard — `location.hash = "#/"` löste bei bereits
+  leerem Hash kein `hashchange` aus; jetzt wird in diesem Fall direkt gerendert.
+  Chromium-Smoke (`tools/smoke/uebersicht.mjs`: direkt nach Login auf der
+  Übersicht, alle 13 Kacheln verlinkt, Kachel öffnet Bereich, Mobile 390px).
+- ✅ **Vorlagen: Empfänger aus Stammdaten übernehmen**: optionaler Betriebs-Auswahl
+  in der Vorlagen-Ansicht — füllt **Empfänger-E-Mail** und **Anrede**
+  („Sehr geehrte/r {Ansprechpartner}") automatisch aus dem gewählten
+  Ausbildungsbetrieb (ohne hinterlegte E-Mail: Hinweis). Spart das Abtippen.
+  Chromium-getestet (Übernahme der E-Mail aus dem Betrieb).
+- ✅ **Vorlagen ausgebaut (Schreiben + offizielle Anlagen)**: neue Vordrucke
+  **„Ausbildung — Information für Interessenten"** (Outreach mit Vertragsvordruck,
+  Ausfüllhilfe und Infoblatt als Anlagen) und **„Berufsausbildungsvertrag —
+  Auflösung/Abmeldung"** (mit Abmelde-Vordruck). Vier weitere offizielle Anlagen
+  gebündelt und registriert: Hilfestellung zur BAV-Vorlage, Infoblatt für
+  Auszubildende (02/2026), Praktikantenvertrag, Abmeldung/Auflösung BAV
+  (MLR/LEL Baden-Württemberg). Der „Vordruck zusenden"-Brief schickt jetzt BAV +
+  Ausfüllhilfe. Standalone bettet alle fünf Anlagen ein; Smoke prüft die
+  Mehrfach-Anlage. Quellen/Stand in `assets/anlagen/QUELLEN.md` (Aktualität =
+  Fachverantwortung der Dienststelle).
 - ✅ **UI-/Design-Politur + Korrekturen**: Impressum nennt jetzt den **aktuellen
   Namen** der Aufsichtsbehörde („Ministerium für Ländlichen Raum, Landwirtschaft
   und Heimat Baden-Württemberg", Umbenennung 2026). Login-Maske aufgeräumt:
@@ -137,6 +181,22 @@ Ausbildungsberatung (Prüfung + Berichtsheftkontrolle + Beratung + Vordrucke).
   früherer Renderer (z. B. die Übersicht beim Start) kann einen neueren nicht
   mehr überschreiben; schnelle Navigation landet nicht mehr auf einer veralteten
   Seite. Vom neuen Smoke-Harness aufgedeckt und abgesichert.
+- ✅ **Berichtsheft — Mängel-Auswertung**: das Dashboard zeigt die **Häufung der
+  Mängelcodes** über alle Wochenraster als CI-konformes SVG-Balkendiagramm
+  (häufigster Mangel hervorgehoben) plus Tabelle (Code · Klartext · Anzahl) und
+  Kennzahlen (Mängel gesamt, Wochen mit Mängeln, Fehltage gesamt, Wochen mit
+  Fehltagen). „H" (reine Fehltage) zählt nicht als Mangel, sondern in die
+  Fehltage-Summe — so sieht die Ausbildungsberatung, wo systematisch nachgehakt
+  werden muss. Reine Aggregatlogik `berichtsheft.js → maengelHaeufung` (+10
+  Unit-Tests), DB-Lesung `store.berichtsheftRasterAlle`. Chromium-Smoke
+  (`tools/smoke/maengel.mjs`): 3 Codes, A häufigster (=2), H nicht als Mangel,
+  Fehltage 5, Mobile 390px ohne Overflow.
+- ✅ **Berichtsheft — Mängel-Auswertung: Betriebs-Sicht**: die Mängel-Auswertung
+  zeigt zusätzlich eine Tabelle **Mängel je Betrieb** (Mängel, Fehltage, betroffene
+  Wochen; Top 10, absteigend) — so erkennt die Beratung, welche Betriebe gehäuft
+  auffallen. Reine Logik `berichtsheft.js → maengelJeBetrieb` (+10 Unit-Tests),
+  DB-Lesung `store.berichtsheftRasterMitBetrieb` (Join auf `prueflinge.betrieb`).
+  Chromium-Smoke erweitert.
 - ⏳ **Weiterer Ausbau**: Berichtsheft-Import (CSV), weitere Auswertungen.
 
 ---

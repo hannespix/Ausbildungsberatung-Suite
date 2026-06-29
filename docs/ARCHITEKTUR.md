@@ -27,7 +27,12 @@ Punkte stehen in `ROADMAP.md`.
 - **Reine Engine-Module (DOM-/DB-frei, in Node getestet):** `galabau.js`
   (Notenlogik), `ablauf.js` (Stationsrotation), `auth.js` (Offline-SHA-256),
   `ausbildungsrechner.js` (Fristen/Vergütung/Urlaub), `berichtsheft.js`
-  (Kontroll-/KW-Logik), `beratung.js` (Beratungsfälle).
+  (Kontroll-/KW-Logik), `beratung.js` (Beratungsfälle), `eml.js`
+  (E-Mail-Entwurf im .eml-Format mit Anhängen, RFC 5322/MIME).
+- **Anlagen (Vorlagen-Versand):** Formular-PDFs liegen in `assets/anlagen/`
+  (+ `QUELLEN.md` mit Stand/Quelle), registriert in `app.js` (`ANLAGEN`). Die
+  Vorlagen-Ansicht bettet ausgewählte Anlagen über `eml.js` in einen
+  `.eml`-Entwurf ein (öffnet in Outlook mit Anhängen).
 - **Klassische Globals:** `nav.js` (Hamburger/a11y), `chart.js`
   (`window.bwChart.bars(el, [{label,value,highlight}], {titel,max,einheit})`),
   `search.js` (`window.bwSearch.search(records, query, {fields})`,
@@ -84,8 +89,20 @@ Punkte stehen in `ROADMAP.md`.
 - `store.anlegen()` gibt eine **id** zurück, viele Fachfunktionen geben Zeilen.
 - **Auth:** eigenes Offline-SHA-256 (kein `crypto.subtle`, läuft so auch unter
   `file://`); Sitzung in `sessionStorage`; Route-Guard sperrt ohne Anmeldung.
+- **Hash-Routing:** `aktiveRoute()` liefert für leeren Hash `"uebersicht"` (nie
+  `""`). `location.hash = "#/"` löst bei bereits leerem/`#/`-Hash KEIN
+  `hashchange` aus → nach dem Login direkt `route()` aufrufen, sonst bleibt das
+  Dashboard leer.
 - **Standalone-Build folgt den ES-Importen ab `app.js`** — nach Änderungen neu
-  bauen (`node tools/build_standalone.mjs`).
+  bauen (`node tools/build_standalone.mjs`). Voraussetzung: `npm install esbuild
+  @electric-sql/pglite --no-save` (PGlite-Version muss `assets/vendor/pglite`
+  entsprechen — `pglite.wasm`-Bytegröße abgleichen).
+- **`mailto:` kann KEINE Anhänge transportieren** — für E-Mails mit Anlagen einen
+  `.eml`-Entwurf erzeugen (`eml.js`), der in Outlook mit Dateien öffnet.
+- **Anlagen-Bytes laden:** `app.js → anlageBytes()` bevorzugt `window.__ANLAGEN__`
+  (im Standalone eingebettet), sonst `fetch("assets/anlagen/…")`. Neue Anlage ⇒
+  Datei in `assets/anlagen/` ablegen, in `ANLAGEN` registrieren; der
+  Standalone-Build bettet die Mappe automatisch als `window.__ANLAGEN__` ein.
 
 ## 6. Entwicklungs-Rezept je Iteration (Selbstcheck vor Commit)
 ```
