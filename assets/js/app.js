@@ -84,7 +84,10 @@ function loginAnzeigen(fehler) {
       try { sessionStorage.setItem(SITZUNG_KEY, JSON.stringify(u)); } catch { /* egal */ }
       meldung(`Angemeldet als ${u.benutzername}.`);
       navAufbauen();
-      if (aktiveRoute() === "" ) route(); else location.hash = "#/";
+      // Direkt aufs Dashboard. Ist der Hash schon „#/" (kein hashchange-Event),
+      // direkt rendern; sonst löst die Hash-Änderung den Router aus.
+      const aufDashboard = location.hash === "" || location.hash === "#" || location.hash === "#/";
+      if (aufDashboard) route(); else location.hash = "#/";
     } catch (e) { console.error(e); loginAnzeigen("Anmeldung fehlgeschlagen: " + e.message); }
   });
   document.getElementById("login-pass")?.focus?.();
@@ -343,10 +346,17 @@ async function renderUebersicht() {
 
   // Bereichsübergreifende Wiedervorlagen (Berichtsheft + Beratung) — offen/überfällig.
   let wvAlle = [];
+  let beratungOffen = null, bhWvOffen = null;
   try {
     const h = heuteISO();
     const faelle = await store.beratungFaelle();
     const bhWv = await store.berichtsheftWiedervorlagen();
+    beratungOffen = faelle.filter((f) => f.status !== "geloest").length;
+    bhWvOffen = bhWv.filter((w) => {
+      if (w.wiedervorlage_erledigt) return false;
+      const s = wvStatus(w.wiedervorlage_frist, false, h);
+      return s === "offen" || s === "ueberfaellig";
+    }).length;
     wvAlle = [
       ...faelle.filter((f) => f.wiedervorlage && f.status !== "geloest").map((f) => ({
         bereich: "Beratung", wer: f.nachname ? `${f.nachname}, ${f.vorname}` : (f.betrieb || "—"),
@@ -360,9 +370,26 @@ async function renderUebersicht() {
      .sort((a, b) => String(a.frist).localeCompare(String(b.frist))).slice(0, 8);
   } catch (e) { console.warn("Wiedervorlagen nicht verfügbar:", e); }
 
+  // Schnellzugriff auf alle Bereiche der Suite (deckt den Funktionsumfang ab).
+  const bereiche = [
+    { route: "prueflinge",    titel: "Stammdaten",        text: "Prüflinge, Betriebe, Prüfer:innen und Termine verwalten." },
+    { route: "kontakte",      titel: "Adressliste",       text: "Kontakte von Betrieben und Prüfer:innen, Export." },
+    { route: "pruefungstag",  titel: "Tagescockpit",      text: "Ein Prüfungstag an einem Ort — Status und Dokumente." },
+    { route: "planung",       titel: "Tagesplanung",      text: "Prüflinge und Ausschuss je Termin zuteilen." },
+    { route: "planungsliste", titel: "Prüfer-Plan",       text: "Ausschuss-Besetzung und Zusagen je Termin." },
+    { route: "noten",         titel: "Noten",             text: "Bewerten, Reihen-Bewertung, Import/Export." },
+    { route: "zeugnisse",     titel: "Zeugnisse",         text: "Prüfungszeugnisse und Ergebnis-Mitteilungen drucken." },
+    { route: "auswertungen",  titel: "Auswertungen",      text: "Quoten, Notenspiegel, Auslastung, Prüfer-Einsätze." },
+    { route: "berichtsheft",  titel: "Berichtsheft",      text: "Ausbildungsnachweise kontrollieren, KW-Raster, Mängel.", zahl: bhWvOffen, einheit: "offen" },
+    { route: "beratung",      titel: "Beratung",          text: "Beratungsfälle mit Verlauf und Wiedervorlage.", zahl: beratungOffen, einheit: "offen" },
+    { route: "rechner",       titel: "Ausbildungsrechner", text: "Prüfungstermin, Vergütung und Urlaub berechnen." },
+    { route: "vorlagen",      titel: "Vorlagen",          text: "Schreiben + Anlagen als E-Mail-Entwurf (.eml)." },
+    { route: "suche",         titel: "Globale Suche",     text: "Prüflinge, Betriebe, Prüfer:innen und Termine finden." },
+  ];
+
   appEl().innerHTML = `
     <h1>Übersicht</h1>
-    <p class="bw-unterzeile">Abschlussprüfung Gärtner/in — Planung, Verwaltung, Notenberechnung und Zeugnis</p>
+    <p class="bw-unterzeile">Arbeitsplattform der Ausbildungsberatung — Prüfung, Berichtsheft, Beratung, Vorlagen und Auswertungen an einem Ort.</p>
 
     <section aria-labelledby="kennzahlen-h">
       <h2 id="kennzahlen-h">Kennzahlen</h2>
@@ -371,6 +398,18 @@ async function renderUebersicht() {
           <a class="bw-card bw-stat" href="#/${s.key}">
             <span class="bw-stat__zahl">${zahl(s.n)}</span>
             <span class="bw-stat__label">${esc(s.label)}</span>
+          </a>`).join("")}
+      </div>
+    </section>
+
+    <section aria-labelledby="bereiche-h" style="margin-top:var(--bw-space-4)">
+      <h2 id="bereiche-h">Bereiche</h2>
+      <p class="bw-klein bw-leise">Schnellzugriff auf alle Werkzeuge der Suite.</p>
+      <div class="bw-flaechen bw-kachel-grid">
+        ${bereiche.map((b) => `
+          <a class="bw-card bw-kachel" href="#/${b.route}">
+            <span class="bw-kachel__titel">${esc(b.titel)}${(b.zahl != null && b.zahl > 0) ? `<span class="bw-tag bw-tag--aktiv">${zahl(b.zahl)} ${esc(b.einheit)}</span>` : ""}</span>
+            <span class="bw-kachel__text">${esc(b.text)}</span>
           </a>`).join("")}
       </div>
     </section>

@@ -42,6 +42,19 @@ Ausbildungsberatung (Prüfung + Berichtsheftkontrolle + Beratung + Vordrucke).
   Block, Mobile 390px). *Fachverantwortung:* Aktualität der Formulare prüft die
   Dienststelle; weitere PDFs/Vorlagen (Aufhebung/Verlängerung, Info-Mail für
   Interessenten) folgen je Iteration.
+- ✅ **Übersicht-Dashboard deckt den ganzen Funktionsumfang ab**: die Startseite
+  zeigt jetzt eine **Bereiche**-Sektion mit Schnellzugriff-Kacheln auf alle
+  Werkzeuge (Stammdaten, Adressliste, Tagescockpit, Tagesplanung, Prüfer-Plan,
+  Noten, Zeugnisse, Auswertungen, Berichtsheft, Beratung, Ausbildungsrechner,
+  Vorlagen, globale Suche) — Berichtsheft und Beratung mit Badge „N offen"
+  (offene Wiedervorlagen/Fälle). Untertitel als Plattform formuliert. Die
+  bisherigen Widgets (Kennzahlen, nächste Prüfungstage, „Was ist zu tun?",
+  Wiedervorlagen, Fortschritt, Werkzeuge) bleiben darunter erhalten. Neue
+  Theme-Komponente `.bw-kachel`. **Fehlerbehebung:** nach dem Login sprang die
+  App nicht zuverlässig aufs Dashboard — `location.hash = "#/"` löste bei bereits
+  leerem Hash kein `hashchange` aus; jetzt wird in diesem Fall direkt gerendert.
+  Chromium-Smoke (`tools/smoke/uebersicht.mjs`: direkt nach Login auf der
+  Übersicht, alle 13 Kacheln verlinkt, Kachel öffnet Bereich, Mobile 390px).
 - ✅ **Vorlagen: Empfänger aus Stammdaten übernehmen**: optionaler Betriebs-Auswahl
   in der Vorlagen-Ansicht — füllt **Empfänger-E-Mail** und **Anrede**
   („Sehr geehrte/r {Ansprechpartner}") automatisch aus dem gewählten

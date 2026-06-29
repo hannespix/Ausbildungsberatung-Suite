@@ -89,6 +89,10 @@ Punkte stehen in `ROADMAP.md`.
 - `store.anlegen()` gibt eine **id** zurück, viele Fachfunktionen geben Zeilen.
 - **Auth:** eigenes Offline-SHA-256 (kein `crypto.subtle`, läuft so auch unter
   `file://`); Sitzung in `sessionStorage`; Route-Guard sperrt ohne Anmeldung.
+- **Hash-Routing:** `aktiveRoute()` liefert für leeren Hash `"uebersicht"` (nie
+  `""`). `location.hash = "#/"` löst bei bereits leerem/`#/`-Hash KEIN
+  `hashchange` aus → nach dem Login direkt `route()` aufrufen, sonst bleibt das
+  Dashboard leer.
 - **Standalone-Build folgt den ES-Importen ab `app.js`** — nach Änderungen neu
   bauen (`node tools/build_standalone.mjs`). Voraussetzung: `npm install esbuild
   @electric-sql/pglite --no-save` (PGlite-Version muss `assets/vendor/pglite`
