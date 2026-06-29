@@ -219,6 +219,10 @@ Ausbildungsberatung (Prüfung + Berichtsheftkontrolle + Beratung + Vordrucke).
   die Betriebs-Akte jetzt „Berichtsheft & Beratung" — Kontrollen, offene
   Raster-Mängel und offene Beratungsfälle der Azubis dieses Betriebs (je mit
   „Öffnen"). `store.betriebBezuege`. Chromium-Smoke (`tools/smoke/betrieb-bezuege.mjs`).
+- ✅ **Beratungs-Fall-Akte zurück verlinkt**: die Fall-Akte verlinkt neben der
+  Prüfling-Akte jetzt auch das **Berichtsheft-Wochenraster** des Prüflings —
+  der Navigations-Kreis Prüfling ↔ Betrieb ↔ Beratung ↔ Berichtsheft ist damit
+  beidseitig geschlossen. Smoke erweitert.
 - ⏳ **Weiterer Ausbau**: Berichtsheft-Import (CSV), weitere Auswertungen.
 
 ---
