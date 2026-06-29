@@ -399,6 +399,28 @@ export async function berichtsheftRasterAlle() {
   return res.rows;
 }
 
+/** Bereichsübergreifende Kennzahlen (Berichtsheft + Beratung) für die Auswertungen. */
+export async function uebergreifendeKennzahlen() {
+  const bh = (await _pg.query(`
+    SELECT
+      (SELECT count(DISTINCT pruefling_id)::int FROM berichtsheft_kontrollen) AS azubis,
+      (SELECT count(*)::int FROM berichtsheft_kontrollen) AS kontrollen,
+      (SELECT count(*)::int FROM berichtsheft_kontrollen
+         WHERE wiedervorlage_frist IS NOT NULL AND NOT wiedervorlage_erledigt) AS wv_offen,
+      (SELECT count(*)::int FROM berichtsheft_kontrollen
+         WHERE wiedervorlage_frist IS NOT NULL AND NOT wiedervorlage_erledigt AND wiedervorlage_frist < current_date) AS wv_ueberfaellig,
+      (SELECT count(*)::int FROM berichtsheft_kw
+         WHERE maengel <> '' AND regexp_replace(maengel, '[H, ]', '', 'g') <> '') AS raster_maengel
+  `)).rows[0];
+  const ber = (await _pg.query(`
+    SELECT count(*)::int AS gesamt,
+           count(*) FILTER (WHERE status <> 'geloest')::int AS offen,
+           count(*) FILTER (WHERE status = 'geloest')::int AS geloest
+      FROM beratungsfaelle
+  `)).rows[0];
+  return { berichtsheft: bh, beratung: ber };
+}
+
 /** Modulübergreifende Bezüge eines Betriebs (Berichtsheft/Beratung seiner Azubis). */
 export async function betriebBezuege(betriebId) {
   const b = (await _pg.query(`SELECT name FROM betriebe WHERE id = $1`, [Number(betriebId)])).rows[0];

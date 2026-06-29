@@ -223,6 +223,12 @@ Ausbildungsberatung (Prüfung + Berichtsheftkontrolle + Beratung + Vordrucke).
   Prüfling-Akte jetzt auch das **Berichtsheft-Wochenraster** des Prüflings —
   der Navigations-Kreis Prüfling ↔ Betrieb ↔ Beratung ↔ Berichtsheft ist damit
   beidseitig geschlossen. Smoke erweitert.
+- ✅ **Auswertungen: bereichsübergreifender Überblick**: die Auswertungen zeigen
+  eine Sektion „Berichtsheft & Beratung" mit Kennzahlen (Azubis kontrolliert,
+  offene/überfällige Wiedervorlagen, offene Raster-Mängel, Beratungsfälle
+  offen/gelöst) — verlinkt in die jeweiligen Bereiche, unabhängig vom
+  Prüfungsjahr-Filter. `store.uebergreifendeKennzahlen`. Chromium-Smoke
+  (`tools/smoke/auswertungen-ueber.mjs`).
 - ⏳ **Weiterer Ausbau**: Berichtsheft-Import (CSV), weitere Auswertungen.
 
 ---

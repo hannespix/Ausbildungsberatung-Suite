@@ -8,8 +8,9 @@ import uebersicht from "./uebersicht.mjs";
 import bhBeratung from "./bh-beratung.mjs";
 import akteBezuege from "./akte-bezuege.mjs";
 import betriebBezuege from "./betrieb-bezuege.mjs";
+import auswUeber from "./auswertungen-ueber.mjs";
 
-const smokes = [["raster", raster], ["backup", backup], ["maengel", maengel], ["vorlagen", vorlagen], ["uebersicht", uebersicht], ["bh-beratung", bhBeratung], ["akte-bezuege", akteBezuege], ["betrieb-bezuege", betriebBezuege]];
+const smokes = [["raster", raster], ["backup", backup], ["maengel", maengel], ["vorlagen", vorlagen], ["uebersicht", uebersicht], ["bh-beratung", bhBeratung], ["akte-bezuege", akteBezuege], ["betrieb-bezuege", betriebBezuege], ["auswertungen-ueber", auswUeber]];
 let fehler = 0;
 for (const [name, fn] of smokes) {
   console.log(`\n=== Smoke: ${name} ===`);
