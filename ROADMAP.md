@@ -197,6 +197,10 @@ Ausbildungsberatung (Prüfung + Berichtsheftkontrolle + Beratung + Vordrucke).
   auffallen. Reine Logik `berichtsheft.js → maengelJeBetrieb` (+10 Unit-Tests),
   DB-Lesung `store.berichtsheftRasterMitBetrieb` (Join auf `prueflinge.betrieb`).
   Chromium-Smoke erweitert.
+- ✅ **Berichtsheft — Mängel-Auswertung als CSV**: „Auswertung als CSV" exportiert
+  die Mängelcode-Häufung (Code · Bezeichnung · Anzahl) und die Mängel je Betrieb
+  (Betrieb · Mängel · Fehltage · Wochen) in einer Datei (Semikolon + BOM für
+  Excel) — für Berichte/Weiterverarbeitung. Chromium-Smoke erweitert.
 - ⏳ **Weiterer Ausbau**: Berichtsheft-Import (CSV), weitere Auswertungen.
 
 ---
