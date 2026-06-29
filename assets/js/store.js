@@ -399,6 +399,33 @@ export async function berichtsheftRasterAlle() {
   return res.rows;
 }
 
+/** Modulübergreifende Bezüge eines Betriebs (Berichtsheft/Beratung seiner Azubis). */
+export async function betriebBezuege(betriebId) {
+  const b = (await _pg.query(`SELECT name FROM betriebe WHERE id = $1`, [Number(betriebId)])).rows[0];
+  if (!b) return { beratung: [], beratungOffen: 0, rasterMaengel: 0, kontrollen: 0 };
+  const name = b.name;
+  const beratung = (await _pg.query(
+    `SELECT bf.id, bf.titel, bf.status, bf.kategorie, p.nachname, p.vorname
+       FROM beratungsfaelle bf LEFT JOIN prueflinge p ON p.id = bf.pruefling_id
+      WHERE (p.id IS NOT NULL AND lower(btrim(coalesce(p.betrieb,''))) = lower(btrim($1)))
+         OR lower(btrim(coalesce(bf.betrieb,''))) = lower(btrim($1))
+      ORDER BY (bf.status = 'geloest'), bf.id DESC`,
+    [name]
+  )).rows;
+  const rasterMaengel = (await _pg.query(
+    `SELECT count(*)::int AS n FROM berichtsheft_kw kw JOIN prueflinge p ON p.id = kw.pruefling_id
+      WHERE lower(btrim(coalesce(p.betrieb,''))) = lower(btrim($1))
+        AND kw.maengel <> '' AND regexp_replace(kw.maengel, '[H, ]', '', 'g') <> ''`,
+    [name]
+  )).rows[0].n;
+  const kontrollen = (await _pg.query(
+    `SELECT count(*)::int AS n FROM berichtsheft_kontrollen k JOIN prueflinge p ON p.id = k.pruefling_id
+      WHERE lower(btrim(coalesce(p.betrieb,''))) = lower(btrim($1))`,
+    [name]
+  )).rows[0].n;
+  return { beratung, beratungOffen: beratung.filter((f) => f.status !== "geloest").length, rasterMaengel, kontrollen };
+}
+
 /** Modulübergreifende Bezüge eines Prüflings (für die Prüflings-Akte). */
 export async function prueflingBezuege(prueflingId) {
   const id = Number(prueflingId);
