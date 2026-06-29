@@ -26,6 +26,13 @@ const run = () => smoke("akte-bezuege", async ({ page, ok }) => {
 
   const linkFall = await page.evaluate(() => !!document.querySelector('a.bw-btn[href^="#/beratung/"]'));
   ok(linkFall, "Öffnen-Link zum Beratungsfall vorhanden");
+
+  // „Schreiben erstellen" verlinkt die Vorlagen (mit Empfänger, falls E-Mail da).
+  const schreiben = await page.evaluate(() => {
+    const a = document.querySelector('a.bw-btn[href^="#/vorlagen"]');
+    return a ? a.getAttribute("href") : null;
+  });
+  ok(schreiben && schreiben.startsWith("#/vorlagen"), `Schreiben-erstellen-Knopf verlinkt Vorlagen (war ${schreiben})`);
 });
 
 export default run;

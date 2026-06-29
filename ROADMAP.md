@@ -229,11 +229,12 @@ Ausbildungsberatung (Prüfung + Berichtsheftkontrolle + Beratung + Vordrucke).
   offen/gelöst) — verlinkt in die jeweiligen Bereiche, unabhängig vom
   Prüfungsjahr-Filter. `store.uebergreifendeKennzahlen`. Chromium-Smoke
   (`tools/smoke/auswertungen-ueber.mjs`).
-- ✅ **Schreiben aus der Betriebs-Akte**: „Schreiben erstellen" in der
-  Betriebs-Akte öffnet die Vorlagen mit **vorgewähltem Betrieb** (Empfänger-E-Mail
-  und Anrede vorbefüllt). Neuer Deep-Link `#/vorlagen?betrieb=<id>` (auch
-  `?an=<email>`) — verbindet die Akten mit dem E-Mail-Workflow. Chromium-Smoke
-  erweitert.
+- ✅ **Schreiben aus der Betriebs- und Prüflings-Akte**: „Schreiben erstellen" in
+  der Betriebs-Akte öffnet die Vorlagen mit **vorgewähltem Betrieb**
+  (Empfänger-E-Mail und Anrede vorbefüllt), in der Prüflings-Akte mit dem
+  **Prüflings-E-Mail** als Empfänger. Neue Deep-Links `#/vorlagen?betrieb=<id>`
+  und `#/vorlagen?an=<email>` — verbinden die Akten mit dem E-Mail-Workflow.
+  Chromium-Smokes erweitert.
 - ⏳ **Weiterer Ausbau**: Berichtsheft-Import (CSV), weitere Auswertungen.
 
 ---

@@ -2791,6 +2791,7 @@ async function renderPrueflingAkte(id) {
       <button class="bw-btn bw-btn--sekundaer" type="button" id="akte-ics" ${a.termine.some((t) => t.datum) ? "" : "disabled title=\"Kein datierter Prüfungstermin\""}>Termin als Kalender (.ics)</button>
       <button class="bw-btn bw-btn--sekundaer" type="button" id="akte-zeugnis" ${bewertet ? "" : "disabled title=\"Erst bewerten\""}>${bewertet && b && b.bestanden === false ? "Ergebnis-Mitteilung drucken" : "Zeugnis drucken"}</button>
       <button class="bw-btn bw-btn--sekundaer" type="button" id="akte-bearbeiten">Stammdaten bearbeiten</button>
+      <a class="bw-btn bw-btn--sekundaer" href="#/vorlagen${p.email ? "?an=" + encodeURIComponent(p.email) : ""}">Schreiben erstellen</a>
       ${zurueckgezogen
         ? '<button class="bw-btn bw-btn--sekundaer" type="button" id="akte-reaktivieren">Reaktivieren</button>'
         : `${a.phase === "angemeldet" ? '<button class="bw-btn bw-btn--sekundaer" type="button" id="akte-zulassen">Zulassen</button>' : ""}
