@@ -3099,6 +3099,8 @@ async function renderAuswertungen(jahr = null) {
   const satzFahrt = geldOderNull(await store.getEinstellung("entsch_fahrt", ""));
   const spiegel = await store.notenVerteilung(jahr);
   const spiegelSumme = spiegel.reduce((s, r) => s + r.wert, 0);
+  let uebergreifend = null;
+  try { uebergreifend = await store.uebergreifendeKennzahlen(); } catch (e) { console.warn("Übergreifende Kennzahlen nicht verfügbar:", e); }
   const bereiche = await store.bereichsDurchschnitte(jahr);
   const bereichLabel = (b) => (GALABAU_BEREICHE[b.gruppe] || [])[b.idx] || b.kurz;
   const bereicheMit = bereiche.filter((b) => b.schnitt != null);
@@ -3169,6 +3171,20 @@ async function renderAuswertungen(jahr = null) {
       <div class="bw-card bw-stat"><span class="bw-stat__zahl">${gesamtQuote == null ? "—" : zahl(gesamtQuote) + " %"}</span><span class="bw-stat__label">Bestehensquote gesamt</span></div>
       <div class="bw-card bw-stat"><span class="bw-stat__zahl">${zahl(konflikte.length)}</span><span class="bw-stat__label">Prüfer-Konflikte</span></div>
     </div>
+
+    ${uebergreifend ? `
+    <section aria-labelledby="ueber-h" style="margin-top:var(--bw-space-4)">
+      <h2 id="ueber-h">Berichtsheft &amp; Beratung</h2>
+      <p class="bw-klein bw-leise">Bereichsübergreifender Überblick (unabhängig vom Prüfungsjahr-Filter).
+        <a href="#/berichtsheft">Berichtsheft öffnen</a> · <a href="#/beratung">Beratung öffnen</a></p>
+      <div class="bw-flaechen bw-stat-grid">
+        <a class="bw-card bw-stat" href="#/berichtsheft"><span class="bw-stat__zahl">${zahl(uebergreifend.berichtsheft.azubis)}</span><span class="bw-stat__label">Azubis kontrolliert</span></a>
+        <a class="bw-card bw-stat" href="#/berichtsheft"><span class="bw-stat__zahl">${zahl(uebergreifend.berichtsheft.wv_offen)}</span><span class="bw-stat__label">Wiedervorlagen offen${uebergreifend.berichtsheft.wv_ueberfaellig ? ` (${zahl(uebergreifend.berichtsheft.wv_ueberfaellig)} überf.)` : ""}</span></a>
+        <a class="bw-card bw-stat" href="#/berichtsheft"><span class="bw-stat__zahl">${zahl(uebergreifend.berichtsheft.raster_maengel)}</span><span class="bw-stat__label">offene Raster-Mängel</span></a>
+        <a class="bw-card bw-stat" href="#/beratung"><span class="bw-stat__zahl">${zahl(uebergreifend.beratung.offen)}</span><span class="bw-stat__label">Beratungsfälle offen</span></a>
+        <a class="bw-card bw-stat" href="#/beratung"><span class="bw-stat__zahl">${zahl(uebergreifend.beratung.geloest)}</span><span class="bw-stat__label">Beratungsfälle gelöst</span></a>
+      </div>
+    </section>` : ""}
 
     <section aria-labelledby="konflikt-h" style="margin-top:var(--bw-space-4)">
       <h2 id="konflikt-h">Prüfer-Doppelbelegungen</h2>
