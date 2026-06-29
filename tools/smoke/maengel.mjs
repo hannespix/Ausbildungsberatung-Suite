@@ -54,6 +54,17 @@ const run = () => smoke("maengel", async ({ page, ok }) => {
   });
   ok(betriebZeilen >= 1, `Mängel je Betrieb zeigt Zeilen (war ${betriebZeilen})`);
 
+  // CSV-Export der Mängel-Auswertung (Code-Häufung + je Betrieb).
+  const [dl] = await Promise.all([
+    page.waitForEvent("download", { timeout: 15000 }),
+    page.click("#bh-ausw-csv"),
+  ]);
+  ok(dl.suggestedFilename() === "Berichtsheft-Maengel-Auswertung.csv", `CSV-Dateiname (war ${dl.suggestedFilename()})`);
+  const { readFile } = await import("node:fs/promises");
+  const csv = await readFile(await dl.path(), "utf8");
+  ok(csv.includes("Mängelcode;Bezeichnung;Anzahl"), "CSV enthält Code-Kopf");
+  ok(csv.includes("Betrieb;Mängel;Fehltage;Wochen"), "CSV enthält Betriebs-Kopf");
+
   // Mobile 390px: kein horizontaler Überlauf der Seite.
   await page.setViewportSize({ width: 390, height: 800 });
   await page.waitForTimeout(150);

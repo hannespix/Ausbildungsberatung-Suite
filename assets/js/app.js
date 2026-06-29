@@ -4618,6 +4618,9 @@ async function renderBerichtsheft() {
     <section class="bw-card" aria-labelledby="bh-ausw-h" style="margin-bottom:var(--bw-space-3)">
       <h2 id="bh-ausw-h" style="margin-top:0">Mängel-Auswertung</h2>
       <p class="bw-klein bw-leise" style="margin-top:0">Häufung der Mängel und Fehltage über alle Wochenraster — wo systematisch nachgehakt werden muss.</p>
+      ${betriebe.length ? `<div class="bw-toolbar" style="margin:0 0 var(--bw-space-2)">
+        <button class="bw-btn bw-btn--sekundaer" type="button" id="bh-ausw-csv">Auswertung als CSV</button>
+      </div>` : ""}
       <div class="bw-flaechen" style="margin-bottom:var(--bw-space-3)">
         <div class="bw-card" style="flex:1 1 8rem"><div class="bw-klein bw-leise">Mängel gesamt</div><div style="font-size:1.5rem;font-weight:700">${zahl(statistik.maengelGesamt)}</div></div>
         <div class="bw-card" style="flex:1 1 8rem"><div class="bw-klein bw-leise">Wochen mit Mängeln</div><div style="font-size:1.5rem;font-weight:700">${zahl(statistik.wochenMitMaengeln)}</div></div>
@@ -4675,6 +4678,19 @@ async function renderBerichtsheft() {
       { titel: "Mängel je Code", max: Math.max(1, maxWert) }
     );
   }
+
+  // Mängel-Auswertung als CSV (Code-Häufung + Mängel je Betrieb in einer Datei).
+  document.getElementById("bh-ausw-csv")?.addEventListener("click", () => {
+    const linien = [];
+    linien.push(["Mängelcode", "Bezeichnung", "Anzahl"].map(csvFeld).join(";"));
+    statistik.maengel.forEach((m) => linien.push([m.code, m.label, m.value].map(csvFeld).join(";")));
+    linien.push("");
+    linien.push(["Betrieb", "Mängel", "Fehltage", "Wochen"].map(csvFeld).join(";"));
+    betriebe.forEach((b) => linien.push([b.betrieb, b.maengel, b.fehltage, b.wochen].map(csvFeld).join(";")));
+    const csv = "﻿" + linien.join("\r\n") + "\r\n";
+    dateiDownload("Berichtsheft-Maengel-Auswertung.csv", csv, "text/csv;charset=utf-8");
+    meldung("Mängel-Auswertung als CSV exportiert.");
+  });
 
   const tbody = document.getElementById("bh-tbody");
   const sucheEl = document.getElementById("bh-suche");
