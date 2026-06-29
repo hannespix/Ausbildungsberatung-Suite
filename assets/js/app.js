@@ -2923,6 +2923,9 @@ async function renderBetriebAkte(id) {
   catch (e) { console.error(e); appEl().innerHTML = `<div class="bw-hinweis bw-hinweis--fehler">Betrieb konnte nicht geladen werden: ${esc(e.message)}</div>`; return; }
   if (!a) { appEl().innerHTML = `<div class="bw-hinweis">Betrieb nicht gefunden. <a href="#/betriebe">Zur Liste</a></div>`; return; }
 
+  let bez = { beratung: [], beratungOffen: 0, rasterMaengel: 0, kontrollen: 0 };
+  try { bez = await store.betriebBezuege(Number(id)); } catch (e) { console.warn("Betriebs-Bezüge nicht verfügbar:", e); }
+
   const b = a.betrieb;
   const pl = a.prueflinge || [];
   const bewertet = pl.filter((p) => p.gesamt != null);
@@ -2976,6 +2979,20 @@ async function renderBetriebAkte(id) {
           : `<p class="bw-hinweis">Diesem Betrieb sind noch keine Prüflinge zugeordnet. In der <a href="#/prueflinge">Prüflingsliste</a> als Ausbildungsbetrieb „${esc(b.name || "")}" eintragen.</p>`}
       </section>
     </div>
+
+    <section class="bw-card" aria-labelledby="betrieb-bezuege" style="margin-top:var(--bw-space-3)">
+      <h2 id="betrieb-bezuege" style="margin-top:0">Berichtsheft &amp; Beratung</h2>
+      <p class="bw-klein" style="margin-top:0">
+        Berichtsheft: ${zahl(bez.kontrollen)} Kontrolle${bez.kontrollen === 1 ? "" : "n"}${bez.rasterMaengel ? ` · <strong>${zahl(bez.rasterMaengel)} offene Raster-Mängel</strong>` : ""} ·
+        Beratung: ${zahl(bez.beratungOffen)} offene${bez.beratungOffen === 1 ? "r Fall" : " Fälle"}.
+      </p>
+      ${bez.beratung.length ? `<ul class="bw-trefferliste">
+        ${bez.beratung.map((f) => `<li>
+          <span><strong>${esc(f.titel || "Fall")}</strong>${(f.nachname || f.vorname) ? ` <span class="bw-leise">· ${esc((f.nachname || "") + (f.vorname ? ", " + f.vorname : ""))}</span>` : ""} <span class="bw-leise">— ${esc(beratungStatusLabel(f.status))}</span></span>
+          <a class="bw-btn bw-btn--sekundaer" href="#/beratung/${f.id}" style="margin-left:auto">Öffnen</a>
+        </li>`).join("")}
+      </ul>` : '<p class="bw-leise bw-klein">Keine Beratungsfälle zu diesem Betrieb.</p>'}
+    </section>
   `;
 
   document.getElementById("betrieb-bearbeiten").addEventListener("click", () => {

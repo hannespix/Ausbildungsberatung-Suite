@@ -215,6 +215,10 @@ Ausbildungsberatung (Prüfung + Berichtsheftkontrolle + Beratung + Vordrucke).
   Status, je mit „Öffnen"). Bringt Prüfung, Berichtsheft und Beratung je
   Auszubildende:m an einen Ort (`store.prueflingBezuege`). Chromium-Smoke
   (`tools/smoke/akte-bezuege.mjs`).
+- ✅ **Betriebs-Akte modulübergreifend verknüpft**: analog zur Prüflings-Akte zeigt
+  die Betriebs-Akte jetzt „Berichtsheft & Beratung" — Kontrollen, offene
+  Raster-Mängel und offene Beratungsfälle der Azubis dieses Betriebs (je mit
+  „Öffnen"). `store.betriebBezuege`. Chromium-Smoke (`tools/smoke/betrieb-bezuege.mjs`).
 - ⏳ **Weiterer Ausbau**: Berichtsheft-Import (CSV), weitere Auswertungen.
 
 ---
